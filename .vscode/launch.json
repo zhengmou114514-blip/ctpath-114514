@@ -1,0 +1,58 @@
+﻿{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "FastAPI Backend",
+      "type": "python",
+      "request": "launch",
+      "module": "uvicorn",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "args": [
+        "app.main:app",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "8000",
+        "--reload"
+      ],
+      "envFile": "${workspaceFolder}/.env"
+    },
+    {
+      "name": "Frontend Dev Server",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "cmd /c npm run dev",
+      "cwd": "${workspaceFolder}/frontend"
+    },
+    {
+      "name": "CTpath Train (CPU)",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/models/learner.py",
+      "cwd": "${workspaceFolder}/models",
+      "console": "integratedTerminal",
+      "args": [
+        "--dataset", "CHRONIC",
+        "--rank", "800",
+        "--valid_freq", "2",
+        "--max_epochs", "20",
+        "--learning_rate", "0.1",
+        "--batch_size", "50",
+        "--n_hidden", "160",
+        "--num_walks", "1",
+        "--walk_len", "8",
+        "--num_walks_neis", "20",
+        "--walk_len_neis", "6",
+        "--gpu", "0",
+        "--cuda", "cpu"
+      ]
+    }
+  ],
+  "compounds": [
+    {
+      "name": "System Demo",
+      "configurations": ["FastAPI Backend", "Frontend Dev Server"]
+    }
+  ]
+}
