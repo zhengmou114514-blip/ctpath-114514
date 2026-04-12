@@ -4,11 +4,14 @@ import type { ContactLogCreatePayload, DoctorUser, FlowBoardRow, FollowupTaskRow
 
 const props = defineProps<{
   loading: boolean
+  loadingTaskAction: boolean
   followupItems: FollowupTaskRow[]
   flowBoardItems: FlowBoardRow[]
   selectedPatientId?: string
   savingContactLog: boolean
   doctorRole?: DoctorUser['role']
+  noPermission?: boolean
+  modelUnavailable?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -21,8 +24,30 @@ const emit = defineEmits<{
 </script>
 
 <template>
+  <section v-if="props.noPermission" class="empty-state-card">
+    <h3>无权限</h3>
+    <p>当前账号无随访工作台访问权限。</p>
+  </section>
+
+  <section v-else-if="props.loading" class="empty-state-card">
+    <h3>加载中</h3>
+    <p>正在加载随访任务与流转看板。</p>
+  </section>
+
+  <section v-else-if="!props.followupItems.length" class="empty-state-card">
+    <h3>无数据</h3>
+    <p>当前暂无随访任务。</p>
+  </section>
+
+  <section v-else-if="props.modelUnavailable" class="empty-state-card">
+    <h3>模型不可用</h3>
+    <p>模型服务当前不可用，随访任务处理不受影响。</p>
+  </section>
+
   <FollowupPage
+    v-else
     :loading="props.loading"
+    :loading-task-action="props.loadingTaskAction"
     :followup-items="props.followupItems"
     :flow-board-items="props.flowBoardItems"
     :selected-patient-id="props.selectedPatientId"

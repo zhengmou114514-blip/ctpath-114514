@@ -24,6 +24,7 @@ interface LocalTaskState {
 
 const props = defineProps<{
   loading: boolean
+  loadingTaskAction: boolean
   followupItems: FollowupTaskRow[]
   flowBoardItems: FlowBoardRow[]
   selectedPatientId?: string
@@ -264,6 +265,19 @@ function markCompleted(item: FollowupTaskRow) {
   }
 }
 
+function markClosed(item: FollowupTaskRow) {
+  appendHistory(item, 'Marked Closed', 'Closed', 'Task closed by follow-up operator.')
+  const key = taskKey(item)
+  const current = localState[key]
+  if (current) {
+    current.unreached = false
+    current.needsReview = false
+  }
+  if (item.source === 'outpatient-task' && item.taskId) {
+    emit('close-task', { patientId: item.patientId, taskId: item.taskId })
+  }
+}
+
 watch(
   () => [props.selectedPatientId, filteredTasks.value.length] as const,
   () => {
@@ -463,10 +477,15 @@ watch(
           <section class="right-block">
             <h4>Quick Actions</h4>
             <div class="actions">
-              <button class="secondary-button" :disabled="savingContactLog" @click="markReached(selectedTask)">Reached</button>
-              <button class="secondary-button" :disabled="savingContactLog" @click="markUnreached(selectedTask)">Unreached</button>
-              <button class="secondary-button" :disabled="savingContactLog" @click="markNeedReview(selectedTask)">Need Doctor Review</button>
-              <button class="primary-button" :disabled="savingContactLog" @click="markCompleted(selectedTask)">Complete</button>
+              <button class="secondary-button" :disabled="props.savingContactLog || props.loadingTaskAction" @click="markReached(selectedTask)">Reached</button>
+              <button class="secondary-button" :disabled="props.savingContactLog || props.loadingTaskAction" @click="markUnreached(selectedTask)">Unreached</button>
+              <button class="secondary-button" :disabled="props.savingContactLog || props.loadingTaskAction" @click="markNeedReview(selectedTask)">Need Doctor Review</button>
+              <button class="primary-button" :disabled="props.savingContactLog || props.loadingTaskAction" @click="markCompleted(selectedTask)">
+                {{ props.loadingTaskAction ? 'Submitting...' : 'Complete' }}
+              </button>
+              <button class="secondary-button" :disabled="props.savingContactLog || props.loadingTaskAction" @click="markClosed(selectedTask)">
+                {{ props.loadingTaskAction ? 'Submitting...' : 'Close Task' }}
+              </button>
             </div>
             <div class="actions secondary">
               <button class="text-button" @click="emit('open-patient', selectedTask.patientId)">Open Patient Detail</button>

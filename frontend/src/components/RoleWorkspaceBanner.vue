@@ -14,25 +14,31 @@ const props = defineProps<{
 const bannerConfig = computed(() => {
   if (props.doctor.role === 'nurse') {
     return {
-      eyebrow: 'Nurse Workbench',
-      title: 'Follow-up and Coordination Console',
-      description: 'Track follow-up tasks, contact outcomes, and patient flow with clear status transitions.',
+      eyebrow: '护理工作区',
+      title: '随访与联络协同',
+      description: '聚焦随访任务进度、联系结果与患者流转，保障连续护理闭环。',
     }
   }
 
   if (props.doctor.role === 'archivist') {
     return {
-      eyebrow: 'Archive Workbench',
-      title: 'Archive and Data Quality Console',
-      description: 'Focus on archive completeness, record consistency, and governance-quality traceability.',
+      eyebrow: '档案工作区',
+      title: '档案与数据质量管理',
+      description: '聚焦档案完整性、记录一致性与治理留痕，保障病历质量可追溯。',
     }
   }
 
   return {
-    eyebrow: 'Doctor Workbench',
-    title: 'Chronic Disease Diagnostic Workstation',
-    description: 'Combine disease trajectory, model evidence, and care suggestions for outpatient decisions.',
+    eyebrow: '医生工作区',
+    title: '慢病门诊诊疗工作台',
+    description: '结合病程轨迹、模型证据与处置建议，支持门诊诊疗决策。',
   }
+})
+
+const roleLabel = computed(() => {
+  if (props.doctor.role === 'archivist') return '档案员'
+  if (props.doctor.role === 'nurse') return '护士'
+  return '医生'
 })
 </script>
 
@@ -42,19 +48,20 @@ const bannerConfig = computed(() => {
       <p class="eyebrow">{{ bannerConfig.eyebrow }}</p>
       <h2 class="page-title">{{ bannerConfig.title }}</h2>
       <p class="role-banner-copy page-description">{{ bannerConfig.description }}</p>
+      <span class="role-tag" :class="`role-tag-${props.doctor.role}`">{{ roleLabel }}</span>
     </div>
 
     <div class="role-banner-chips">
       <article class="role-banner-chip">
-        <span>Current Module</span>
+        <span>当前模块</span>
         <strong>{{ sectionLabel(props.section) }}</strong>
       </article>
       <article class="role-banner-chip">
-        <span>Total Patients</span>
+        <span>患者总数</span>
         <strong>{{ props.patientCount }}</strong>
       </article>
       <article class="role-banner-chip">
-        <span>Follow-up Tasks</span>
+        <span>随访任务</span>
         <strong>{{ props.followupCount }}</strong>
       </article>
     </div>

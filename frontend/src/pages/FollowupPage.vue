@@ -6,6 +6,7 @@ import MobileFollowupTodayBoard from '../components/MobileFollowupTodayBoard.vue
 
 const props = defineProps<{
   loading: boolean
+  loadingTaskAction: boolean
   followupItems: FollowupTaskRow[]
   flowBoardItems: FlowBoardRow[]
   selectedPatientId?: string
@@ -46,6 +47,7 @@ onBeforeUnmount(() => {
     <MobileFollowupTodayBoard
       v-if="isMobile"
       :loading="props.loading"
+      :loading-task-action="props.loadingTaskAction"
       :followup-items="props.followupItems"
       :selected-patient-id="props.selectedPatientId"
       :saving-contact-log="props.savingContactLog"
@@ -57,6 +59,7 @@ onBeforeUnmount(() => {
     <FollowupWorklistBoard
       v-else
       :loading="props.loading"
+      :loading-task-action="props.loadingTaskAction"
       :followup-items="props.followupItems"
       :flow-board-items="props.flowBoardItems"
       :selected-patient-id="props.selectedPatientId"

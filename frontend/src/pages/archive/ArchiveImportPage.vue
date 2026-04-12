@@ -1,12 +1,17 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
-import type { ImportPreviewPatient } from '../../services/types'
-
-type ImportMode = 'batch' | 'single'
-type SourcePlatform = 'his' | 'emr' | 'regional' | 'other'
-type ImportMethod = 'mrn' | 'idCard' | 'visitNo'
+import type {
+  ArchiveImportWorkflowMode,
+  CrossSystemSourceSystem,
+  ImportPreviewPatient,
+  MpiCandidatePatient,
+  MpiSearchCriteria,
+  OnsiteArchiveRegisterForm,
+  PatientSummary,
+} from '../../services/types'
 
 const props = defineProps<{
+  allPatients: PatientSummary[]
   importing: boolean
   resultText: string
 }>()
@@ -16,234 +21,385 @@ const emit = defineEmits<{
   (e: 'back'): void
 }>()
 
-const activeMode = ref<ImportMode>('batch')
-const parseError = ref('')
-const detectedHeaders = ref<string[]>([])
-const sourceName = ref('')
-const previewRows = ref<ImportPreviewPatient[]>([])
-const singlePreview = ref<ImportPreviewPatient | null>(null)
+const activeMode = ref<ArchiveImportWorkflowMode>('cross_system')
+const pageMessage = ref('')
+const pageError = ref('')
 
-const batchTemplateColumns = [
-  'patientId',
-  'name',
-  'age',
-  'gender',
-  'primaryDisease',
-  'currentStage',
-  'lastVisit',
-  'summary',
+const sourceOptions: Array<{ value: CrossSystemSourceSystem; label: string }> = [
+  { value: 'his', label: '院内HIS' },
+  { value: 'emr', label: '电子病历' },
+  { value: 'regional_platform', label: '区域平台' },
+  { value: 'other', label: '其他' },
 ]
 
-const singleImportForm = reactive({
-  sourcePlatform: 'his' as SourcePlatform,
-  importMethod: 'mrn' as ImportMethod,
-  externalId: '',
-  patientId: '',
+const mpiSearch = reactive<MpiSearchCriteria>({
+  sourceSystem: 'his',
   name: '',
-  gender: '女',
-  age: 0,
-  primaryDisease: 'Diabetes',
-  currentStage: 'Early',
-  lastVisit: new Date().toISOString().slice(0, 10),
-  summary: '',
-  sections: ['basic', 'diagnosis', 'visit'] as string[],
+  birthDate: '',
+  phone: '',
+  idLast4: '',
+  medicalRecordNumber: '',
+  visitCardNumber: '',
 })
 
-const previewCount = computed(() => previewRows.value.length)
+const searchRunning = ref(false)
+const mpiCandidates = ref<MpiCandidatePatient[]>([])
+const selectedCandidateId = ref('')
+const identityVerified = ref(false)
+const mergeTargetPatientId = ref('')
 
-const platformOptions: Array<{ value: SourcePlatform; label: string; detail: string }> = [
-  { value: 'his', label: '院内 HIS', detail: '适合门诊挂号、病案号、基础信息导入' },
-  { value: 'emr', label: '电子病历', detail: '适合从病历系统导入诊断和病情摘要' },
-  { value: 'regional', label: '区域平台', detail: '适合跨院调阅基础档案与最近就诊信息' },
-  { value: 'other', label: '其他系统', detail: '用于接收第三方平台或人工整理档案' },
-]
+const onsiteForm = reactive<OnsiteArchiveRegisterForm>({
+  name: '',
+  gender: '男',
+  birthDate: '',
+  phone: '',
+  idType: 'id_card',
+  idNumber: '',
+  address: '',
+  emergencyContactName: '',
+  emergencyContactPhone: '',
+  medicalRecordNumber: '',
+  visitCardNumber: '',
+  insuranceType: '',
+  primaryDoctor: '',
+  caseManager: '',
+  consentStatus: 'signed',
+})
 
-function normalizeHeader(value: string) {
-  return value.trim().toLowerCase()
+const attachmentPlaceholders = reactive({
+  patientPhoto: '',
+  idCardPhoto: '',
+  insuranceCardPhoto: '',
+  referralScan: '',
+})
+
+const governanceMerge = reactive({
+  sourcePatientId: '',
+  targetPatientId: '',
+})
+
+const governanceFix = reactive({
+  patientId: '',
+  phone: '',
+  emergencyContactPhone: '',
+  identityNumber: '',
+})
+
+const selectedCandidate = computed(() =>
+  mpiCandidates.value.find((item) => item.candidateId === selectedCandidateId.value) ?? null
+)
+
+const mergeTargets = computed(() =>
+  props.allPatients.filter((item) => !selectedCandidate.value || item.patientId !== selectedCandidate.value.sourceRecordId)
+)
+
+const duplicateGroups = computed(() => {
+  const buckets = new Map<string, PatientSummary[]>()
+  props.allPatients.forEach((item) => {
+    const key = `${item.name}|${item.phone || 'EMPTY_PHONE'}`
+    if (!buckets.has(key)) buckets.set(key, [])
+    buckets.get(key)?.push(item)
+  })
+  return [...buckets.values()].filter((group) => group.length > 1)
+})
+
+const missingFieldRows = computed(() =>
+  props.allPatients
+    .map((item) => {
+      const missing: string[] = []
+      if (!item.phone) missing.push('手机号')
+      if (!item.identityMasked) missing.push('证件号')
+      if (!item.emergencyContactPhone) missing.push('紧急联系人电话')
+      if (!item.medicalRecordNumber) missing.push('病案号')
+      return { patient: item, missing }
+    })
+    .filter((row) => row.missing.length > 0)
+)
+
+const conflictRows = computed(() => {
+  const buckets = new Map<string, PatientSummary[]>()
+  props.allPatients.forEach((item) => {
+    if (!item.medicalRecordNumber) return
+    const key = item.medicalRecordNumber
+    if (!buckets.has(key)) buckets.set(key, [])
+    buckets.get(key)?.push(item)
+  })
+  return [...buckets.entries()]
+    .filter(([, group]) => group.length > 1)
+    .map(([mrn, group]) => ({ medicalRecordNumber: mrn, patients: group }))
+})
+
+function clearStateMessage() {
+  pageError.value = ''
+  pageMessage.value = ''
 }
 
-function splitCsvLine(line: string) {
-  const result: string[] = []
-  let current = ''
-  let inQuotes = false
-
-  for (let index = 0; index < line.length; index += 1) {
-    const char = line[index]
-    if (char === '"') {
-      if (inQuotes && line[index + 1] === '"') {
-        current += '"'
-        index += 1
-      } else {
-        inQuotes = !inQuotes
-      }
-    } else if (char === ',' && !inQuotes) {
-      result.push(current.trim())
-      current = ''
-    } else {
-      current += char
-    }
-  }
-
-  result.push(current.trim())
-  return result
-}
-
-function findValue(row: Record<string, string>, aliases: string[]) {
-  for (const alias of aliases) {
-    const match = row[normalizeHeader(alias)]
-    if (match !== undefined && match !== '') return match
-  }
-  return ''
-}
-
-function normalizeGender(value: string) {
-  if (!value) return '女'
-  if (['male', '男', 'm'].includes(value.trim().toLowerCase())) return '男'
-  return '女'
-}
-
-function normalizeStage(value: string) {
-  const raw = value.trim().toLowerCase()
-  if (['mid', 'middle', '中期'].includes(raw)) return 'Mid'
-  if (['late', '晚期'].includes(raw)) return 'Late'
-  return 'Early'
-}
-
-function buildPreviewPatient(row: Partial<ImportPreviewPatient>, rowIndex = 0): ImportPreviewPatient {
-  const patientId = row.patientId?.trim() || `IMP${Date.now().toString().slice(-6)}${String(rowIndex + 1).padStart(3, '0')}`
+function buildImportPatient(partial: Partial<ImportPreviewPatient>, rowKey: string): ImportPreviewPatient {
+  const patientId = partial.patientId || `PID${Date.now().toString().slice(-8)}`
   return {
-    rowKey: `${patientId}-${rowIndex}`,
+    rowKey,
+    sourceName: partial.sourceName || 'archive-adapter',
     patientId,
-    name: row.name?.trim() || `导入患者${rowIndex + 1}`,
-    age: Number(row.age) || 0,
-    gender: row.gender || '女',
-    avatarUrl: row.avatarUrl?.trim() || '',
-    phone: row.phone?.trim() || '',
-    emergencyContactName: row.emergencyContactName?.trim() || '',
-    emergencyContactRelation: row.emergencyContactRelation?.trim() || '',
-    emergencyContactPhone: row.emergencyContactPhone?.trim() || '',
-    identityMasked: row.identityMasked?.trim() || '',
-    insuranceType: row.insuranceType?.trim() || '城镇职工',
-    department: row.department?.trim() || '慢病管理门诊',
-    primaryDoctor: row.primaryDoctor?.trim() || '周医生',
-    caseManager: row.caseManager?.trim() || '张护士',
-    allergyHistory: row.allergyHistory?.trim() || '无',
-    familyHistory: row.familyHistory?.trim() || '无特殊家族史',
-    medicalRecordNumber: row.medicalRecordNumber?.trim() || patientId,
-    archiveSource: row.archiveSource?.trim() || 'outpatient',
-    archiveStatus: row.archiveStatus?.trim() || 'active',
-    consentStatus: row.consentStatus?.trim() || 'signed',
-    primaryDisease: row.primaryDisease?.trim() || 'Diabetes',
-    currentStage: row.currentStage || 'Early',
-    riskLevel: row.riskLevel || '中风险',
-    lastVisit: row.lastVisit || new Date().toISOString().slice(0, 10),
-    summary: row.summary?.trim() || '',
-    dataSupport: row.dataSupport || 'medium',
-    sourceName: row.sourceName || sourceName.value || '导入档案',
+    name: partial.name || '未命名患者',
+    age: partial.age ?? 0,
+    gender: partial.gender || 'Unknown',
+    avatarUrl: partial.avatarUrl || '',
+    phone: partial.phone || '',
+    emergencyContactName: partial.emergencyContactName || '',
+    emergencyContactRelation: partial.emergencyContactRelation || '',
+    emergencyContactPhone: partial.emergencyContactPhone || '',
+    identityMasked: partial.identityMasked || '',
+    insuranceType: partial.insuranceType || 'Urban Employee',
+    department: partial.department || 'Chronic Care Clinic',
+    primaryDoctor: partial.primaryDoctor || 'Doctor',
+    caseManager: partial.caseManager || 'Nurse',
+    medicalRecordNumber: partial.medicalRecordNumber || patientId,
+    archiveSource: partial.archiveSource || 'outpatient',
+    archiveStatus: partial.archiveStatus || 'active',
+    consentStatus: partial.consentStatus || 'signed',
+    allergyHistory: partial.allergyHistory || '',
+    familyHistory: partial.familyHistory || '',
+    primaryDisease: partial.primaryDisease || 'Unknown',
+    currentStage: partial.currentStage || 'Early',
+    riskLevel: partial.riskLevel || 'Medium Risk',
+    lastVisit: partial.lastVisit || new Date().toISOString().slice(0, 10),
+    summary: partial.summary || '',
+    dataSupport: partial.dataSupport || 'medium',
   }
 }
 
-function mapRowToPatient(row: Record<string, string>, rowIndex: number): ImportPreviewPatient {
-  return buildPreviewPatient(
-    {
-      patientId: findValue(row, ['patientId', 'patient_id', '编号', '患者编号', '病案号', 'mrn']),
-      name: findValue(row, ['name', '姓名', '患者姓名']),
-      age: Number(findValue(row, ['age', '年龄'])) || 0,
-      gender: normalizeGender(findValue(row, ['gender', '性别'])),
-      avatarUrl: findValue(row, ['avatarUrl', 'avatar', '头像']),
-      phone: findValue(row, ['phone', '手机号', '联系电话', 'mobile']),
-      emergencyContactName: findValue(row, ['emergencyContactName', '紧急联系人', '联系人姓名']),
-      emergencyContactRelation: findValue(row, ['emergencyContactRelation', '联系人关系', '与患者关系']),
-      emergencyContactPhone: findValue(row, ['emergencyContactPhone', '紧急联系人电话', '联系人电话']),
-      primaryDisease: findValue(row, ['primaryDisease', 'disease', '主要疾病', '疾病']),
-      currentStage: normalizeStage(findValue(row, ['currentStage', 'stage', '阶段', '当前阶段'])),
-      riskLevel: '中风险',
-      lastVisit: findValue(row, ['lastVisit', '最近就诊', '就诊日期', 'visitDate']),
-      summary: findValue(row, ['summary', '摘要', '病情摘要', 'remark']),
-      dataSupport: 'medium',
-      sourceName: sourceName.value || '批量导入',
-    },
-    rowIndex
-  )
+async function searchCrossSystemCandidates() {
+  clearStateMessage()
+  searchRunning.value = true
+  selectedCandidateId.value = ''
+  identityVerified.value = false
+  mergeTargetPatientId.value = ''
+
+  try {
+    const hasAnyCondition = Boolean(
+      mpiSearch.name ||
+      mpiSearch.birthDate ||
+      mpiSearch.phone ||
+      mpiSearch.idLast4 ||
+      mpiSearch.medicalRecordNumber ||
+      mpiSearch.visitCardNumber
+    )
+    if (!hasAnyCondition) {
+      pageError.value = '请至少输入一个检索条件后再查询。'
+      mpiCandidates.value = []
+      return
+    }
+
+    // TODO(api): Replace with backend MPI retrieval service.
+    const candidates = props.allPatients
+      .filter((item) => {
+        if (mpiSearch.name && !item.name.includes(mpiSearch.name)) return false
+        if (mpiSearch.phone && !item.phone.includes(mpiSearch.phone)) return false
+        if (mpiSearch.medicalRecordNumber && !item.medicalRecordNumber.includes(mpiSearch.medicalRecordNumber)) return false
+        if (mpiSearch.idLast4 && !item.identityMasked.includes(mpiSearch.idLast4)) return false
+        return true
+      })
+      .slice(0, 12)
+      .map<MpiCandidatePatient>((item, idx) => ({
+        candidateId: `cand-${item.patientId}-${idx}`,
+        sourceSystem: mpiSearch.sourceSystem,
+        sourceRecordId: `${mpiSearch.sourceSystem.toUpperCase()}-${item.patientId}`,
+        name: item.name,
+        gender: item.gender,
+        birthDate: '',
+        phone: item.phone,
+        idLast4: item.identityMasked.slice(-4),
+        medicalRecordNumber: item.medicalRecordNumber,
+        visitCardNumber: '',
+        primaryDisease: item.primaryDisease,
+        lastVisit: item.lastVisit,
+        confidence: 0.78,
+        summary: item.summary || '来自跨系统调阅候选记录。',
+      }))
+
+    mpiCandidates.value = candidates
+    if (!candidates.length) pageMessage.value = '未检索到候选患者，请调整检索条件。'
+  } finally {
+    searchRunning.value = false
+  }
 }
 
-async function handleFileChange(event: Event) {
-  const file = (event.target as HTMLInputElement).files?.[0]
-  parseError.value = ''
-  previewRows.value = []
-  detectedHeaders.value = []
-
-  if (!file) return
-
-  sourceName.value = file.name
-  const text = await file.text()
-  const lines = text
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-
-  if (lines.length < 2) {
-    parseError.value = '导入文件至少需要包含表头和一行数据。'
+function createArchiveFromCandidate() {
+  clearStateMessage()
+  if (!selectedCandidate.value) {
+    pageError.value = '请先选择候选患者。'
+    return
+  }
+  if (!identityVerified.value) {
+    pageError.value = '请先完成身份核对。'
     return
   }
 
-  const headers = splitCsvLine(lines[0] ?? '').map(normalizeHeader)
-  detectedHeaders.value = headers
-
-  const rows = lines.slice(1).map((line) => splitCsvLine(line))
-  const mapped = rows.map((cells) => {
-    const row = headers.reduce<Record<string, string>>((accumulator, header, index) => {
-      accumulator[header] = cells[index] ?? ''
-      return accumulator
-    }, {})
-    return row
-  })
-
-  previewRows.value = mapped.map((row, index) => mapRowToPatient(row, index))
-}
-
-function generateSinglePreview() {
-  singlePreview.value = buildPreviewPatient(
+  const candidate = selectedCandidate.value
+  const row = buildImportPatient(
     {
-      patientId: singleImportForm.patientId || `${singleImportForm.sourcePlatform.toUpperCase()}-${singleImportForm.externalId}`,
-      name: singleImportForm.name,
-      age: singleImportForm.age,
-      gender: singleImportForm.gender,
-      avatarUrl: '',
-      phone: '',
-      emergencyContactName: '',
-      emergencyContactRelation: '',
-      emergencyContactPhone: '',
-      identityMasked: '',
-      insuranceType: '城镇职工',
-      department: '慢病管理门诊',
-      primaryDoctor: '周医生',
-      caseManager: '张护士',
-      allergyHistory: '无',
-      familyHistory: '无特殊家族史',
-      medicalRecordNumber: singleImportForm.patientId || `${singleImportForm.sourcePlatform.toUpperCase()}-${singleImportForm.externalId}`,
-      archiveSource: singleImportForm.sourcePlatform === 'regional' ? 'community_referral' : 'outpatient',
-      archiveStatus: 'active',
-      consentStatus: 'signed',
-      primaryDisease: singleImportForm.primaryDisease,
-      currentStage: singleImportForm.currentStage,
-      riskLevel: '中风险',
-      lastVisit: singleImportForm.lastVisit,
-      summary: singleImportForm.summary,
-      dataSupport: 'medium',
-      sourceName: `${singleImportForm.sourcePlatform}-${singleImportForm.importMethod}`,
+      patientId: `${candidate.sourceSystem.toUpperCase()}-${Date.now().toString().slice(-6)}`,
+      name: candidate.name,
+      gender: candidate.gender,
+      phone: candidate.phone,
+      identityMasked: candidate.idLast4 ? `************${candidate.idLast4}` : '',
+      primaryDisease: candidate.primaryDisease,
+      medicalRecordNumber: candidate.medicalRecordNumber,
+      summary: `跨系统调阅建档：${candidate.summary}`,
+      sourceName: `cross-system:${candidate.sourceSystem}`,
+      archiveSource: candidate.sourceSystem === 'regional_platform' ? 'community_referral' : 'outpatient',
     },
-    0
+    `cross-create-${candidate.candidateId}`
   )
+  emit('submit-import', [row])
 }
 
-function submitSingleImport() {
-  if (!singlePreview.value) {
-    generateSinglePreview()
+function mergeCandidateToExistingArchive() {
+  clearStateMessage()
+  if (!selectedCandidate.value) {
+    pageError.value = '请先选择候选患者。'
+    return
   }
-  if (singlePreview.value) {
-    emit('submit-import', [singlePreview.value])
+  if (!identityVerified.value) {
+    pageError.value = '请先完成身份核对。'
+    return
   }
+  if (!mergeTargetPatientId.value) {
+    pageError.value = '请选择合并目标档案。'
+    return
+  }
+
+  const target = props.allPatients.find((item) => item.patientId === mergeTargetPatientId.value)
+  const candidate = selectedCandidate.value
+  if (!target) {
+    pageError.value = '未找到合并目标档案。'
+    return
+  }
+
+  // TODO(api): Replace with dedicated MPI merge endpoint.
+  const row = buildImportPatient(
+    {
+      ...target,
+      rowKey: '',
+      sourceName: `merge:${candidate.sourceSystem}`,
+      summary: [target.summary, `合并调阅记录(${candidate.sourceRecordId})`].filter(Boolean).join('；'),
+      phone: target.phone || candidate.phone,
+      medicalRecordNumber: target.medicalRecordNumber || candidate.medicalRecordNumber,
+    },
+    `cross-merge-${candidate.candidateId}-${target.patientId}`
+  )
+  emit('submit-import', [row])
+}
+
+function submitOnsiteRegister() {
+  clearStateMessage()
+  const requiredChecks: Array<[boolean, string]> = [
+    [Boolean(onsiteForm.name.trim()), '姓名'],
+    [Boolean(onsiteForm.gender.trim()), '性别'],
+    [Boolean(onsiteForm.birthDate), '出生日期'],
+    [Boolean(onsiteForm.phone.trim()), '手机号'],
+    [Boolean(onsiteForm.idType), '证件类型'],
+    [Boolean(onsiteForm.idNumber.trim()), '证件号'],
+    [Boolean(onsiteForm.address.trim()), '地址'],
+    [Boolean(onsiteForm.emergencyContactName.trim()), '紧急联系人'],
+    [Boolean(onsiteForm.medicalRecordNumber.trim() || onsiteForm.visitCardNumber.trim()), '病案号/门诊号'],
+  ]
+  const missing = requiredChecks.filter((item) => !item[0]).map((item) => item[1])
+  if (missing.length) {
+    pageError.value = `请完善必填信息：${missing.join('、')}`
+    return
+  }
+
+  const row = buildImportPatient(
+    {
+      patientId: onsiteForm.medicalRecordNumber || onsiteForm.visitCardNumber,
+      name: onsiteForm.name,
+      gender: onsiteForm.gender,
+      phone: onsiteForm.phone,
+      identityMasked: onsiteForm.idNumber,
+      emergencyContactName: onsiteForm.emergencyContactName,
+      emergencyContactPhone: onsiteForm.emergencyContactPhone,
+      emergencyContactRelation: '家属',
+      insuranceType: onsiteForm.insuranceType || 'Urban Employee',
+      primaryDoctor: onsiteForm.primaryDoctor || 'Doctor',
+      caseManager: onsiteForm.caseManager || 'Nurse',
+      consentStatus: onsiteForm.consentStatus || 'signed',
+      medicalRecordNumber: onsiteForm.medicalRecordNumber || onsiteForm.visitCardNumber,
+      archiveSource: 'outpatient',
+      summary: `门诊现场建档；地址:${onsiteForm.address}；附件占位(照片/证件/转诊单)已登记。`,
+      sourceName: 'onsite-register',
+    },
+    `onsite-${Date.now()}`
+  )
+  emit('submit-import', [row])
+}
+
+function pickGovernanceFix(patient: PatientSummary) {
+  governanceFix.patientId = patient.patientId
+  governanceFix.phone = patient.phone
+  governanceFix.emergencyContactPhone = patient.emergencyContactPhone
+  governanceFix.identityNumber = patient.identityMasked
+}
+
+function submitGovernanceFix() {
+  clearStateMessage()
+  if (!governanceFix.patientId) {
+    pageError.value = '请先选择需要补齐字段的档案。'
+    return
+  }
+  const target = props.allPatients.find((item) => item.patientId === governanceFix.patientId)
+  if (!target) {
+    pageError.value = '未找到需要补齐的档案。'
+    return
+  }
+
+  // TODO(api): Replace with archive data quality patch endpoint.
+  const row = buildImportPatient(
+    {
+      ...target,
+      rowKey: '',
+      sourceName: 'governance-fill',
+      phone: governanceFix.phone || target.phone,
+      emergencyContactPhone: governanceFix.emergencyContactPhone || target.emergencyContactPhone,
+      identityMasked: governanceFix.identityNumber || target.identityMasked,
+      summary: [target.summary, '存量档案治理：字段补齐'].filter(Boolean).join('；'),
+    },
+    `governance-fill-${target.patientId}`
+  )
+  emit('submit-import', [row])
+}
+
+function submitGovernanceMerge() {
+  clearStateMessage()
+  if (!governanceMerge.sourcePatientId || !governanceMerge.targetPatientId) {
+    pageError.value = '请选择冲突档案的来源与目标。'
+    return
+  }
+  if (governanceMerge.sourcePatientId === governanceMerge.targetPatientId) {
+    pageError.value = '来源档案与目标档案不能相同。'
+    return
+  }
+  const source = props.allPatients.find((item) => item.patientId === governanceMerge.sourcePatientId)
+  const target = props.allPatients.find((item) => item.patientId === governanceMerge.targetPatientId)
+  if (!source || !target) {
+    pageError.value = '未找到冲突档案。'
+    return
+  }
+
+  // TODO(api): Replace with MPI conflict merge endpoint.
+  const row = buildImportPatient(
+    {
+      ...target,
+      rowKey: '',
+      sourceName: 'governance-merge',
+      summary: [target.summary, `冲突合并来源:${source.patientId}`].filter(Boolean).join('；'),
+      phone: target.phone || source.phone,
+      emergencyContactPhone: target.emergencyContactPhone || source.emergencyContactPhone,
+      medicalRecordNumber: target.medicalRecordNumber || source.medicalRecordNumber,
+    },
+    `governance-merge-${source.patientId}-${target.patientId}`
+  )
+  emit('submit-import', [row])
 }
 </script>
 
@@ -251,9 +407,9 @@ function submitSingleImport() {
   <section class="module-shell archive-page-shell">
     <article class="card archive-page-hero archive-page-hero-practical">
       <div>
-        <p class="eyebrow">档案导入</p>
-        <h3>外院档案接入</h3>
-        <p class="page-copy">按实际业务拆成两条流程：批量导入用于集中迁移，个人导入用于门诊现场调阅单个患者档案。</p>
+        <p class="eyebrow">档案接入工作台</p>
+        <h3>医院主索引与建档治理</h3>
+        <p class="page-copy">以患者主索引核验为核心，支持跨系统调阅接入、门诊现场建档、存量档案治理三类流程。</p>
       </div>
       <div class="module-hero-actions">
         <button class="secondary-button" @click="emit('back')">返回档案列表</button>
@@ -262,87 +418,165 @@ function submitSingleImport() {
 
     <article class="card archive-tab-card">
       <div class="archive-tabbar">
-        <button class="secondary-button" :class="{ active: activeMode === 'batch' }" @click="activeMode = 'batch'">大型导入</button>
-        <button class="secondary-button" :class="{ active: activeMode === 'single' }" @click="activeMode = 'single'">个人档案导入</button>
+        <button class="secondary-button" :class="{ active: activeMode === 'cross_system' }" @click="activeMode = 'cross_system'">
+          跨系统调阅接入
+        </button>
+        <button class="secondary-button" :class="{ active: activeMode === 'onsite_register' }" @click="activeMode = 'onsite_register'">
+          门诊现场建档
+        </button>
+        <button class="secondary-button" :class="{ active: activeMode === 'governance' }" @click="activeMode = 'governance'">
+          存量档案治理
+        </button>
       </div>
     </article>
 
-    <section v-if="activeMode === 'batch'" class="archive-import-grid">
+    <p v-if="props.resultText" class="success-banner">{{ props.resultText }}</p>
+    <p v-if="pageMessage" class="success-banner">{{ pageMessage }}</p>
+    <p v-if="pageError" class="error-banner">{{ pageError }}</p>
+
+    <section v-if="activeMode === 'cross_system'" class="archive-import-grid">
       <article class="card archive-import-panel">
         <div class="panel-head">
           <div>
-            <p class="eyebrow">大型导入</p>
-            <h3>批量患者档案迁移</h3>
-          </div>
-          <span class="panel-meta">适合上线初期批量导入历史档案、院外整理数据或信息科集中迁移。</span>
-        </div>
-
-        <div class="archive-process-strip">
-          <div class="archive-process-step active">
-            <strong>1</strong>
-            <span>准备 CSV 模板</span>
-          </div>
-          <div class="archive-process-step active">
-            <strong>2</strong>
-            <span>上传并识别字段</span>
-          </div>
-          <div class="archive-process-step">
-            <strong>3</strong>
-            <span>预览后批量写入</span>
+            <p class="eyebrow">步骤一</p>
+            <h3>选择来源系统与主索引检索</h3>
           </div>
         </div>
-
-        <label class="field">
-          <span>选择导入文件</span>
-          <input type="file" accept=".csv,text/csv" @change="handleFileChange" />
-        </label>
-
-        <div class="archive-import-template">
-          <span class="data-label">推荐表头</span>
-          <code>{{ batchTemplateColumns.join(',') }}</code>
+        <div class="form-grid">
+          <label class="field">
+            <span>来源系统</span>
+            <select v-model="mpiSearch.sourceSystem">
+              <option v-for="item in sourceOptions" :key="item.value" :value="item.value">{{ item.label }}</option>
+            </select>
+          </label>
+          <label class="field"><span>姓名</span><input v-model="mpiSearch.name" type="text" /></label>
+          <label class="field"><span>出生日期</span><input v-model="mpiSearch.birthDate" type="date" /></label>
+          <label class="field"><span>手机号</span><input v-model="mpiSearch.phone" type="text" /></label>
+          <label class="field"><span>身份证号后四位</span><input v-model="mpiSearch.idLast4" type="text" maxlength="4" /></label>
+          <label class="field"><span>病案号</span><input v-model="mpiSearch.medicalRecordNumber" type="text" /></label>
+          <label class="field"><span>就诊卡号</span><input v-model="mpiSearch.visitCardNumber" type="text" /></label>
         </div>
-
-        <p v-if="parseError" class="error-text">{{ parseError }}</p>
-        <p v-if="props.resultText" class="panel-meta">{{ props.resultText }}</p>
-
         <div class="form-actions">
-          <button class="primary-button" :disabled="!previewRows.length || props.importing" @click="emit('submit-import', previewRows)">
-            {{ props.importing ? '导入中...' : `开始导入 ${previewCount} 条档案` }}
+          <button class="primary-button" :disabled="searchRunning" @click="searchCrossSystemCandidates">
+            {{ searchRunning ? '检索中...' : '检索候选患者' }}
           </button>
+        </div>
+        <p class="panel-meta">TODO：当前使用前端 adapter/mock 生成候选记录，待接入真实 MPI 检索接口。</p>
+      </article>
+
+      <article class="card archive-import-panel">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">步骤二</p>
+            <h3>候选患者核对与建档决策</h3>
+          </div>
+        </div>
+        <div v-if="mpiCandidates.length" class="archive-import-preview">
+          <div class="archive-import-preview-head">
+            <span>候选</span><span>姓名</span><span>主索引信息</span><span>来源记录</span><span>可信度</span>
+          </div>
+          <div class="archive-import-preview-body">
+            <button
+              v-for="item in mpiCandidates"
+              :key="item.candidateId"
+              class="archive-import-preview-row"
+              :class="{ active: selectedCandidateId === item.candidateId }"
+              @click="selectedCandidateId = item.candidateId"
+            >
+              <span>{{ item.candidateId }}</span>
+              <span>{{ item.name }}</span>
+              <span>{{ item.phone || '--' }} / {{ item.medicalRecordNumber || '--' }}</span>
+              <span>{{ item.sourceRecordId }}</span>
+              <span>{{ Math.round(item.confidence * 100) }}%</span>
+            </button>
+          </div>
+        </div>
+        <div v-else class="empty-card compact"><p>尚无候选患者</p></div>
+
+        <label class="field inline">
+          <input v-model="identityVerified" type="checkbox" />
+          <span>已完成身份核对（姓名/手机号/证件后四位/病案号）</span>
+        </label>
+        <label class="field">
+          <span>合并目标档案（用于“合并到已有档案”）</span>
+          <select v-model="mergeTargetPatientId">
+            <option value="">请选择</option>
+            <option v-for="item in mergeTargets" :key="item.patientId" :value="item.patientId">
+              {{ item.patientId }} / {{ item.name }}
+            </option>
+          </select>
+        </label>
+        <div class="form-actions">
+          <button class="primary-button" :disabled="props.importing || !selectedCandidateId" @click="createArchiveFromCandidate">
+            {{ props.importing ? '处理中...' : '新建院内档案' }}
+          </button>
+          <button class="secondary-button" :disabled="props.importing || !selectedCandidateId" @click="mergeCandidateToExistingArchive">
+            {{ props.importing ? '处理中...' : '合并到已有档案' }}
+          </button>
+        </div>
+      </article>
+    </section>
+
+    <section v-else-if="activeMode === 'onsite_register'" class="archive-import-grid">
+      <article class="card archive-import-panel">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">门诊现场建档</p>
+            <h3>必填信息采集</h3>
+          </div>
+        </div>
+        <div class="form-grid">
+          <label class="field"><span>姓名*</span><input v-model="onsiteForm.name" type="text" /></label>
+          <label class="field"><span>性别*</span><select v-model="onsiteForm.gender"><option value="男">男</option><option value="女">女</option></select></label>
+          <label class="field"><span>出生日期*</span><input v-model="onsiteForm.birthDate" type="date" /></label>
+          <label class="field"><span>手机号*</span><input v-model="onsiteForm.phone" type="text" /></label>
+          <label class="field">
+            <span>证件类型*</span>
+            <select v-model="onsiteForm.idType">
+              <option value="id_card">居民身份证</option>
+              <option value="passport">护照</option>
+              <option value="officer_card">军官证</option>
+              <option value="other">其他</option>
+            </select>
+          </label>
+          <label class="field"><span>证件号*</span><input v-model="onsiteForm.idNumber" type="text" /></label>
+          <label class="field full-span"><span>地址*</span><input v-model="onsiteForm.address" type="text" /></label>
+          <label class="field"><span>紧急联系人*</span><input v-model="onsiteForm.emergencyContactName" type="text" /></label>
+          <label class="field"><span>紧急联系人电话</span><input v-model="onsiteForm.emergencyContactPhone" type="text" /></label>
+          <label class="field"><span>病案号*</span><input v-model="onsiteForm.medicalRecordNumber" type="text" /></label>
+          <label class="field"><span>门诊号*</span><input v-model="onsiteForm.visitCardNumber" type="text" /></label>
         </div>
       </article>
 
       <article class="card archive-import-panel">
         <div class="panel-head">
           <div>
-            <p class="eyebrow">预览结果</p>
-            <h3>字段识别与写入预览</h3>
-          </div>
-          <span class="panel-meta">识别字段：{{ detectedHeaders.length ? detectedHeaders.join(' / ') : '尚未识别' }}</span>
-        </div>
-
-        <div v-if="previewRows.length" class="archive-import-preview">
-          <div class="archive-import-preview-head">
-            <span>患者编号</span>
-            <span>姓名</span>
-            <span>年龄</span>
-            <span>主要疾病</span>
-            <span>阶段</span>
-            <span>最近就诊</span>
-          </div>
-          <div class="archive-import-preview-body">
-            <div v-for="row in previewRows.slice(0, 10)" :key="row.rowKey" class="archive-import-preview-row">
-              <span>{{ row.patientId }}</span>
-              <span>{{ row.name }}</span>
-              <span>{{ row.age }}</span>
-              <span>{{ row.primaryDisease }}</span>
-              <span>{{ row.currentStage }}</span>
-              <span>{{ row.lastVisit }}</span>
-            </div>
+            <p class="eyebrow">推荐信息与附件占位</p>
+            <h3>完善建档质量</h3>
           </div>
         </div>
-        <div v-else class="empty-card compact">
-          <p>上传 CSV 后，这里会展示即将写入平台的患者基础档案。</p>
+        <div class="form-grid">
+          <label class="field"><span>医保类型</span><input v-model="onsiteForm.insuranceType" type="text" /></label>
+          <label class="field"><span>责任医生</span><input v-model="onsiteForm.primaryDoctor" type="text" /></label>
+          <label class="field"><span>责任护士</span><input v-model="onsiteForm.caseManager" type="text" /></label>
+          <label class="field">
+            <span>知情同意状态</span>
+            <select v-model="onsiteForm.consentStatus">
+              <option value="signed">已签署</option>
+              <option value="pending">待签署</option>
+              <option value="family_authorized">家属授权</option>
+            </select>
+          </label>
+          <label class="field"><span>患者照片（附件占位）</span><input v-model="attachmentPlaceholders.patientPhoto" type="text" placeholder="文件名/编号" /></label>
+          <label class="field"><span>身份证照片（附件占位）</span><input v-model="attachmentPlaceholders.idCardPhoto" type="text" placeholder="文件名/编号" /></label>
+          <label class="field"><span>医保卡照片（附件占位）</span><input v-model="attachmentPlaceholders.insuranceCardPhoto" type="text" placeholder="文件名/编号" /></label>
+          <label class="field"><span>转诊单扫描件（附件占位）</span><input v-model="attachmentPlaceholders.referralScan" type="text" placeholder="文件名/编号" /></label>
+        </div>
+        <p class="panel-meta">TODO：附件上传待接入文档管理服务，当前仅保留业务占位。</p>
+        <div class="form-actions">
+          <button class="primary-button" :disabled="props.importing" @click="submitOnsiteRegister">
+            {{ props.importing ? '建档中...' : '提交门诊现场建档' }}
+          </button>
         </div>
       </article>
     </section>
@@ -351,93 +585,46 @@ function submitSingleImport() {
       <article class="card archive-import-panel">
         <div class="panel-head">
           <div>
-            <p class="eyebrow">个人档案导入</p>
-            <h3>单患者跨系统调入</h3>
+            <p class="eyebrow">重复档案识别</p>
+            <h3>疑似重复患者</h3>
           </div>
-          <span class="panel-meta">参考门诊建档场景，适用于医生或档案员在接诊过程中临时调入某一位患者的外部档案。</span>
         </div>
-
-        <div class="single-import-platforms">
-          <button
-            v-for="item in platformOptions"
-            :key="item.value"
-            class="platform-tile"
-            :class="{ active: singleImportForm.sourcePlatform === item.value }"
-            @click="singleImportForm.sourcePlatform = item.value"
-          >
-            <strong>{{ item.label }}</strong>
-            <span>{{ item.detail }}</span>
-          </button>
+        <div v-if="duplicateGroups.length" class="preview-list">
+          <article v-for="(group, idx) in duplicateGroups" :key="`dup-${idx}`" class="preview-row">
+            <strong>{{ group[0]?.name }}（共{{ group.length }}条）</strong>
+            <p>{{ group.map((item) => item.patientId).join(' / ') }}</p>
+          </article>
         </div>
+        <div v-else class="empty-card compact"><p>未发现重复档案</p></div>
+      </article>
 
+      <article class="card archive-import-panel">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">缺字段补齐</p>
+            <h3>主索引关键字段修复</h3>
+          </div>
+        </div>
+        <div v-if="missingFieldRows.length" class="archive-import-preview">
+          <div class="archive-import-preview-head"><span>患者ID</span><span>姓名</span><span>缺失字段</span><span>操作</span></div>
+          <div class="archive-import-preview-body">
+            <div v-for="row in missingFieldRows" :key="row.patient.patientId" class="archive-import-preview-row">
+              <span>{{ row.patient.patientId }}</span>
+              <span>{{ row.patient.name }}</span>
+              <span>{{ row.missing.join('、') }}</span>
+              <span><button class="secondary-button" @click="pickGovernanceFix(row.patient)">补齐字段</button></span>
+            </div>
+          </div>
+        </div>
         <div class="form-grid">
-          <label class="field">
-            <span>检索方式</span>
-            <select v-model="singleImportForm.importMethod">
-              <option value="mrn">病案号</option>
-              <option value="idCard">身份证号</option>
-              <option value="visitNo">就诊卡号</option>
-            </select>
-          </label>
-          <label class="field">
-            <span>外部档案编号</span>
-            <input v-model="singleImportForm.externalId" type="text" placeholder="请输入外部系统编号" />
-          </label>
-          <label class="field">
-            <span>患者编号</span>
-            <input v-model="singleImportForm.patientId" type="text" placeholder="可留空，系统会自动生成" />
-          </label>
-          <label class="field">
-            <span>患者姓名</span>
-            <input v-model="singleImportForm.name" type="text" placeholder="请输入患者姓名" />
-          </label>
-          <label class="field">
-            <span>年龄</span>
-            <input v-model.number="singleImportForm.age" type="number" min="0" max="120" />
-          </label>
-          <label class="field">
-            <span>性别</span>
-            <select v-model="singleImportForm.gender">
-              <option value="女">女</option>
-              <option value="男">男</option>
-            </select>
-          </label>
-          <label class="field">
-            <span>主要疾病</span>
-            <input v-model="singleImportForm.primaryDisease" type="text" />
-          </label>
-          <label class="field">
-            <span>当前阶段</span>
-            <select v-model="singleImportForm.currentStage">
-              <option value="Early">早期</option>
-              <option value="Mid">中期</option>
-              <option value="Late">晚期</option>
-            </select>
-          </label>
-          <label class="field">
-            <span>最近就诊</span>
-            <input v-model="singleImportForm.lastVisit" type="date" />
-          </label>
-          <label class="field full-span">
-            <span>外部病情摘要</span>
-            <textarea v-model="singleImportForm.summary" rows="4" placeholder="记录从外部病历或区域平台调入的核心病情摘要" />
-          </label>
+          <label class="field"><span>患者ID</span><input v-model="governanceFix.patientId" type="text" /></label>
+          <label class="field"><span>手机号</span><input v-model="governanceFix.phone" type="text" /></label>
+          <label class="field"><span>紧急联系人电话</span><input v-model="governanceFix.emergencyContactPhone" type="text" /></label>
+          <label class="field"><span>证件号</span><input v-model="governanceFix.identityNumber" type="text" /></label>
         </div>
-
-        <div class="single-import-sections">
-          <span class="data-label">本次导入内容</span>
-          <div class="patient-tags">
-            <span>基础身份信息</span>
-            <span>主要疾病/阶段</span>
-            <span>最近就诊信息</span>
-            <span>病情摘要</span>
-          </div>
-        </div>
-
         <div class="form-actions">
-          <button class="secondary-button" @click="generateSinglePreview">生成导入预览</button>
-          <button class="primary-button" :disabled="props.importing" @click="submitSingleImport">
-            {{ props.importing ? '导入中...' : '确认导入该患者档案' }}
+          <button class="primary-button" :disabled="props.importing" @click="submitGovernanceFix">
+            {{ props.importing ? '处理中...' : '提交字段补齐' }}
           </button>
         </div>
       </article>
@@ -445,49 +632,51 @@ function submitSingleImport() {
       <article class="card archive-import-panel">
         <div class="panel-head">
           <div>
-            <p class="eyebrow">单患者预览</p>
-            <h3>导入前核对</h3>
+            <p class="eyebrow">冲突档案合并</p>
+            <h3>同病案号冲突处理</h3>
           </div>
-          <span class="panel-meta">导入完成后，可继续进入档案详情补录结构化事件。</span>
         </div>
-
-        <div v-if="singlePreview" class="archive-single-preview">
-          <div class="archive-preview-grid">
-            <div class="archive-preview-item">
-              <span>来源平台</span>
-              <strong>{{ singleImportForm.sourcePlatform }}</strong>
-            </div>
-            <div class="archive-preview-item">
-              <span>外部编号</span>
-              <strong>{{ singleImportForm.externalId || '-' }}</strong>
-            </div>
-            <div class="archive-preview-item">
-              <span>患者编号</span>
-              <strong>{{ singlePreview.patientId }}</strong>
-            </div>
-            <div class="archive-preview-item">
-              <span>患者姓名</span>
-              <strong>{{ singlePreview.name }}</strong>
-            </div>
-            <div class="archive-preview-item">
-              <span>主要疾病</span>
-              <strong>{{ singlePreview.primaryDisease }}</strong>
-            </div>
-            <div class="archive-preview-item">
-              <span>最近就诊</span>
-              <strong>{{ singlePreview.lastVisit }}</strong>
-            </div>
-          </div>
-
-          <article class="preview-row">
-            <strong>病情摘要</strong>
-            <p>{{ singlePreview.summary || '未填写摘要' }}</p>
+        <div v-if="conflictRows.length" class="preview-list">
+          <article v-for="row in conflictRows" :key="row.medicalRecordNumber" class="preview-row">
+            <strong>病案号：{{ row.medicalRecordNumber }}</strong>
+            <p>{{ row.patients.map((item) => `${item.patientId}-${item.name}`).join(' / ') }}</p>
           </article>
         </div>
-        <div v-else class="empty-card compact">
-          <p>填写单患者导入信息后，先生成预览，再确认导入。</p>
+        <div v-else class="empty-card compact"><p>未发现冲突档案</p></div>
+        <div class="form-grid">
+          <label class="field">
+            <span>来源档案</span>
+            <select v-model="governanceMerge.sourcePatientId">
+              <option value="">请选择</option>
+              <option v-for="item in props.allPatients" :key="`src-${item.patientId}`" :value="item.patientId">
+                {{ item.patientId }} / {{ item.name }}
+              </option>
+            </select>
+          </label>
+          <label class="field">
+            <span>目标档案</span>
+            <select v-model="governanceMerge.targetPatientId">
+              <option value="">请选择</option>
+              <option v-for="item in props.allPatients" :key="`dst-${item.patientId}`" :value="item.patientId">
+                {{ item.patientId }} / {{ item.name }}
+              </option>
+            </select>
+          </label>
+        </div>
+        <p class="panel-meta">TODO：当前使用 adapter/mock 触发合并更新，待接入主索引冲突合并 API。</p>
+        <div class="form-actions">
+          <button class="primary-button" :disabled="props.importing" @click="submitGovernanceMerge">
+            {{ props.importing ? '处理中...' : '执行冲突档案合并' }}
+          </button>
         </div>
       </article>
     </section>
   </section>
 </template>
+
+<style scoped>
+.archive-import-preview-row.active {
+  border-color: #2f5f8f;
+  box-shadow: 0 0 0 2px rgba(47, 95, 143, 0.15);
+}
+</style>

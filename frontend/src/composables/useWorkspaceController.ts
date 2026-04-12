@@ -109,6 +109,11 @@ export function useWorkspaceController() {
   const loadingPatient = ref(false)
   const loadingPredict = ref(false)
   const loadingBoards = ref(false)
+  const loadingOpenArchive = ref(false)
+  const loadingOpenFollowup = ref(false)
+  const loadingEncounterStatus = ref(false)
+  const loadingCreateTask = ref(false)
+  const loadingTaskStatus = ref(false)
   const loadingGovernance = ref(false)
   const loadingMaintenance = ref(false)
   const loadingModelMetrics = ref(false)
@@ -314,11 +319,21 @@ export function useWorkspaceController() {
       loadingRegister.value ||
       loadingPatients.value ||
       loadingPatient.value ||
+      loadingOpenArchive.value ||
+      loadingOpenFollowup.value ||
+      loadingEncounterStatus.value ||
+      loadingCreateTask.value ||
+      loadingTaskStatus.value ||
       loadingBoards.value ||
       loadingGovernance.value ||
       loadingMaintenance.value ||
       loadingModelMetrics.value
   )
+
+  const modelUnavailable = computed(() => Boolean(health.value && health.value.model_available === false))
+  const doctorNoPermission = computed(() => Boolean(currentDoctor.value) && !canUseDoctorWorkspace())
+  const archiveNoPermission = computed(() => Boolean(currentDoctor.value) && !canManageArchive())
+  const followupNoPermission = computed(() => Boolean(currentDoctor.value) && !canUseFollowupWorkspace())
 
   function sortPatients(items: PatientSummary[]) {
     return [...items].sort((left, right) => {
@@ -401,24 +416,27 @@ export function useWorkspaceController() {
     window.history.replaceState({}, '', url.toString())
   }
 
-  function openArchiveInNewTab(patientId: string, focusSection: ArchiveFocusSection = 'overview') {
+  async function openArchiveInNewTab(patientId: string, focusSection: ArchiveFocusSection = 'overview') {
     if (!canAccessSection('archive')) {
       setPermissionError('Current role has no permission to open patient archive.')
       return
     }
-    if (typeof window === 'undefined') return
-
-    const url = new URL(window.location.href)
-    url.searchParams.set('view', 'archive-detail')
-    url.searchParams.set('patientId', patientId)
-    url.searchParams.set('resume', '1')
-    if (focusSection === 'events') {
-      url.searchParams.set('focus', 'events')
-    } else {
-      url.searchParams.delete('focus')
+    if (!patientId) {
+      screenError.value = 'Please select a patient before opening archive.'
+      return
     }
-    url.searchParams.delete('module')
-    window.open(url.toString(), '_blank', 'noopener')
+
+    loadingOpenArchive.value = true
+    archiveSuccess.value = ''
+    screenError.value = ''
+    try {
+      const ok = await openPatient(patientId, 'archive', focusSection)
+      if (ok) {
+        archiveSuccess.value = 'Patient archive opened successfully.'
+      }
+    } finally {
+      loadingOpenArchive.value = false
+    }
   }
 
   function redirectToHomeSection() {
@@ -434,13 +452,17 @@ export function useWorkspaceController() {
       return
     }
 
-    followupFocusPatientId.value = patientId ?? ''
+    loadingOpenFollowup.value = true
+    followupFocusPatientId.value = patientId || selectedPatientId.value || ''
     section.value = targetSection
     clearMessages()
     updateWindowQuery(targetSection)
 
-    if (!flowBoardItems.value.length && !followupItems.value.length) {
+    try {
       await loadOperationalBoards()
+      archiveSuccess.value = 'Follow-up workspace opened successfully.'
+    } finally {
+      loadingOpenFollowup.value = false
     }
   }
 
@@ -461,6 +483,7 @@ export function useWorkspaceController() {
     archiveSuccess.value = ''
     screenError.value = ''
     resetPatientEditor()
+    archiveSuccess.value = 'Create archive form is ready.'
     updateWindowQuery('archive', 'create')
   }
 
@@ -475,6 +498,7 @@ export function useWorkspaceController() {
     importResultText.value = ''
     archiveSuccess.value = ''
     screenError.value = ''
+    archiveSuccess.value = 'Import module opened.'
     updateWindowQuery('archive', 'import')
   }
 
@@ -606,7 +630,7 @@ export function useWorkspaceController() {
     patientId: string,
     target: 'doctor' | 'archive' = 'doctor',
     focusSection: ArchiveFocusSection = 'overview'
-  ) {
+  ): Promise<boolean> {
     const resolvedTarget = target === 'doctor' && !canUseDoctorWorkspace() ? 'archive' : target
     loadingPatient.value = true
     screenError.value = ''
@@ -638,6 +662,7 @@ export function useWorkspaceController() {
         'success',
         `Opened patient detail in ${resolvedTarget} workspace.`
       )
+      return true
     } catch (error) {
       screenError.value = error instanceof Error ? error.message : 'Failed to open patient.'
       logAudit(
@@ -646,6 +671,7 @@ export function useWorkspaceController() {
         'failed',
         error instanceof Error ? error.message : 'Failed to open patient detail.'
       )
+      return false
     } finally {
       loadingPatient.value = false
     }
@@ -704,7 +730,7 @@ export function useWorkspaceController() {
     }
 
     if (isFollowupSection(nextSection)) {
-      await openFollowupModule('', nextSection)
+      await openFollowupModule(followupFocusPatientId.value || selectedPatientId.value, nextSection)
       return
     }
 
@@ -857,6 +883,7 @@ export function useWorkspaceController() {
     }
 
     loadingPredict.value = true
+    archiveSuccess.value = ''
     screenError.value = ''
 
     try {
@@ -877,6 +904,10 @@ export function useWorkspaceController() {
         predictionResult.value.advice.length ? (predictionResult.value.mode === 'model' ? 'success' : 'degraded') : 'failed',
         `Advice count: ${predictionResult.value.advice.length}.`
       )
+      archiveSuccess.value =
+        predictionResult.value.mode === 'model'
+          ? 'Prediction updated successfully.'
+          : 'Model unavailable, prediction fallback applied.'
       await loadOperationalBoards()
     } catch (error) {
       screenError.value = error instanceof Error ? error.message : 'Failed to run prediction.'
@@ -1020,7 +1051,9 @@ export function useWorkspaceController() {
       return
     }
 
+    loadingEncounterStatus.value = true
     screenError.value = ''
+    archiveSuccess.value = ''
 
     try {
       const updated = await updatePatientEncounterStatus(patientId, { status })
@@ -1028,9 +1061,13 @@ export function useWorkspaceController() {
         selectedPatient.value = updated
         syncPatientForm(updated)
       }
+      await loadPatients()
       await loadOperationalBoards()
+      archiveSuccess.value = 'Encounter status updated successfully.'
     } catch (error) {
       screenError.value = error instanceof Error ? error.message : 'Failed to update encounter status.'
+    } finally {
+      loadingEncounterStatus.value = false
     }
   }
 
@@ -1074,6 +1111,7 @@ export function useWorkspaceController() {
       return
     }
 
+    loadingCreateTask.value = true
     screenError.value = ''
     archiveSuccess.value = ''
 
@@ -1097,6 +1135,8 @@ export function useWorkspaceController() {
         selectedPatient.value = updated
         syncPatientForm(updated)
       }
+      followupFocusPatientId.value = patientId
+      await loadPatients()
       await loadOperationalBoards()
       archiveSuccess.value = 'Outpatient task created successfully.'
       logAudit(
@@ -1113,6 +1153,8 @@ export function useWorkspaceController() {
         'failed',
         error instanceof Error ? error.message : 'Failed to create follow-up task.'
       )
+    } finally {
+      loadingCreateTask.value = false
     }
   }
 
@@ -1123,6 +1165,7 @@ export function useWorkspaceController() {
       return
     }
 
+    loadingTaskStatus.value = true
     screenError.value = ''
     archiveSuccess.value = ''
 
@@ -1136,10 +1179,14 @@ export function useWorkspaceController() {
         selectedPatient.value = updated
         syncPatientForm(updated)
       }
+      followupFocusPatientId.value = patientId
+      await loadPatients()
       await loadOperationalBoards()
       archiveSuccess.value = status === TASK_STATUS_COMPLETED ? 'Task marked as completed.' : 'Task marked as closed.'
     } catch (error) {
       screenError.value = error instanceof Error ? error.message : 'Failed to update outpatient task status.'
+    } finally {
+      loadingTaskStatus.value = false
     }
   }
 
@@ -1273,6 +1320,11 @@ export function useWorkspaceController() {
     loadingPatient,
     loadingPredict,
     loadingBoards,
+    loadingOpenArchive,
+    loadingOpenFollowup,
+    loadingEncounterStatus,
+    loadingCreateTask,
+    loadingTaskStatus,
     loadingGovernance,
     loadingMaintenance,
     loadingModelMetrics,
@@ -1299,6 +1351,10 @@ export function useWorkspaceController() {
     archivePagedPatients,
     appRoleClass,
     globalLoading,
+    modelUnavailable,
+    doctorNoPermission,
+    archiveNoPermission,
+    followupNoPermission,
     initialize,
     submitLogin,
     submitRegister,

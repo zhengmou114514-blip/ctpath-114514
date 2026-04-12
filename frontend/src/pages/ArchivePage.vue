@@ -104,6 +104,7 @@ const emit = defineEmits<{
 
   <ArchiveImportPage
     v-else-if="mode === 'import'"
+    :all-patients="allPatients"
     :importing="importingArchive ?? false"
     :result-text="importResultText ?? ''"
     @submit-import="emit('submit-import', $event)"

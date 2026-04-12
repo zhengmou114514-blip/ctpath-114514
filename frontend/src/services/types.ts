@@ -309,6 +309,55 @@ export interface ImportPreviewPatient extends PatientUpsertPayload {
   sourceName: string
 }
 
+export type ArchiveImportWorkflowMode = 'cross_system' | 'onsite_register' | 'governance'
+export type CrossSystemSourceSystem = 'his' | 'emr' | 'regional_platform' | 'other'
+export type IdentityDocType = 'id_card' | 'passport' | 'officer_card' | 'other'
+
+export interface MpiSearchCriteria {
+  sourceSystem: CrossSystemSourceSystem
+  name: string
+  birthDate: string
+  phone: string
+  idLast4: string
+  medicalRecordNumber: string
+  visitCardNumber: string
+}
+
+export interface MpiCandidatePatient {
+  candidateId: string
+  sourceSystem: CrossSystemSourceSystem
+  sourceRecordId: string
+  name: string
+  gender: string
+  birthDate: string
+  phone: string
+  idLast4: string
+  medicalRecordNumber: string
+  visitCardNumber: string
+  primaryDisease: string
+  lastVisit: string
+  confidence: number
+  summary: string
+}
+
+export interface OnsiteArchiveRegisterForm {
+  name: string
+  gender: string
+  birthDate: string
+  phone: string
+  idType: IdentityDocType
+  idNumber: string
+  address: string
+  emergencyContactName: string
+  emergencyContactPhone: string
+  medicalRecordNumber: string
+  visitCardNumber: string
+  insuranceType: string
+  primaryDoctor: string
+  caseManager: string
+  consentStatus: string
+}
+
 export interface PatientEventPayload {
   eventTime: string
   relation: string

@@ -36,7 +36,7 @@ const emit = defineEmits<{
     />
 
     <main class="main-shell">
-      <p v-if="loading" class="workspace-status-pill">Loading workspace data...</p>
+      <p v-if="loading" class="workspace-status-pill">正在加载工作台数据...</p>
       <p v-if="errorMessage" class="error-banner">{{ errorMessage }}</p>
       <p v-if="successMessage" class="success-banner">{{ successMessage }}</p>
 
@@ -49,7 +49,7 @@ const emit = defineEmits<{
       />
 
       <slot />
-      <AuditTrailPanel title="Recent Operation Records" :limit="10" compact />
+      <AuditTrailPanel title="近期操作记录" :limit="10" compact />
     </main>
   </div>
 </template>
