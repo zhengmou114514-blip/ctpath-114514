@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { DoctorUser } from '../services/types'
-import type { AppSection } from './AppSidebar.vue'
+import { sectionLabel } from '../config/workspaceMenu'
+import type { AppSection } from '../types/workspace'
 
 const props = defineProps<{
   doctor: DoctorUser
@@ -10,72 +11,51 @@ const props = defineProps<{
   followupCount: number
 }>()
 
-function sectionLabel(section: AppSection) {
-  if (section === 'archive') return '档案联查'
-  if (section === 'tasks') return '随访协同'
-  if (section === 'governance') return '治理中心'
-  return '临床工作台'
-}
-
 const bannerConfig = computed(() => {
   if (props.doctor.role === 'nurse') {
     return {
-      theme: 'nurse',
-      eyebrow: 'Nurse Station',
-      title: '护理与随访工作台',
-      description: '聚焦今日待随访患者、联系记录、复联安排和执行闭环，避免与医生工作台混合。',
-      chips: [
-        { label: '当前模块', value: sectionLabel(props.section) },
-        { label: '待处理随访', value: props.followupCount },
-        { label: '岗位焦点', value: '联系结果 / 复联提醒' },
-      ],
+      eyebrow: 'Nurse Workbench',
+      title: 'Follow-up and Coordination Console',
+      description: 'Track follow-up tasks, contact outcomes, and patient flow with clear status transitions.',
     }
   }
 
   if (props.doctor.role === 'archivist') {
     return {
-      theme: 'archivist',
-      eyebrow: 'Archive Desk',
-      title: '档案治理与主索引工作台',
-      description: '聚焦患者主索引、建档完整性、导入治理、MRN 维护和档案质控，更接近病案管理场景。',
-      chips: [
-        { label: '当前模块', value: sectionLabel(props.section) },
-        { label: '档案总量', value: props.patientCount },
-        { label: '岗位焦点', value: 'MRN / 同意状态 / 资料治理' },
-      ],
+      eyebrow: 'Archive Workbench',
+      title: 'Archive and Data Quality Console',
+      description: 'Focus on archive completeness, record consistency, and governance-quality traceability.',
     }
   }
 
   return {
-    theme: 'doctor',
-    eyebrow: 'Doctor Console',
-    title: '临床评估与门诊协同工作台',
-    description: '保留临床评估、风险查看、预测建议、门诊任务与档案联查，同时补充治理中心用于系统总览。',
-    chips: [
-      { label: '当前模块', value: sectionLabel(props.section) },
-      { label: '患者总量', value: props.patientCount },
-      { label: '随访协同', value: props.followupCount },
-    ],
+    eyebrow: 'Doctor Workbench',
+    title: 'Chronic Disease Diagnostic Workstation',
+    description: 'Combine disease trajectory, model evidence, and care suggestions for outpatient decisions.',
   }
 })
 </script>
 
 <template>
-  <section class="role-banner card" :class="`role-banner-${bannerConfig.theme}`">
+  <section class="role-banner card">
     <div>
       <p class="eyebrow">{{ bannerConfig.eyebrow }}</p>
-      <h2>{{ bannerConfig.title }}</h2>
-      <p class="role-banner-copy">{{ bannerConfig.description }}</p>
+      <h2 class="page-title">{{ bannerConfig.title }}</h2>
+      <p class="role-banner-copy page-description">{{ bannerConfig.description }}</p>
     </div>
 
     <div class="role-banner-chips">
-      <article
-        v-for="chip in bannerConfig.chips"
-        :key="chip.label"
-        class="role-banner-chip"
-      >
-        <span>{{ chip.label }}</span>
-        <strong>{{ chip.value }}</strong>
+      <article class="role-banner-chip">
+        <span>Current Module</span>
+        <strong>{{ sectionLabel(props.section) }}</strong>
+      </article>
+      <article class="role-banner-chip">
+        <span>Total Patients</span>
+        <strong>{{ props.patientCount }}</strong>
+      </article>
+      <article class="role-banner-chip">
+        <span>Follow-up Tasks</span>
+        <strong>{{ props.followupCount }}</strong>
       </article>
     </div>
   </section>

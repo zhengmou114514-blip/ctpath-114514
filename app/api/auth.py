@@ -1,8 +1,12 @@
 from typing import Optional
 
-from fastapi import Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 
-from ..store import get_doctor_by_token, is_token_valid
+from ..schemas import LoginRequest, LoginResponse, RegisterRequest
+from ..store import authenticate, get_doctor_by_token, is_token_valid, issue_token, register_doctor
+
+
+router = APIRouter(tags=["auth"])
 
 
 def require_token(authorization: Optional[str] = Header(default=None)) -> str:
@@ -30,3 +34,23 @@ def require_roles(*allowed_roles: str):
         return doctor
 
     return dependency
+
+
+@router.post("/api/login", response_model=LoginResponse)
+def login(payload: LoginRequest) -> LoginResponse:
+    doctor = authenticate(payload.username, payload.password)
+    if doctor is None:
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+
+    token = issue_token(doctor.username)
+    return LoginResponse(token=token, doctor=doctor)
+
+
+@router.post("/api/register", response_model=LoginResponse)
+def register(payload: RegisterRequest) -> LoginResponse:
+    doctor = register_doctor(payload)
+    if doctor is None:
+        raise HTTPException(status_code=400, detail="Username already exists")
+
+    token = issue_token(doctor.username)
+    return LoginResponse(token=token, doctor=doctor)

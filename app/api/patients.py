@@ -1,9 +1,7 @@
-"""Backward-compatible patient router export.
+from fastapi import APIRouter
 
-The patient module now lives under app.modules.patients, following an
-openhis-style module -> application service -> router split.
-"""
+from ..modules.patients.router import router as patients_module_router
 
-from ..modules.patients.router import router
 
-__all__ = ["router"]
+router = APIRouter(tags=["patients"])
+router.include_router(patients_module_router)
