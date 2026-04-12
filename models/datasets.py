@@ -5,8 +5,11 @@ import numpy as np
 import tqdm
 import torch
 from torch import nn
+import os
 
-DATA_PATH = "../data/"
+# 获取项目根目录
+_project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_PATH = os.path.join(_project_root, "data") + "/"
 
 
 class Train(object):

@@ -7,6 +7,7 @@ import tqdm
 from datasets import Dataset, Train
 from models import *
 import os
+import tempfile
 import time
 import numpy as np
 
@@ -26,6 +27,9 @@ parser.add_argument("--num_walks", type=int, default=1)
 parser.add_argument("--walk_len", type=int, default=2)
 parser.add_argument("--num_walks_neis", type=int, default=20)
 parser.add_argument("--walk_len_neis", type=int, default=2)
+parser.add_argument("--disable_path", action="store_true", help="Disable path representation module for ablation")
+parser.add_argument("--disable_cl", action="store_true", help="Disable supervised contrastive learning for ablation")
+parser.add_argument("--save_root", type=str, default="", help="Optional directory to save logs and checkpoints")
 
 args = parser.parse_args()
 
@@ -36,7 +40,12 @@ def load_merw(args):
     walks = []  # walks = {list: n} [[0, 44, 397, 266], [0, 74, 66, 196], [0, 160, 137, 358]]
     timestamps = []
     path_weight = []
-    paths_root = "../path_data/"
+    # 使用绝对路径或从项目根目录的相对路径
+    import os
+    # 获取项目根目录（learner.py在models/目录下）
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    paths_root = os.path.join(project_root, "path_data") + "/"
+    
     if name in ['ICEWS14', 'ICEWS18', 'ICEWS05-15', "GDELT", "CHRONIC"]:
         path_file = paths_root + name + "/{}_{}_{}_merw.txt".format(
             name, num_of_walks, walk_length)
@@ -52,6 +61,11 @@ def load_merw(args):
         except FileNotFoundError as fnf_error:
             print(
                 fnf_error, 'the file change the paths_root to where you put the sampled paths')
+            print(f"Expected file: {path_file}")
+            print(f"Available files in {paths_root + name}:")
+            if os.path.exists(paths_root + name):
+                for f in os.listdir(paths_root + name):
+                    print(f"  - {f}")
         print("Opening file of paths: " + path_file)
         print("The number of walks:", len(walks), " The number of path_weight:", len(path_weight))
 
@@ -67,10 +81,28 @@ def load_merw(args):
     return neis_path_all, neis_timestamps, path_weight
 
 if __name__ == '__main__':
-    save_path = "results/{}_{}_{}_{}_{}_{}_{}_{}".format(args.dataset, args.model, args.rank, args.learning_rate,args.n_hidden,args.num_walks,args.walk_len, int(time.time()))
+    ablation_suffix = []
+    if args.disable_path:
+        ablation_suffix.append("no_path")
+    if args.disable_cl:
+        ablation_suffix.append("no_cl")
+    ablation_tag = "full" if not ablation_suffix else "_".join(ablation_suffix)
+    run_name = "{}_{}_{}_{}_{}_{}_{}_{}_{}".format(
+        args.dataset, args.model, args.rank, args.learning_rate, args.n_hidden, args.num_walks, args.walk_len, ablation_tag, int(time.time())
+    )
+    save_root = args.save_root if args.save_root else "results"
+    save_path = os.path.join(save_root, run_name)
     print("rank:",args.rank," n_hidden:", args.n_hidden, " num_walks:",args.num_walks, " walk_len:",args.walk_len, "learning_rate",args.learning_rate)
-    if not os.path.exists(save_path):
-        os.makedirs(save_path)
+    try:
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+    except PermissionError:
+        fallback_root = os.path.join(tempfile.gettempdir(), "ctpath_main_results")
+        os.makedirs(fallback_root, exist_ok=True)
+        save_path = os.path.join(fallback_root, run_name)
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+        print("save_path is not writable, falling back to:", save_path)
     dataset = Dataset(args.dataset, is_cuda=True if args.gpu == 1 else False)
     fw = codecs.open("{}/log.txt".format(save_path), 'w')
     sizes = dataset.get_shape()
@@ -94,7 +126,14 @@ if __name__ == '__main__':
         ) #得到正向与反向训练集
 
         model.train()
-        optimizer = Train(model, args.dataset, sizes[1] // 2, opt, batch_size=args.batch_size)
+        optimizer = Train(
+            model,
+            args.dataset,
+            sizes[1] // 2,
+            opt,
+            batch_size=args.batch_size,
+            is_cuda=True if args.gpu == 1 else False
+        )
         mode = "Training"
         optimizer.epoch(examples, args, mode, neis_path_all, neis_timestamps, path_weight, epoch)
 

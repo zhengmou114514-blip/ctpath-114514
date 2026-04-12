@@ -1,0 +1,17 @@
+{
+  "model": "Supercomplex",
+  "dataset": "CHRONIC",
+  "metrics": {
+    "MRR": 0.3483,
+    "Hits@1": 0.2385,
+    "Hits@3": 0.4460,
+    "Hits@10": 0.5159,
+    "num_samples": 14040
+  },
+  "training_info": {
+    "best_epoch": 18,
+    "final_valid_mrr": 0.3483,
+    "final_test_mrr": 0.3432,
+    "final_test_hits": [0.2285, 0.4475, 0.5152]
+  }
+}

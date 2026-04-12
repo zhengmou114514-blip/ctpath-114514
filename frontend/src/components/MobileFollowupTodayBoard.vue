@@ -1,0 +1,205 @@
+<script setup lang="ts">
+import { computed, ref, watch } from 'vue'
+import type { ContactLogCreatePayload, FollowupTaskRow } from '../services/types'
+import FollowupQuickContactCard from './FollowupQuickContactCard.vue'
+
+interface MobileCandidate {
+  patientId: string
+  patientName: string
+  primaryDisease: string
+  riskLevel: string
+  dueDate: string
+  owner: string
+  status: string
+  source: FollowupTaskRow['source']
+}
+
+type MobileFilter = 'all' | 'high' | 'todo' | 'outpatient'
+
+const props = defineProps<{
+  loading: boolean
+  followupItems: FollowupTaskRow[]
+  selectedPatientId?: string
+  savingContactLog: boolean
+}>()
+
+const emit = defineEmits<{
+  (e: 'open-patient', patientId: string): void
+  (e: 'open-archive', patientId: string): void
+  (e: 'submit-contact-log', payload: { patientId: string; payload: ContactLogCreatePayload }): void
+}>()
+
+const activePatientId = ref('')
+const activeFilter = ref<MobileFilter>('all')
+
+function priorityRank(value: string) {
+  if (value === 'high') return 0
+  if (value === 'medium') return 1
+  return 2
+}
+
+const todayPatients = computed<MobileCandidate[]>(() => {
+  const map = new Map<string, MobileCandidate>()
+  for (const item of [...props.followupItems].sort((left, right) => {
+    const priorityDiff = priorityRank(left.priority) - priorityRank(right.priority)
+    if (priorityDiff !== 0) return priorityDiff
+    return left.dueDate.localeCompare(right.dueDate)
+  })) {
+    if (!map.has(item.patientId)) {
+      map.set(item.patientId, {
+        patientId: item.patientId,
+        patientName: item.patientName,
+        primaryDisease: item.primaryDisease,
+        riskLevel: item.riskLevel,
+        dueDate: item.dueDate,
+        owner: item.owner,
+        status: item.status,
+        source: item.source,
+      })
+    }
+  }
+  return [...map.values()].slice(0, 8)
+})
+
+const filteredPatients = computed(() => {
+  if (activeFilter.value === 'high') {
+    return todayPatients.value.filter((item) => item.riskLevel.includes('高') || item.riskLevel.toLowerCase().includes('high'))
+  }
+  if (activeFilter.value === 'todo') {
+    return todayPatients.value.filter((item) => !item.status.includes('已完成') && !item.status.includes('已关闭'))
+  }
+  if (activeFilter.value === 'outpatient') {
+    return todayPatients.value.filter((item) => item.source === 'outpatient-task')
+  }
+  return todayPatients.value
+})
+
+const quickCandidates = computed(() =>
+  filteredPatients.value.map((item) => ({
+    patientId: item.patientId,
+    label: `${item.patientName} / ${item.primaryDisease}`,
+  }))
+)
+
+const activePatient = computed(() => filteredPatients.value.find((item) => item.patientId === activePatientId.value) ?? null)
+
+const summary = computed(() => ({
+  total: todayPatients.value.length,
+  high: todayPatients.value.filter((item) => item.riskLevel.includes('高') || item.riskLevel.toLowerCase().includes('high')).length,
+  todo: todayPatients.value.filter((item) => !item.status.includes('已完成') && !item.status.includes('已关闭')).length,
+  outpatient: todayPatients.value.filter((item) => item.source === 'outpatient-task').length,
+}))
+
+function riskTone(value: string) {
+  if (value.includes('高') || value.toLowerCase().includes('high')) return 'risk-high'
+  if (value.includes('中') || value.toLowerCase().includes('medium')) return 'risk-medium'
+  return 'risk-low'
+}
+
+watch(
+  () => [props.selectedPatientId, todayPatients.value.length] as const,
+  () => {
+    if (props.selectedPatientId && filteredPatients.value.some((item) => item.patientId === props.selectedPatientId)) {
+      activePatientId.value = props.selectedPatientId
+      return
+    }
+    if (!activePatientId.value && filteredPatients.value.length) {
+      const first = filteredPatients.value[0]
+      if (first) activePatientId.value = first.patientId
+    }
+  },
+  { immediate: true }
+)
+</script>
+
+<template>
+  <section class="mobile-followup-shell">
+    <article class="card mobile-followup-hero">
+      <div>
+        <p class="eyebrow">手机端视图</p>
+        <h3>今日随访</h3>
+        <p class="page-copy">按“先选患者，再记录结果”的方式组织，适合手机端快速完成电话随访。</p>
+      </div>
+      <div class="module-hero-meta">
+        <div class="summary-chip">
+          <span>今日重点患者</span>
+          <strong>{{ summary.total }}</strong>
+        </div>
+        <div class="summary-chip">
+          <span>高风险</span>
+          <strong>{{ summary.high }}</strong>
+        </div>
+        <div class="summary-chip">
+          <span>待处理</span>
+          <strong>{{ summary.todo }}</strong>
+        </div>
+        <div class="summary-chip">
+          <span>门诊任务</span>
+          <strong>{{ summary.outpatient }}</strong>
+        </div>
+      </div>
+    </article>
+
+    <div class="mobile-followup-grid">
+      <section class="mobile-followup-list">
+        <div class="mobile-followup-filterbar">
+          <button class="secondary-button" :class="{ active: activeFilter === 'all' }" @click="activeFilter = 'all'">全部</button>
+          <button class="secondary-button" :class="{ active: activeFilter === 'high' }" @click="activeFilter = 'high'">高风险</button>
+          <button class="secondary-button" :class="{ active: activeFilter === 'todo' }" @click="activeFilter = 'todo'">待处理</button>
+          <button class="secondary-button" :class="{ active: activeFilter === 'outpatient' }" @click="activeFilter = 'outpatient'">门诊任务</button>
+        </div>
+
+        <article v-if="activePatient" class="card mobile-followup-focus-card">
+          <div class="mobile-followup-focus-head">
+            <div>
+              <p class="eyebrow">当前处理</p>
+              <h4>{{ activePatient.patientName }}</h4>
+            </div>
+            <span class="risk-pill" :class="riskTone(activePatient.riskLevel)">{{ activePatient.riskLevel }}</span>
+          </div>
+          <p>{{ activePatient.patientId }} / {{ activePatient.primaryDisease }}</p>
+          <p>任务状态：{{ activePatient.status }}</p>
+          <p>责任人：{{ activePatient.owner }} / 截止：{{ activePatient.dueDate }}</p>
+          <div class="mobile-followup-actions">
+            <button class="primary-button" @click="emit('open-patient', activePatient.patientId)">进入患者详情</button>
+            <button class="secondary-button" @click="emit('open-archive', activePatient.patientId)">档案补录</button>
+          </div>
+        </article>
+
+        <article
+          v-for="item in filteredPatients"
+          :key="`${item.patientId}-${item.dueDate}`"
+          class="card mobile-followup-patient-card"
+          :class="{ 'is-highlighted': activePatientId === item.patientId }"
+        >
+          <div class="mobile-followup-patient-head">
+            <div>
+              <strong>{{ item.patientName }}</strong>
+              <span>{{ item.patientId }} / {{ item.primaryDisease }}</span>
+            </div>
+            <span class="risk-pill" :class="riskTone(item.riskLevel)">{{ item.riskLevel }}</span>
+          </div>
+          <p>任务状态：{{ item.status }}</p>
+          <p>责任人：{{ item.owner }} / 截止：{{ item.dueDate }}</p>
+          <div class="mobile-followup-actions">
+            <button class="primary-button" @click="activePatientId = item.patientId">记录随访</button>
+            <button class="secondary-button" @click="emit('open-patient', item.patientId)">患者详情</button>
+            <button class="secondary-button" @click="emit('open-archive', item.patientId)">档案补录</button>
+          </div>
+        </article>
+
+        <article v-if="!filteredPatients.length && !props.loading" class="empty-card compact">
+          <p>当前没有可用于今日随访的患者。</p>
+        </article>
+      </section>
+
+      <FollowupQuickContactCard
+        :candidates="quickCandidates"
+        :selected-patient-id="activePatientId"
+        :saving="props.savingContactLog"
+        @submit="emit('submit-contact-log', $event)"
+        @open-patient="emit('open-patient', $event)"
+      />
+    </div>
+  </section>
+</template>

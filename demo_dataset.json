@@ -1,0 +1,507 @@
+{
+  "metadata": {
+    "generatedAt": "2026-04-07T00:01:45.010117",
+    "totalPatients": 3,
+    "version": "1.0-demo"
+  },
+  "patients": [
+    {
+      "patientId": "P000001",
+      "name": "张三",
+      "age": 65,
+      "gender": "男",
+      "primaryDisease": "糖尿病",
+      "diagnosisDate": "2023-01-15",
+      "riskLevel": "中",
+      "caseManager": "管理师001",
+      "timelineEvents": [
+        {
+          "eventTime": "2023-01-15",
+          "relation": "症状",
+          "objectValue": "多饮(轻度)",
+          "note": "患者主诉多饮"
+        },
+        {
+          "eventTime": "2023-01-15",
+          "relation": "血糖",
+          "objectValue": "9.0mmol/L",
+          "continuousValue": 8.281274558083645,
+          "note": "血糖检查"
+        },
+        {
+          "eventTime": "2023-01-15",
+          "relation": "治疗",
+          "objectValue": "药物治疗",
+          "note": "按时服药"
+        },
+        {
+          "eventTime": "2023-01-15",
+          "relation": "随访评估",
+          "objectValue": "依从性良好",
+          "note": "患者依从性良好"
+        },
+        {
+          "eventTime": "2023-02-14",
+          "relation": "症状",
+          "objectValue": "多饮(轻度)",
+          "note": "患者主诉多饮"
+        },
+        {
+          "eventTime": "2023-02-14",
+          "relation": "血糖",
+          "objectValue": "7.7mmol/L",
+          "continuousValue": 6.208767724782088,
+          "note": "血糖检查"
+        },
+        {
+          "eventTime": "2023-02-14",
+          "relation": "治疗",
+          "objectValue": "药物治疗",
+          "note": "按时服药"
+        },
+        {
+          "eventTime": "2023-02-14",
+          "relation": "随访评估",
+          "objectValue": "依从性良好",
+          "note": "患者依从性良好"
+        },
+        {
+          "eventTime": "2023-03-16",
+          "relation": "症状",
+          "objectValue": "多饮(轻度)",
+          "note": "患者主诉多饮"
+        },
+        {
+          "eventTime": "2023-03-16",
+          "relation": "血糖",
+          "objectValue": "8.0mmol/L",
+          "continuousValue": 6.763746659613396,
+          "note": "血糖检查"
+        },
+        {
+          "eventTime": "2023-03-16",
+          "relation": "治疗",
+          "objectValue": "药物治疗",
+          "note": "按时服药"
+        },
+        {
+          "eventTime": "2023-03-16",
+          "relation": "随访评估",
+          "objectValue": "依从性良好",
+          "note": "患者依从性良好"
+        },
+        {
+          "eventTime": "2023-04-15",
+          "relation": "症状",
+          "objectValue": "多饮(轻度)",
+          "note": "患者主诉多饮"
+        },
+        {
+          "eventTime": "2023-04-15",
+          "relation": "血糖",
+          "objectValue": "7.7mmol/L",
+          "continuousValue": 7.459006717442089,
+          "note": "血糖检查"
+        },
+        {
+          "eventTime": "2023-04-15",
+          "relation": "治疗",
+          "objectValue": "药物治疗",
+          "note": "按时服药"
+        },
+        {
+          "eventTime": "2023-04-15",
+          "relation": "随访评估",
+          "objectValue": "依从性良好",
+          "note": "患者依从性良好"
+        },
+        {
+          "eventTime": "2023-05-15",
+          "relation": "症状",
+          "objectValue": "多饮(轻度)",
+          "note": "患者主诉多饮"
+        },
+        {
+          "eventTime": "2023-05-15",
+          "relation": "血糖",
+          "objectValue": "7.1mmol/L",
+          "continuousValue": 6.999894557105841,
+          "note": "血糖检查"
+        },
+        {
+          "eventTime": "2023-05-15",
+          "relation": "治疗",
+          "objectValue": "药物治疗",
+          "note": "按时服药"
+        },
+        {
+          "eventTime": "2023-05-15",
+          "relation": "随访评估",
+          "objectValue": "依从性良好",
+          "note": "患者依从性良好"
+        },
+        {
+          "eventTime": "2023-06-14",
+          "relation": "症状",
+          "objectValue": "多饮(轻度)",
+          "note": "患者主诉多饮"
+        },
+        {
+          "eventTime": "2023-06-14",
+          "relation": "血糖",
+          "objectValue": "7.8mmol/L",
+          "continuousValue": 8.712112891725205,
+          "note": "血糖检查"
+        },
+        {
+          "eventTime": "2023-06-14",
+          "relation": "治疗",
+          "objectValue": "药物治疗",
+          "note": "按时服药"
+        },
+        {
+          "eventTime": "2023-06-14",
+          "relation": "随访评估",
+          "objectValue": "依从性良好",
+          "note": "患者依从性良好"
+        }
+      ],
+      "statistics": {
+        "totalEvents": 24,
+        "lastVisit": "2023-06-14"
+      }
+    },
+    {
+      "patientId": "P000002",
+      "name": "李四",
+      "age": 58,
+      "gender": "女",
+      "primaryDisease": "高血压",
+      "diagnosisDate": "2022-06-20",
+      "riskLevel": "高",
+      "caseManager": "管理师002",
+      "timelineEvents": [
+        {
+          "eventTime": "2022-06-20",
+          "relation": "症状",
+          "objectValue": "头晕(中度)",
+          "note": "患者主诉头晕"
+        },
+        {
+          "eventTime": "2022-06-20",
+          "relation": "收缩压",
+          "objectValue": "148mmHg",
+          "continuousValue": 140,
+          "note": "血压检查"
+        },
+        {
+          "eventTime": "2022-06-20",
+          "relation": "治疗",
+          "objectValue": "药物治疗",
+          "note": "按时服药"
+        },
+        {
+          "eventTime": "2022-06-20",
+          "relation": "随访评估",
+          "objectValue": "依从性良好",
+          "note": "患者依从性良好"
+        },
+        {
+          "eventTime": "2022-07-20",
+          "relation": "症状",
+          "objectValue": "头晕(中度)",
+          "note": "患者主诉头晕"
+        },
+        {
+          "eventTime": "2022-07-20",
+          "relation": "收缩压",
+          "objectValue": "152mmHg",
+          "continuousValue": 132,
+          "note": "血压检查"
+        },
+        {
+          "eventTime": "2022-07-20",
+          "relation": "治疗",
+          "objectValue": "药物治疗",
+          "note": "按时服药"
+        },
+        {
+          "eventTime": "2022-07-20",
+          "relation": "随访评估",
+          "objectValue": "依从性良好",
+          "note": "患者依从性良好"
+        },
+        {
+          "eventTime": "2022-08-19",
+          "relation": "症状",
+          "objectValue": "头晕(中度)",
+          "note": "患者主诉头晕"
+        },
+        {
+          "eventTime": "2022-08-19",
+          "relation": "收缩压",
+          "objectValue": "130mmHg",
+          "continuousValue": 160,
+          "note": "血压检查"
+        },
+        {
+          "eventTime": "2022-08-19",
+          "relation": "治疗",
+          "objectValue": "药物治疗",
+          "note": "按时服药"
+        },
+        {
+          "eventTime": "2022-08-19",
+          "relation": "随访评估",
+          "objectValue": "依从性良好",
+          "note": "患者依从性良好"
+        },
+        {
+          "eventTime": "2022-09-18",
+          "relation": "症状",
+          "objectValue": "头晕(中度)",
+          "note": "患者主诉头晕"
+        },
+        {
+          "eventTime": "2022-09-18",
+          "relation": "收缩压",
+          "objectValue": "144mmHg",
+          "continuousValue": 153,
+          "note": "血压检查"
+        },
+        {
+          "eventTime": "2022-09-18",
+          "relation": "治疗",
+          "objectValue": "药物治疗",
+          "note": "按时服药"
+        },
+        {
+          "eventTime": "2022-09-18",
+          "relation": "随访评估",
+          "objectValue": "依从性良好",
+          "note": "患者依从性良好"
+        },
+        {
+          "eventTime": "2022-10-18",
+          "relation": "症状",
+          "objectValue": "头晕(中度)",
+          "note": "患者主诉头晕"
+        },
+        {
+          "eventTime": "2022-10-18",
+          "relation": "收缩压",
+          "objectValue": "130mmHg",
+          "continuousValue": 144,
+          "note": "血压检查"
+        },
+        {
+          "eventTime": "2022-10-18",
+          "relation": "治疗",
+          "objectValue": "药物治疗",
+          "note": "按时服药"
+        },
+        {
+          "eventTime": "2022-10-18",
+          "relation": "随访评估",
+          "objectValue": "依从性良好",
+          "note": "患者依从性良好"
+        },
+        {
+          "eventTime": "2022-11-17",
+          "relation": "症状",
+          "objectValue": "头晕(中度)",
+          "note": "患者主诉头晕"
+        },
+        {
+          "eventTime": "2022-11-17",
+          "relation": "收缩压",
+          "objectValue": "151mmHg",
+          "continuousValue": 144,
+          "note": "血压检查"
+        },
+        {
+          "eventTime": "2022-11-17",
+          "relation": "治疗",
+          "objectValue": "药物治疗",
+          "note": "按时服药"
+        },
+        {
+          "eventTime": "2022-11-17",
+          "relation": "随访评估",
+          "objectValue": "依从性良好",
+          "note": "患者依从性良好"
+        }
+      ],
+      "statistics": {
+        "totalEvents": 24,
+        "lastVisit": "2022-11-17"
+      }
+    },
+    {
+      "patientId": "P000003",
+      "name": "王五",
+      "age": 72,
+      "gender": "男",
+      "primaryDisease": "冠心病",
+      "diagnosisDate": "2021-03-10",
+      "riskLevel": "高",
+      "caseManager": "管理师001",
+      "timelineEvents": [
+        {
+          "eventTime": "2021-03-10",
+          "relation": "症状",
+          "objectValue": "胸闷(中度)",
+          "note": "患者主诉胸闷"
+        },
+        {
+          "eventTime": "2021-03-10",
+          "relation": "心率",
+          "objectValue": "79次/分",
+          "continuousValue": 80,
+          "note": "心率检查"
+        },
+        {
+          "eventTime": "2021-03-10",
+          "relation": "治疗",
+          "objectValue": "药物治疗",
+          "note": "按时服药"
+        },
+        {
+          "eventTime": "2021-03-10",
+          "relation": "随访评估",
+          "objectValue": "依从性良好",
+          "note": "患者依从性良好"
+        },
+        {
+          "eventTime": "2021-04-09",
+          "relation": "症状",
+          "objectValue": "胸闷(中度)",
+          "note": "患者主诉胸闷"
+        },
+        {
+          "eventTime": "2021-04-09",
+          "relation": "心率",
+          "objectValue": "85次/分",
+          "continuousValue": 72,
+          "note": "心率检查"
+        },
+        {
+          "eventTime": "2021-04-09",
+          "relation": "治疗",
+          "objectValue": "药物治疗",
+          "note": "按时服药"
+        },
+        {
+          "eventTime": "2021-04-09",
+          "relation": "随访评估",
+          "objectValue": "依从性良好",
+          "note": "患者依从性良好"
+        },
+        {
+          "eventTime": "2021-05-09",
+          "relation": "症状",
+          "objectValue": "胸闷(中度)",
+          "note": "患者主诉胸闷"
+        },
+        {
+          "eventTime": "2021-05-09",
+          "relation": "心率",
+          "objectValue": "80次/分",
+          "continuousValue": 91,
+          "note": "心率检查"
+        },
+        {
+          "eventTime": "2021-05-09",
+          "relation": "治疗",
+          "objectValue": "药物治疗",
+          "note": "按时服药"
+        },
+        {
+          "eventTime": "2021-05-09",
+          "relation": "随访评估",
+          "objectValue": "依从性良好",
+          "note": "患者依从性良好"
+        },
+        {
+          "eventTime": "2021-06-08",
+          "relation": "症状",
+          "objectValue": "胸闷(中度)",
+          "note": "患者主诉胸闷"
+        },
+        {
+          "eventTime": "2021-06-08",
+          "relation": "心率",
+          "objectValue": "87次/分",
+          "continuousValue": 85,
+          "note": "心率检查"
+        },
+        {
+          "eventTime": "2021-06-08",
+          "relation": "治疗",
+          "objectValue": "药物治疗",
+          "note": "按时服药"
+        },
+        {
+          "eventTime": "2021-06-08",
+          "relation": "随访评估",
+          "objectValue": "依从性良好",
+          "note": "患者依从性良好"
+        },
+        {
+          "eventTime": "2021-07-08",
+          "relation": "症状",
+          "objectValue": "胸闷(中度)",
+          "note": "患者主诉胸闷"
+        },
+        {
+          "eventTime": "2021-07-08",
+          "relation": "心率",
+          "objectValue": "74次/分",
+          "continuousValue": 85,
+          "note": "心率检查"
+        },
+        {
+          "eventTime": "2021-07-08",
+          "relation": "治疗",
+          "objectValue": "药物治疗",
+          "note": "按时服药"
+        },
+        {
+          "eventTime": "2021-07-08",
+          "relation": "随访评估",
+          "objectValue": "依从性良好",
+          "note": "患者依从性良好"
+        },
+        {
+          "eventTime": "2021-08-07",
+          "relation": "症状",
+          "objectValue": "胸闷(中度)",
+          "note": "患者主诉胸闷"
+        },
+        {
+          "eventTime": "2021-08-07",
+          "relation": "心率",
+          "objectValue": "80次/分",
+          "continuousValue": 96,
+          "note": "心率检查"
+        },
+        {
+          "eventTime": "2021-08-07",
+          "relation": "治疗",
+          "objectValue": "药物治疗",
+          "note": "按时服药"
+        },
+        {
+          "eventTime": "2021-08-07",
+          "relation": "随访评估",
+          "objectValue": "依从性良好",
+          "note": "患者依从性良好"
+        }
+      ],
+      "statistics": {
+        "totalEvents": 24,
+        "lastVisit": "2021-08-07"
+      }
+    }
+  ]
+}

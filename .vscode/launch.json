@@ -1,4 +1,4 @@
-﻿{
+{
   "version": "0.2.0",
   "configurations": [
     {
@@ -33,26 +33,61 @@
       "cwd": "${workspaceFolder}/models",
       "console": "integratedTerminal",
       "args": [
-        "--dataset", "CHRONIC",
-        "--rank", "800",
-        "--valid_freq", "2",
-        "--max_epochs", "20",
-        "--learning_rate", "0.1",
-        "--batch_size", "50",
-        "--n_hidden", "160",
-        "--num_walks", "1",
-        "--walk_len", "8",
-        "--num_walks_neis", "20",
-        "--walk_len_neis", "6",
-        "--gpu", "0",
-        "--cuda", "cpu"
+        "--dataset",
+        "CHRONIC",
+        "--rank",
+        "800",
+        "--valid_freq",
+        "2",
+        "--max_epochs",
+        "20",
+        "--learning_rate",
+        "0.1",
+        "--batch_size",
+        "50",
+        "--n_hidden",
+        "160",
+        "--num_walks",
+        "1",
+        "--walk_len",
+        "8",
+        "--num_walks_neis",
+        "20",
+        "--walk_len_neis",
+        "6",
+        "--gpu",
+        "0",
+        "--cuda",
+        "cpu"
+      ]
+    },
+    {
+      "name": "C/C++ Runner: Debug Session",
+      "type": "cppdbg",
+      "request": "launch",
+      "args": [],
+      "stopAtEntry": false,
+      "externalConsole": true,
+      "cwd": "e:/CTpath-master",
+      "program": "e:/CTpath-master/build/Debug/outDebug",
+      "MIMode": "gdb",
+      "miDebuggerPath": "gdb",
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
       ]
     }
   ],
   "compounds": [
     {
       "name": "System Demo",
-      "configurations": ["FastAPI Backend", "Frontend Dev Server"]
+      "configurations": [
+        "FastAPI Backend",
+        "Frontend Dev Server"
+      ]
     }
   ]
 }

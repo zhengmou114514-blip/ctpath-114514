@@ -1,0 +1,385 @@
+"""
+基线模型训练器 - 用于训练TransE和RotatE模型
+
+包含完整的训练、验证、测试流程，以及模型保存和评估指标计算
+"""
+
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, TensorDataset
+import numpy as np
+import os
+import json
+import time
+from tqdm import tqdm
+from typing import Dict, Tuple, List, Optional
+
+from .transe import TransE, TransELoss, negative_sampling
+from .rotate import RotatE, RotatELoss
+from ..evaluator import KGEvaluator, save_metrics, print_metrics
+
+
+class BaselineTrainer:
+    """
+    基线模型训练器
+
+    支持TransE和RotatE模型的训练、验证、测试
+    """
+
+    def __init__(
+        self,
+        model: nn.Module,
+        model_name: str,
+        dataset_name: str,
+        num_entities: int,
+        num_relations: int,
+        device: str = 'cuda:0',
+        lr: float = 0.001,
+        margin: float = 1.0,
+        num_neg: int = 1
+    ):
+        """
+        初始化训练器
+
+        Args:
+            model: 待训练的模型
+            model_name: 模型名称
+            dataset_name: 数据集名称
+            num_entities: 实体数量
+            num_relations: 关系数量
+            device: 计算设备
+            lr: 学习率
+            margin: margin-based loss的边界值
+            num_neg: 负样本数量
+        """
+        self.model = model.to(device)
+        self.model_name = model_name
+        self.dataset_name = dataset_name
+        self.num_entities = num_entities
+        self.num_relations = num_relations
+        self.device = device
+        self.lr = lr
+        self.margin = margin
+        self.num_neg = num_neg
+
+        # 优化器
+        self.optimizer = optim.Adam(model.parameters(), lr=lr)
+
+        # 损失函数
+        if model_name == 'TransE':
+            self.criterion = TransELoss(margin=margin)
+        elif model_name == 'RotatE':
+            self.criterion = RotatELoss(margin=margin)
+        else:
+            raise ValueError(f"Unsupported model: {model_name}")
+
+        # 评估器
+        self.evaluator = KGEvaluator(
+            model=model,
+            num_entities=num_entities,
+            device=device
+        )
+
+        # 训练记录
+        self.train_losses = []
+        self.valid_metrics = []
+
+    def train_epoch(
+        self,
+        train_data: torch.LongTensor,
+        batch_size: int = 1000,
+        epoch: int = 0
+    ) -> float:
+        """
+        训练一个epoch
+
+        Args:
+            train_data: 训练数据
+            batch_size: 批次大小
+            epoch: 当前epoch
+
+        Returns:
+            avg_loss: 平均损失
+        """
+        self.model.train()
+
+        total_loss = 0
+        num_batches = 0
+
+        # 随机打乱数据
+        perm = torch.randperm(len(train_data))
+        train_data = train_data[perm]
+
+        for i in tqdm(
+            range(0, len(train_data), batch_size),
+            desc=f"Epoch {epoch}"
+        ):
+            batch = train_data[i:i+batch_size].to(self.device)
+
+            # 正样本得分
+            pos_scores = self.model(batch)
+
+            # 负采样
+            neg_batch_tail = negative_sampling(
+                batch, self.num_entities, self.num_neg, mode='tail'
+            ).to(self.device)
+            neg_batch_head = negative_sampling(
+                batch, self.num_entities, self.num_neg, mode='head'
+            ).to(self.device)
+
+            # 负样本得分
+            neg_scores_tail = self.model(neg_batch_tail)
+            neg_scores_head = self.model(neg_batch_head)
+
+            # 计算损失
+            loss_tail = self.criterion(pos_scores, neg_scores_tail)
+            loss_head = self.criterion(pos_scores, neg_scores_head)
+            loss = (loss_tail + loss_head) / 2
+
+            # 反向传播
+            self.optimizer.zero_grad()
+            loss.backward()
+            self.optimizer.step()
+
+            # 归一化实体嵌入（仅TransE需要）
+            if self.model_name == 'TransE':
+                self.model.normalize_embeddings()
+
+            total_loss += loss.item()
+            num_batches += 1
+
+        avg_loss = total_loss / num_batches
+        self.train_losses.append(avg_loss)
+
+        return avg_loss
+
+    def validate(
+        self,
+        valid_data: torch.LongTensor,
+        filters: Dict[Tuple[int, int, int], List[int]],
+        batch_size: int = 1000
+    ) -> Dict[str, float]:
+        """
+        验证模型性能
+
+        Args:
+            valid_data: 验证数据
+            filters: 过滤字典
+            batch_size: 批次大小
+
+        Returns:
+            metrics: 评估指标
+        """
+        metrics = self.evaluator.evaluate(
+            valid_data, filters, batch_size, desc="Validating"
+        )
+        self.valid_metrics.append(metrics)
+        return metrics
+
+    def train(
+        self,
+        train_data: torch.LongTensor,
+        valid_data: torch.LongTensor,
+        filters: Dict[Tuple[int, int, int], List[int]],
+        num_epochs: int = 100,
+        batch_size: int = 1000,
+        early_stop_patience: int = 10,
+        save_dir: str = "checkpoints"
+    ) -> Dict[str, float]:
+        """
+        完整训练流程
+
+        Args:
+            train_data: 训练数据
+            valid_data: 验证数据
+            filters: 过滤字典
+            num_epochs: 训练轮数
+            batch_size: 批次大小
+            early_stop_patience: 早停耐心值
+            save_dir: 模型保存目录
+
+        Returns:
+            best_metrics: 最佳验证指标
+        """
+        os.makedirs(save_dir, exist_ok=True)
+
+        best_mrr = 0
+        best_epoch = 0
+        patience_counter = 0
+
+        print(f"\nTraining {self.model_name} on {self.dataset_name}")
+        print(f"{'='*50}")
+
+        for epoch in range(num_epochs):
+            # 训练
+            avg_loss = self.train_epoch(train_data, batch_size, epoch)
+
+            # 验证
+            metrics = self.validate(valid_data, filters, batch_size)
+
+            # 打印结果
+            print(
+                f"Epoch {epoch}: Loss={avg_loss:.4f}, "
+                f"MRR={metrics['MRR']:.4f}, "
+                f"Hits@10={metrics['Hits@10']:.4f}"
+            )
+
+            # 保存最佳模型
+            if metrics['MRR'] > best_mrr:
+                best_mrr = metrics['MRR']
+                best_epoch = epoch
+                patience_counter = 0
+
+                # 保存模型
+                model_path = os.path.join(
+                    save_dir,
+                    f"{self.model_name}_{self.dataset_name}_best.pt"
+                )
+                torch.save(self.model.state_dict(), model_path)
+                print(f"  -> Best model saved (MRR: {best_mrr:.4f})")
+            else:
+                patience_counter += 1
+
+            # 早停
+            if patience_counter >= early_stop_patience:
+                print(f"\nEarly stopping at epoch {epoch}")
+                break
+
+        print(f"\nTraining completed!")
+        print(f"Best MRR: {best_mrr:.4f} at epoch {best_epoch}")
+
+        # 加载最佳模型
+        model_path = os.path.join(
+            save_dir,
+            f"{self.model_name}_{self.dataset_name}_best.pt"
+        )
+        self.model.load_state_dict(torch.load(model_path))
+
+        return self.valid_metrics[best_epoch]
+
+    def test(
+        self,
+        test_data: torch.LongTensor,
+        filters: Dict[Tuple[int, int, int], List[int]],
+        batch_size: int = 1000
+    ) -> Dict[str, float]:
+        """
+        测试模型性能
+
+        Args:
+            test_data: 测试数据
+            filters: 过滤字典
+            batch_size: 批次大小
+
+        Returns:
+            metrics: 评估指标
+        """
+        metrics = self.evaluator.evaluate(
+            test_data, filters, batch_size, desc="Testing"
+        )
+
+        print_metrics(metrics, self.model_name)
+
+        return metrics
+
+    def save_training_log(self, save_dir: str = "results"):
+        """
+        保存训练日志
+
+        Args:
+            save_dir: 保存目录
+        """
+        os.makedirs(save_dir, exist_ok=True)
+
+        log = {
+            'model': self.model_name,
+            'dataset': self.dataset_name,
+            'train_losses': self.train_losses,
+            'valid_metrics': self.valid_metrics
+        }
+
+        log_path = os.path.join(
+            save_dir,
+            f"{self.model_name}_{self.dataset_name}_log.json"
+        )
+        with open(log_path, 'w') as f:
+            json.dump(log, f, indent=2)
+
+        print(f"Training log saved to {log_path}")
+
+
+def load_data(dataset_path: str) -> Tuple[torch.LongTensor, ...]:
+    """
+    加载数据集
+
+    Args:
+        dataset_path: 数据集路径
+
+    Returns:
+        train_data, valid_data, test_data, num_entities, num_relations
+    """
+    # 加载训练、验证、测试数据
+    train_data = np.loadtxt(
+        os.path.join(dataset_path, 'train'),
+        dtype=np.int64
+    )
+    valid_data = np.loadtxt(
+        os.path.join(dataset_path, 'valid'),
+        dtype=np.int64
+    )
+    test_data = np.loadtxt(
+        os.path.join(dataset_path, 'test'),
+        dtype=np.int64
+    )
+
+    # 转换为PyTorch张量
+    train_data = torch.from_numpy(train_data)
+    valid_data = torch.from_numpy(valid_data)
+    test_data = torch.from_numpy(test_data)
+
+    # 统计实体和关系数量
+    all_data = torch.cat([train_data, valid_data, test_data], dim=0)
+    num_entities = max(all_data[:, 0].max(), all_data[:, 2].max()).item() + 1
+    num_relations = all_data[:, 1].max().item() + 1
+
+    print(f"Dataset loaded:")
+    print(f"  Train: {len(train_data)} samples")
+    print(f"  Valid: {len(valid_data)} samples")
+    print(f"  Test: {len(test_data)} samples")
+    print(f"  Entities: {num_entities}")
+    print(f"  Relations: {num_relations}")
+
+    return train_data, valid_data, test_data, num_entities, num_relations
+
+
+def build_filters(
+    train_data: torch.LongTensor,
+    valid_data: torch.LongTensor,
+    test_data: torch.LongTensor
+) -> Dict[Tuple[int, int, int], List[int]]:
+    """
+    构建过滤字典
+
+    Args:
+        train_data: 训练数据
+        valid_data: 验证数据
+        test_data: 测试数据
+
+    Returns:
+        filters: 过滤字典
+    """
+    filters = {}
+
+    all_data = torch.cat([train_data, valid_data, test_data], dim=0)
+
+    for triple in all_data:
+        h, r, t = triple[0].item(), triple[1].item(), triple[2].item()
+        time = triple[3].item() if triple.shape[0] > 3 else 0
+
+        key = (h, r, time)
+        if key not in filters:
+            filters[key] = []
+        filters[key].append(t)
+
+    return filters

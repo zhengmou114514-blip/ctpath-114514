@@ -2,27 +2,34 @@ import type { DoctorUser, PatientCase } from './types'
 
 const doctors: DoctorUser[] = [
   {
-    username: 'doctor01',
-    password: 'ctpath123',
+    username: 'demo_clinic',
+    password: 'demo123456',
+    role: 'doctor',
     name: '胡军',
     title: '主治医师',
     department: '慢病管理中心',
   },
   {
-    username: 'endocrine',
-    password: 'diabetes123',
+    username: 'demo_specialist',
+    password: 'demo123456',
+    role: 'nurse',
     name: '李敏',
     title: '副主任医师',
     department: '内分泌科',
   },
 ]
 
-const coreCases: PatientCase[] = [
+const coreCases = [
   {
     patientId: 'PID0248',
     name: '张晨',
     age: 44,
     gender: '男',
+    avatarUrl: 'https://api.dicebear.com/9.x/initials/svg?seed=%E5%BC%A0%E6%99%A8',
+    phone: '13800010248',
+    emergencyContactName: '张岚',
+    emergencyContactRelation: '配偶',
+    emergencyContactPhone: '13800020248',
     primaryDisease: '糖尿病',
     currentStage: 'Late',
     riskLevel: '高风险',
@@ -87,6 +94,19 @@ const coreCases: PatientCase[] = [
       { title: '评估服药依从性干预效果', owner: '慢病管理师', dueDate: '2023-11-03', priority: 'high' },
       { title: '更新运动与饮食计划', owner: '健康教育师', dueDate: '2023-11-05', priority: 'medium' },
     ],
+    contactLogs: [
+      {
+        logId: 'mock-clog-0248',
+        contactTime: '2023-10-29T10:00:00',
+        contactType: 'phone',
+        contactTarget: 'patient',
+        contactResult: 'reached',
+        operatorUsername: 'demo_clinic',
+        operatorName: '胡军',
+        note: '电话随访已接通，提醒按时复查糖化血红蛋白并继续记录血糖。',
+        nextContactDate: '2023-11-05',
+      },
+    ],
     recommendationMode: 'model',
     dataSupport: 'high',
     careAdvice: [
@@ -109,6 +129,11 @@ const coreCases: PatientCase[] = [
     name: '李雪',
     age: 87,
     gender: '女',
+    avatarUrl: 'https://api.dicebear.com/9.x/initials/svg?seed=%E6%9D%8E%E9%9B%AA',
+    phone: '13800010031',
+    emergencyContactName: '李岩',
+    emergencyContactRelation: '儿子',
+    emergencyContactPhone: '13800020031',
     primaryDisease: '帕金森病',
     currentStage: 'Mid',
     riskLevel: '中风险',
@@ -173,6 +198,7 @@ const coreCases: PatientCase[] = [
       { title: '评估夜间睡眠管理效果', owner: '护理团队', dueDate: '2023-03-25', priority: 'medium' },
       { title: '更新步态训练记录', owner: '康复治疗师', dueDate: '2023-03-23', priority: 'low' },
     ],
+    contactLogs: [],
     recommendationMode: 'model',
     dataSupport: 'medium',
     careAdvice: [
@@ -195,6 +221,11 @@ const coreCases: PatientCase[] = [
     name: '王建',
     age: 53,
     gender: '男',
+    avatarUrl: 'https://api.dicebear.com/9.x/initials/svg?seed=%E7%8E%8B%E5%BB%BA',
+    phone: '13800010024',
+    emergencyContactName: '王琴',
+    emergencyContactRelation: '配偶',
+    emergencyContactPhone: '13800020024',
     primaryDisease: '阿尔茨海默病',
     currentStage: 'Early',
     riskLevel: '中风险',
@@ -259,6 +290,7 @@ const coreCases: PatientCase[] = [
       { title: '追踪睡眠干预反馈', owner: '护理团队', dueDate: '2022-09-05', priority: 'medium' },
       { title: '更新家庭支持评估', owner: '社工团队', dueDate: '2022-09-12', priority: 'medium' },
     ],
+    contactLogs: [],
     recommendationMode: 'similar-case',
     dataSupport: 'low',
     careAdvice: [
@@ -286,7 +318,7 @@ const coreCases: PatientCase[] = [
 ]
 
 const generatedCases: PatientCase[] = Array.from({ length: 18 }, (_, index) => {
-  const template = coreCases[index % coreCases.length]
+  const template = coreCases[index % coreCases.length] as PatientCase
   const suffix = String(index + 1).padStart(2, '0')
   return {
     ...template,
@@ -297,7 +329,26 @@ const generatedCases: PatientCase[] = Array.from({ length: 18 }, (_, index) => {
   }
 })
 
-const patientCases: PatientCase[] = [...coreCases, ...generatedCases]
+const patientCases = [...coreCases, ...generatedCases].map((item) => ({
+  ...item,
+  medicalRecordNumber: item.patientId,
+  archiveSource: 'outpatient',
+  archiveStatus: 'active',
+  consentStatus: 'signed',
+  encounterStatus: 'waiting',
+  outpatientTasks: [],
+  contactLogs: item.contactLogs ?? [],
+  auditLogs: [
+    {
+      logId: `alog-${item.patientId}`,
+      action: 'archive_created',
+      operatorUsername: 'demo_clinic',
+      operatorName: 'é‘³â€³å•—',
+      detail: 'Archive created in mock mode.',
+      createdAt: `${item.lastVisit}T08:00:00`,
+    },
+  ],
+})) as PatientCase[]
 
 export function loginDoctor(username: string, password: string): DoctorUser | null {
   return doctors.find((doctor) => doctor.username === username && doctor.password === password) ?? null

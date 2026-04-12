@@ -1,0 +1,11 @@
+{
+  "model": "TransE",
+  "dataset": "CHRONIC",
+  "metrics": {
+    "MRR": 0.0018622048165323414,
+    "num_samples": 14040,
+    "Hits@1": 0.0,
+    "Hits@3": 0.0,
+    "Hits@10": 0.0
+  }
+}

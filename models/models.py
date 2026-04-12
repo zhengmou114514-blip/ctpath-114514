@@ -24,10 +24,12 @@ class Supercomplex(nn.Module):
             nn.Embedding(sizes[3], rank, sparse=True),  # 4 relation timstamps1
         ])
         self.is_cuda = is_cuda
+        self.use_path = not getattr(args, "disable_path", False)
+        self.use_cl = not getattr(args, "disable_cl", False)
 
         feature_length = rank
-        self.pathNet_encoder = Path(feature_length, args).to(args.cuda)
-        self.contrastive_leanring_his = ConLoss_his(args).to(args.cuda)
+        self.pathNet_encoder = Path(feature_length, args).to(args.cuda) if self.use_path else None
+        self.contrastive_leanring_his = ConLoss_his(args).to(args.cuda) if self.use_cl else None
 
         if rank % 2 != 0:
             raise "rank need to be devided by 2.."
@@ -71,12 +73,18 @@ class Supercomplex(nn.Module):
         rel_ = self.complex_mul(rel, comp_time)
         rel_ = rel + rel_
 
-        neis_embd = self.forward_PathNet(self.pathNet_encoder, self.embeddings[0].weight, self.embeddings[2].weight,
-                                         args.num_walks, args.walk_len,
-                                         neis_all, neis_timestamps, path_weight, x[:, 0], x[:, 3])
+        if self.use_path:
+            neis_embd = self.forward_PathNet(self.pathNet_encoder, self.embeddings[0].weight, self.embeddings[2].weight,
+                                             args.num_walks, args.walk_len,
+                                             neis_all, neis_timestamps, path_weight, x[:, 0], x[:, 3])
+        else:
+            neis_embd = torch.zeros_like(lhs)
 
         if mode == 'Training':
-            contrastive_leanring_loss = self.contrastive_leanring_his(x[:, 1], self.embeddings[1].weight, time_rel, batch_history)  # rel
+            if self.use_cl:
+                contrastive_leanring_loss = self.contrastive_leanring_his(x[:, 1], self.embeddings[1].weight, time_rel, batch_history)  # rel
+            else:
+                contrastive_leanring_loss = torch.zeros((), device=lhs.device)
 
             lhs_rel = self.quaternion_mul(torch.cat([lhs, lhs, time_ent, time_ent], dim=1), torch.cat([rel_, rel_, time_rel, time_rel], dim=1))  
             a, b, c, d = torch.chunk(lhs_rel, chunks=4, dim=1)

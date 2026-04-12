@@ -1,0 +1,60 @@
+<svg width="1200" height="760" viewBox="0 0 1200 760" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+<title id="title">CHRONIC 数据集模型对比图</title>
+<desc id="desc">使用已确认的汇报数据，对比 CTpath、RotatE、TransE 在 CHRONIC 数据集上的 MRR、Hits@1、Hits@3、Hits@10。</desc>
+<rect width="1200" height="760" fill="#f4f7fb"/>
+<rect x="40" y="40" width="1120" height="680" rx="24" fill="#ffffff" stroke="#d8e0eb"/>
+<text x="80" y="96" font-size="28" font-family="Microsoft YaHei, Segoe UI, sans-serif" font-weight="700" fill="#15314b">CHRONIC 数据集模型对比</text>
+<rect x="770" y="78" width="16" height="16" rx="3" fill="#0f766e"/>
+<text x="796" y="91" font-size="14" font-family="Microsoft YaHei, Segoe UI, sans-serif" fill="#446079">CTpath / TKGR-GPRSCL</text>
+<rect x="770" y="106" width="16" height="16" rx="3" fill="#2563eb"/>
+<text x="796" y="119" font-size="14" font-family="Microsoft YaHei, Segoe UI, sans-serif" fill="#446079">RotatE</text>
+<rect x="770" y="134" width="16" height="16" rx="3" fill="#94a3b8"/>
+<text x="796" y="147" font-size="14" font-family="Microsoft YaHei, Segoe UI, sans-serif" fill="#446079">TransE</text>
+<line x1="95" y1="610" x2="1055" y2="610" stroke="#9db0c3" stroke-width="1.5"/>
+<line x1="95" y1="190" x2="95" y2="610" stroke="#9db0c3" stroke-width="1.5"/>
+<line x1="95" y1="190.0" x2="1055" y2="190.0" stroke="#edf2f7"/>
+<text x="53" y="195.0" font-size="13" font-family="Microsoft YaHei, Segoe UI, sans-serif" fill="#6d8397">0.55</text>
+<line x1="95" y1="266.4" x2="1055" y2="266.4" stroke="#edf2f7"/>
+<text x="53" y="271.4" font-size="13" font-family="Microsoft YaHei, Segoe UI, sans-serif" fill="#6d8397">0.45</text>
+<line x1="95" y1="342.7" x2="1055" y2="342.7" stroke="#edf2f7"/>
+<text x="53" y="347.7" font-size="13" font-family="Microsoft YaHei, Segoe UI, sans-serif" fill="#6d8397">0.35</text>
+<line x1="95" y1="419.1" x2="1055" y2="419.1" stroke="#edf2f7"/>
+<text x="53" y="424.1" font-size="13" font-family="Microsoft YaHei, Segoe UI, sans-serif" fill="#6d8397">0.25</text>
+<line x1="95" y1="495.5" x2="1055" y2="495.5" stroke="#edf2f7"/>
+<text x="53" y="500.5" font-size="13" font-family="Microsoft YaHei, Segoe UI, sans-serif" fill="#6d8397">0.15</text>
+<line x1="95" y1="571.8" x2="1055" y2="571.8" stroke="#edf2f7"/>
+<text x="53" y="576.8" font-size="13" font-family="Microsoft YaHei, Segoe UI, sans-serif" fill="#6d8397">0.05</text>
+<line x1="95" y1="610.0" x2="1055" y2="610.0" stroke="#edf2f7"/>
+<text x="53" y="615.0" font-size="13" font-family="Microsoft YaHei, Segoe UI, sans-serif" fill="#6d8397">0</text>
+<text x="192" y="646" font-size="16" font-family="Microsoft YaHei, Segoe UI, sans-serif" font-weight="600" fill="#15314b">MRR</text>
+<text x="422" y="646" font-size="16" font-family="Microsoft YaHei, Segoe UI, sans-serif" font-weight="600" fill="#15314b">Hits@1</text>
+<text x="652" y="646" font-size="16" font-family="Microsoft YaHei, Segoe UI, sans-serif" font-weight="600" fill="#15314b">Hits@3</text>
+<text x="882" y="646" font-size="16" font-family="Microsoft YaHei, Segoe UI, sans-serif" font-weight="600" fill="#15314b">Hits@10</text>
+<rect x="156" y="347.2" width="44" height="262.8" rx="8" fill="#0f766e"/>
+<text x="158" y="337.2" font-size="12" font-family="Microsoft YaHei, Segoe UI, sans-serif" fill="#0f766e">0.3441</text>
+<rect x="210" y="367.2" width="44" height="242.8" rx="8" fill="#2563eb"/>
+<text x="212" y="357.2" font-size="12" font-family="Microsoft YaHei, Segoe UI, sans-serif" fill="#2563eb">0.3180</text>
+<rect x="264" y="384.4" width="44" height="225.6" rx="8" fill="#94a3b8"/>
+<text x="266" y="374.4" font-size="12" font-family="Microsoft YaHei, Segoe UI, sans-serif" fill="#64748b">0.2954</text>
+<rect x="386" y="434.8" width="44" height="175.2" rx="8" fill="#0f766e"/>
+<text x="388" y="424.8" font-size="12" font-family="Microsoft YaHei, Segoe UI, sans-serif" fill="#0f766e">0.2294</text>
+<rect x="440" y="461.1" width="44" height="148.9" rx="8" fill="#2563eb"/>
+<text x="442" y="451.1" font-size="12" font-family="Microsoft YaHei, Segoe UI, sans-serif" fill="#2563eb">0.1950</text>
+<rect x="494" y="476.7" width="44" height="133.3" rx="8" fill="#94a3b8"/>
+<text x="496" y="466.7" font-size="12" font-family="Microsoft YaHei, Segoe UI, sans-serif" fill="#64748b">0.1746</text>
+<rect x="616" y="267.2" width="44" height="342.8" rx="8" fill="#0f766e"/>
+<text x="618" y="257.2" font-size="12" font-family="Microsoft YaHei, Segoe UI, sans-serif" fill="#0f766e">0.4489</text>
+<rect x="670" y="282.4" width="44" height="327.6" rx="8" fill="#2563eb"/>
+<text x="672" y="272.4" font-size="12" font-family="Microsoft YaHei, Segoe UI, sans-serif" fill="#2563eb">0.4290</text>
+<rect x="724" y="327.5" width="44" height="282.5" rx="8" fill="#94a3b8"/>
+<text x="726" y="317.5" font-size="12" font-family="Microsoft YaHei, Segoe UI, sans-serif" fill="#64748b">0.3700</text>
+<rect x="846" y="215.7" width="44" height="394.3" rx="8" fill="#0f766e"/>
+<text x="848" y="205.7" font-size="12" font-family="Microsoft YaHei, Segoe UI, sans-serif" fill="#0f766e">0.5163</text>
+<rect x="900" y="220.5" width="44" height="389.5" rx="8" fill="#2563eb"/>
+<text x="902" y="210.5" font-size="12" font-family="Microsoft YaHei, Segoe UI, sans-serif" fill="#2563eb">0.5101</text>
+<rect x="954" y="216.8" width="44" height="393.2" rx="8" fill="#94a3b8"/>
+<text x="956" y="206.8" font-size="12" font-family="Microsoft YaHei, Segoe UI, sans-serif" fill="#64748b">0.5149</text>
+<text x="80" y="650" font-size="18" font-family="Microsoft YaHei, Segoe UI, sans-serif" font-weight="700" fill="#15314b">结论</text>
+<text x="80" y="680" font-size="15" font-family="Microsoft YaHei, Segoe UI, sans-serif" fill="#456277">1. CTpath 在 MRR、Hits@1、Hits@3 上均优于两个静态 KG 基线。</text>
+<text x="80" y="706" font-size="15" font-family="Microsoft YaHei, Segoe UI, sans-serif" fill="#456277">2. Hits@10 差距较小，但时序建模在关键排序指标上更有优势。</text>
+</svg>

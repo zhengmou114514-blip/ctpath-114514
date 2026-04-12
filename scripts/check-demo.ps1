@@ -9,7 +9,7 @@ $health | ConvertTo-Json -Depth 4
 Write-Host "`nLogging in with demo doctor account..." -ForegroundColor Cyan
 $login = Invoke-RestMethod -Method POST "$baseUrl/api/login" `
   -ContentType "application/json" `
-  -Body '{"username":"doctor01","password":"ctpath123"}'
+  -Body '{"username":"demo_clinic","password":"demo123456"}'
 $token = $login.token
 $headers = @{ Authorization = "Bearer $token" }
 

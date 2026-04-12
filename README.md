@@ -46,7 +46,7 @@ cmd /c npm run dev
 
 - 前端：http://127.0.0.1:5173
 - 后端文档：http://127.0.0.1:8000/docs
-- 演示账号：`doctor01 / ctpath123`
+- 演示账号：`demo_clinic / demo123456`
 
 ### 6. 可选：使用脚本快速启动
 
@@ -75,6 +75,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\check-demo.ps1
 - `GET /api/patient/{patient_id}`
 - `GET /api/timeline/{patient_id}`
 - `POST /api/predict`
+- `POST /api/advice/generate`
 - `GET /api/health`
 
 ## 当前实验结果
@@ -96,3 +97,4 @@ powershell -ExecutionPolicy Bypass -File .\scripts\check-demo.ps1
 - [启动与演示说明](docs/启动与演示说明.md)
 - [系统设计说明](docs/系统设计说明.md)
 - [复试项目介绍](docs/复试项目介绍.md)
+- [DeepSeek 接口预留说明](docs/DeepSeek接口预留说明.md)
