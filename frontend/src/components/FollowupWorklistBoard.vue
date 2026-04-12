@@ -1,9 +1,26 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import type { ContactLogCreatePayload, FlowBoardRow, FollowupTaskRow } from '../services/types'
-import FollowupQuickContactCard from './FollowupQuickContactCard.vue'
 
-type FollowupView = 'tasks' | 'flow' | 'quick'
+type RiskFilter = 'all' | 'high' | 'medium' | 'low'
+type DateFilter = 'all' | 'today' | 'overdue' | 'next7'
+
+interface LocalActionRecord {
+  id: string
+  label: string
+  status: string
+  at: string
+  note: string
+}
+
+interface LocalTaskState {
+  status: string
+  updatedAt: string
+  unreached: boolean
+  needsReview: boolean
+  nextFollowupDate: string
+  history: LocalActionRecord[]
+}
 
 const props = defineProps<{
   loading: boolean
@@ -21,386 +38,790 @@ const emit = defineEmits<{
   (e: 'submit-contact-log', payload: { patientId: string; payload: ContactLogCreatePayload }): void
 }>()
 
-const activeView = ref<FollowupView>('tasks')
-const taskPage = ref(1)
-const flowPage = ref(1)
-const quickPage = ref(1)
-const pageSize = 5
-const priorityFilter = ref<'全部优先级' | 'high' | 'medium' | 'low'>('全部优先级')
-const statusFilter = ref('全部状态')
+const riskFilter = ref<RiskFilter>('all')
+const dateFilter = ref<DateFilter>('all')
+const filterUnreachedOnly = ref(false)
+const filterReviewOnly = ref(false)
+const keyword = ref('')
 
-const statusOptions = computed(() => {
-  const values = Array.from(new Set(props.followupItems.map((item) => item.status)))
-  return ['全部状态', ...values]
-})
+const selectedTaskKey = ref('')
+const localState = reactive<Record<string, LocalTaskState>>({})
 
-const filteredFollowups = computed(() =>
-  props.followupItems.filter((item) => {
-    const matchPriority = priorityFilter.value === '全部优先级' || item.priority === priorityFilter.value
-    const matchStatus = statusFilter.value === '全部状态' || item.status === statusFilter.value
-    return matchPriority && matchStatus
-  })
-)
-
-function flowStatusRank(value: string) {
-  const lowered = value.toLowerCase()
-  if (value.includes('接诊中') || lowered.includes('progress')) return 0
-  if (value.includes('待复核') || lowered.includes('review')) return 1
-  if (value.includes('候诊') || lowered.includes('waiting')) return 2
-  if (value.includes('已完成') || lowered.includes('completed')) return 3
-  return 4
+function taskKey(item: FollowupTaskRow): string {
+  return `${item.patientId}::${item.taskId || item.taskType}`
 }
 
-const sortedFlowBoard = computed(() =>
-  [...props.flowBoardItems].sort((left, right) => {
-    const byStatus = flowStatusRank(left.flowStatus) - flowStatusRank(right.flowStatus)
-    if (byStatus !== 0) return byStatus
-    return left.lastVisit.localeCompare(right.lastVisit)
+function nowIso(): string {
+  return new Date().toISOString()
+}
+
+function formatDateTime(value: string): string {
+  if (!value) return '--'
+  return value.replace('T', ' ').slice(0, 16)
+}
+
+function riskLevelKey(value: string): 'high' | 'medium' | 'low' {
+  const normalized = value.toLowerCase()
+  if (normalized.includes('high')) return 'high'
+  if (normalized.includes('medium')) return 'medium'
+  return 'low'
+}
+
+function isCompletedStatus(status: string): boolean {
+  const normalized = status.toLowerCase()
+  return normalized.includes('completed') || normalized.includes('closed')
+}
+
+function isOverdue(dueDate: string): boolean {
+  if (!dueDate) return false
+  const today = new Date().toISOString().slice(0, 10)
+  return dueDate < today
+}
+
+function inNext7Days(dueDate: string): boolean {
+  if (!dueDate) return false
+  const now = new Date()
+  const end = new Date(now.getTime() + 7 * 86400000)
+  const due = new Date(`${dueDate}T00:00:00`)
+  return due >= new Date(now.toISOString().slice(0, 10)) && due <= end
+}
+
+function ensureState(item: FollowupTaskRow): LocalTaskState {
+  const key = taskKey(item)
+  if (!localState[key]) {
+    const initialAt = item.lastActionAt || `${item.dueDate}T09:00:00`
+    localState[key] = {
+      status: item.status,
+      updatedAt: initialAt,
+      unreached: false,
+      needsReview: false,
+      nextFollowupDate: item.dueDate,
+      history: [
+        {
+          id: `${key}-init`,
+          label: 'Task Loaded',
+          status: item.status,
+          at: initialAt,
+          note: `Source: ${item.source}`,
+        },
+      ],
+    }
+  }
+  return localState[key]
+}
+
+const mergedTasks = computed(() =>
+  props.followupItems.map((item) => {
+    const state = ensureState(item)
+    const flow = props.flowBoardItems.find((row) => row.patientId === item.patientId) || null
+    return {
+      ...item,
+      localStatus: state.status,
+      localUpdatedAt: state.updatedAt,
+      unreached: state.unreached,
+      needsReview: state.needsReview,
+      nextFollowupDate: state.nextFollowupDate,
+      history: state.history,
+      flow,
+      riskKey: riskLevelKey(item.riskLevel),
+      completed: isCompletedStatus(state.status),
+      overdue: isOverdue(item.dueDate),
+    }
   })
 )
 
-const quickPatients = computed(() => sortedFlowBoard.value.slice(0, 12))
+const filteredTasks = computed(() => {
+  return mergedTasks.value.filter((item) => {
+    if (riskFilter.value !== 'all' && item.riskKey !== riskFilter.value) return false
 
-const quickContactCandidates = computed(() => {
-  const map = new Map<string, { patientId: string; label: string }>()
-  for (const item of props.followupItems) {
-    if (!map.has(item.patientId)) {
-      map.set(item.patientId, {
-        patientId: item.patientId,
-        label: `${item.patientName} / ${item.primaryDisease}`,
-      })
+    if (dateFilter.value === 'today' && item.dueDate !== new Date().toISOString().slice(0, 10)) return false
+    if (dateFilter.value === 'overdue' && !item.overdue) return false
+    if (dateFilter.value === 'next7' && !inNext7Days(item.dueDate)) return false
+
+    if (filterUnreachedOnly.value && !item.unreached) return false
+    if (filterReviewOnly.value && !item.needsReview) return false
+
+    const kw = keyword.value.trim().toLowerCase()
+    if (kw) {
+      const haystack = `${item.patientId} ${item.patientName} ${item.primaryDisease} ${item.taskType}`.toLowerCase()
+      if (!haystack.includes(kw)) return false
     }
-  }
-  for (const item of props.flowBoardItems) {
-    if (!map.has(item.patientId)) {
-      map.set(item.patientId, {
-        patientId: item.patientId,
-        label: `${item.patientName} / ${item.primaryDisease}`,
-      })
-    }
-  }
-  return [...map.values()]
+
+    return true
+  })
 })
 
-const summary = computed(() => {
-  const items = props.followupItems
+const selectedTask = computed(() => filteredTasks.value.find((item) => taskKey(item) === selectedTaskKey.value) || null)
+
+const todaySummary = computed(() => {
+  const today = new Date().toISOString().slice(0, 10)
+  const all = mergedTasks.value
   return {
-    total: items.length,
-    high: items.filter((item) => item.priority === 'high').length,
-    overdue: items.filter((item) => item.status.includes('逾期') || item.status.toLowerCase().includes('overdue')).length,
-    review: props.flowBoardItems.filter((item) => item.flowStatus.includes('待复核')).length,
+    todayPending: all.filter((item) => item.dueDate === today && !item.completed).length,
+    highRisk: all.filter((item) => item.riskKey === 'high' && !item.completed).length,
+    completed: all.filter((item) => item.completed).length,
+    unreached: all.filter((item) => item.unreached).length,
   }
 })
 
-const taskTotalPages = computed(() => Math.max(1, Math.ceil(filteredFollowups.value.length / pageSize)))
-const flowTotalPages = computed(() => Math.max(1, Math.ceil(sortedFlowBoard.value.length / pageSize)))
-const quickTotalPages = computed(() => Math.max(1, Math.ceil(quickPatients.value.length / pageSize)))
-
-const pagedTasks = computed(() => {
-  const start = (taskPage.value - 1) * pageSize
-  return filteredFollowups.value.slice(start, start + pageSize)
+const recentAdvice = computed(() => {
+  if (!selectedTask.value) return []
+  const flowAdvice = selectedTask.value.flow?.nextAction || ''
+  return [
+    flowAdvice,
+    `Task recommendation: ${selectedTask.value.taskType}`,
+    `Owner: ${selectedTask.value.owner}`,
+  ].filter(Boolean)
 })
 
-const pagedFlowBoard = computed(() => {
-  const start = (flowPage.value - 1) * pageSize
-  return sortedFlowBoard.value.slice(start, start + pageSize)
+const predictionChange = computed(() => {
+  if (!selectedTask.value) return []
+  const row = selectedTask.value
+  return [
+    `Current flow status: ${row.flow?.flowStatus || row.localStatus}`,
+    `Risk level: ${row.riskLevel}`,
+    `Data support: ${row.dataSupport}`,
+  ]
 })
 
-const pagedQuickPatients = computed(() => {
-  const start = (quickPage.value - 1) * pageSize
-  return quickPatients.value.slice(start, start + pageSize)
+const rightPanelHistory = computed(() => {
+  if (!selectedTask.value) return []
+  return [...selectedTask.value.history].sort((a, b) => b.at.localeCompare(a.at))
 })
 
-function priorityTone(level: string) {
-  if (level === 'high') return 'risk-high'
-  if (level === 'medium') return 'risk-medium'
-  return 'risk-low'
+function riskToneClass(level: string): string {
+  const key = riskLevelKey(level)
+  return `risk-${key}`
 }
 
-function priorityLabel(level: string) {
-  if (level === 'high') return '高优先'
-  if (level === 'medium') return '中优先'
-  if (level === 'low') return '低优先'
-  return level
+function statusToneClass(status: string): string {
+  const normalized = status.toLowerCase()
+  if (normalized.includes('completed')) return 'status-completed'
+  if (normalized.includes('review')) return 'status-review'
+  if (normalized.includes('unreached') || normalized.includes('missed')) return 'status-unreached'
+  if (normalized.includes('contacted')) return 'status-contacted'
+  return 'status-pending'
 }
 
-function supportLabel(value: string) {
-  if (value === 'high') return '高'
-  if (value === 'medium') return '中'
-  if (value === 'low') return '低'
-  return value
+function appendHistory(item: FollowupTaskRow, label: string, nextStatus: string, note: string) {
+  const state = ensureState(item)
+  const at = nowIso()
+  state.status = nextStatus
+  state.updatedAt = at
+  state.history.unshift({
+    id: `${taskKey(item)}-${at}`,
+    label,
+    status: nextStatus,
+    at,
+    note,
+  })
 }
 
-function stageLabel(value: string) {
-  if (value === 'Early') return '早期'
-  if (value === 'Mid') return '中期'
-  if (value === 'Late') return '晚期'
-  return value
+function submitContact(item: FollowupTaskRow, result: ContactLogCreatePayload['contactResult'], note: string, nextDate?: string) {
+  const payload: ContactLogCreatePayload = {
+    contactTime: nowIso().slice(0, 16),
+    contactType: 'phone',
+    contactTarget: 'patient',
+    contactResult: result,
+    note,
+    nextContactDate: nextDate,
+  }
+  emit('submit-contact-log', { patientId: item.patientId, payload })
 }
 
-function isSelected(patientId: string) {
-  return Boolean(props.selectedPatientId) && props.selectedPatientId === patientId
+function markReached(item: FollowupTaskRow) {
+  const state = ensureState(item)
+  state.unreached = false
+  state.needsReview = false
+  appendHistory(item, 'Marked Contacted', 'Contacted', 'Patient reached by phone follow-up.')
+  submitContact(item, 'reached', 'Reached during follow-up call.', state.nextFollowupDate)
 }
 
-function canOperateTask(item: FollowupTaskRow) {
-  return item.source === 'outpatient-task' && Boolean(item.taskId) && item.status !== '已完成' && item.status !== '已关闭'
+function markUnreached(item: FollowupTaskRow) {
+  const state = ensureState(item)
+  state.unreached = true
+  appendHistory(item, 'Marked Unreached', 'Unreached', 'No answer from patient contact.')
+  submitContact(item, 'missed', 'No answer. Retry needed.', state.nextFollowupDate)
 }
 
-function switchView(next: FollowupView) {
-  activeView.value = next
+function markNeedReview(item: FollowupTaskRow) {
+  const state = ensureState(item)
+  state.needsReview = true
+  appendHistory(item, 'Marked Need Review', 'Need Review', 'Nurse requested physician review.')
+  submitContact(item, 'urgent', 'Need physician review based on follow-up findings.', state.nextFollowupDate)
 }
 
-function prevTaskPage() {
-  taskPage.value = Math.max(1, taskPage.value - 1)
+function markCompleted(item: FollowupTaskRow) {
+  appendHistory(item, 'Marked Completed', 'Completed', 'Follow-up cycle completed.')
+  const key = taskKey(item)
+  const current = localState[key]
+  if (current) {
+    current.unreached = false
+    current.needsReview = false
+  }
+  if (item.source === 'outpatient-task' && item.taskId) {
+    emit('complete-task', { patientId: item.patientId, taskId: item.taskId })
+  }
 }
 
-function nextTaskPage() {
-  taskPage.value = Math.min(taskTotalPages.value, taskPage.value + 1)
-}
-
-function prevFlowPage() {
-  flowPage.value = Math.max(1, flowPage.value - 1)
-}
-
-function nextFlowPage() {
-  flowPage.value = Math.min(flowTotalPages.value, flowPage.value + 1)
-}
-
-function prevQuickPage() {
-  quickPage.value = Math.max(1, quickPage.value - 1)
-}
-
-function nextQuickPage() {
-  quickPage.value = Math.min(quickTotalPages.value, quickPage.value + 1)
-}
+watch(
+  () => [props.selectedPatientId, filteredTasks.value.length] as const,
+  () => {
+    if (props.selectedPatientId) {
+      const found = filteredTasks.value.find((item) => item.patientId === props.selectedPatientId)
+      if (found) {
+        selectedTaskKey.value = taskKey(found)
+        return
+      }
+    }
+    if (!selectedTask.value && filteredTasks.value.length) {
+      const first = filteredTasks.value[0]
+      if (first) selectedTaskKey.value = taskKey(first)
+    }
+  },
+  { immediate: true }
+)
 </script>
 
 <template>
-  <section class="module-shell followup-dashboard">
-    <article class="card module-hero">
-      <div>
-        <p class="eyebrow">随访任务</p>
-        <h3>慢病门诊随访工作台</h3>
-        <p class="page-copy">集中查看检查申请、复查计划、流程状态和重点患者入口，避免在多个页面之间来回切换。</p>
-      </div>
-      <div class="module-hero-meta">
-        <div class="summary-chip">
-          <span>任务总数</span>
-          <strong>{{ summary.total }}</strong>
-        </div>
-        <div class="summary-chip">
-          <span>高优先任务</span>
-          <strong>{{ summary.high }}</strong>
-        </div>
-        <div v-if="selectedPatientId" class="summary-chip summary-chip-accent">
-          <span>当前定位患者</span>
-          <strong>{{ selectedPatientId }}</strong>
-        </div>
-      </div>
-    </article>
-
-    <section class="followup-summary-grid">
-      <article class="card summary-tile">
-        <span>待处理任务</span>
-        <strong>{{ summary.total }}</strong>
-        <small>当前随访和门诊任务总量</small>
+  <section class="followup-workbench">
+    <header class="top-metrics card">
+      <article>
+        <span>Today's Pending Follow-ups</span>
+        <strong>{{ todaySummary.todayPending }}</strong>
+        <p>Tasks due today and not completed.</p>
       </article>
-      <article class="card summary-tile danger">
-        <span>逾期任务</span>
-        <strong>{{ summary.overdue }}</strong>
-        <small>建议优先处理已逾期任务</small>
+      <article class="metric-high">
+        <span>High-risk Priority</span>
+        <strong>{{ todaySummary.highRisk }}</strong>
+        <p>High-risk patients with unfinished tasks.</p>
       </article>
-      <article class="card summary-tile">
-        <span>待复核患者</span>
-        <strong>{{ summary.review }}</strong>
-        <small>流程状态已进入待复核的患者</small>
+      <article class="metric-ok">
+        <span>Completed</span>
+        <strong>{{ todaySummary.completed }}</strong>
+        <p>Current status is completed or closed.</p>
       </article>
-      <article class="card summary-tile">
-        <span>快捷入口</span>
-        <strong>{{ quickPatients.length }}</strong>
-        <small>按流程状态排序后的重点患者</small>
+      <article class="metric-warn">
+        <span>Unreached</span>
+        <strong>{{ todaySummary.unreached }}</strong>
+        <p>Locally marked as not reached.</p>
       </article>
-    </section>
+    </header>
 
-    <FollowupQuickContactCard
-      :candidates="quickContactCandidates"
-      :selected-patient-id="props.selectedPatientId"
-      :saving="props.savingContactLog"
-      @submit="emit('submit-contact-log', $event)"
-      @open-patient="emit('open-patient', $event)"
-    />
+    <section class="workbench-grid">
+      <aside class="left-pane card">
+        <h3>Todo Filters</h3>
+        <label class="field">
+          <span>Risk Level</span>
+          <select v-model="riskFilter">
+            <option value="all">All</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </label>
 
-    <article class="card followup-tab-card">
-      <div class="followup-tabbar">
-        <button class="secondary-button" :class="{ active: activeView === 'tasks' }" @click="switchView('tasks')">任务列表</button>
-        <button class="secondary-button" :class="{ active: activeView === 'flow' }" @click="switchView('flow')">流程状态板</button>
-        <button class="secondary-button" :class="{ active: activeView === 'quick' }" @click="switchView('quick')">患者快捷入口</button>
-      </div>
+        <label class="field">
+          <span>Date</span>
+          <select v-model="dateFilter">
+            <option value="all">All dates</option>
+            <option value="today">Today</option>
+            <option value="overdue">Overdue</option>
+            <option value="next7">Next 7 days</option>
+          </select>
+        </label>
 
-      <section v-if="activeView === 'tasks'" class="followup-tab-panel">
-        <div class="panel-head">
-          <div>
-            <p class="eyebrow">任务列表</p>
-            <h3>随访与门诊任务</h3>
-          </div>
-          <span class="panel-meta">第 {{ taskPage }} / {{ taskTotalPages }} 页</span>
-        </div>
+        <label class="field inline">
+          <input v-model="filterUnreachedOnly" type="checkbox" />
+          <span>Unreached only</span>
+        </label>
 
-        <div class="followup-filter-grid">
-          <label class="field">
-            <span>优先级</span>
-            <select v-model="priorityFilter">
-              <option value="全部优先级">全部优先级</option>
-              <option value="high">高优先</option>
-              <option value="medium">中优先</option>
-              <option value="low">低优先</option>
-            </select>
-          </label>
+        <label class="field inline">
+          <input v-model="filterReviewOnly" type="checkbox" />
+          <span>Needs review only</span>
+        </label>
 
-          <label class="field">
-            <span>任务状态</span>
-            <select v-model="statusFilter">
-              <option v-for="item in statusOptions" :key="item" :value="item">{{ item }}</option>
-            </select>
-          </label>
-        </div>
+        <label class="field">
+          <span>Search Patient</span>
+          <input v-model="keyword" type="text" placeholder="patientId/name/disease" />
+        </label>
 
-        <div v-if="pagedTasks.length" class="followup-list">
+        <div class="patient-list">
           <article
-            v-for="item in pagedTasks"
-            :key="`${item.patientId}-${item.taskId ?? item.taskType}-${item.dueDate}`"
-            class="followup-task-card"
-            :class="{ 'is-highlighted': isSelected(item.patientId) }"
+            v-for="item in filteredTasks"
+            :key="taskKey(item)"
+            class="patient-item"
+            :class="{ active: selectedTaskKey === taskKey(item) }"
+            @click="selectedTaskKey = taskKey(item)"
           >
-            <div class="followup-task-main">
-              <strong>{{ item.patientName }} / {{ item.patientId }}</strong>
-              <span>{{ item.primaryDisease }} / {{ item.taskType }}</span>
-              <small>责任人：{{ item.owner }} / 截止：{{ item.dueDate }}</small>
-            </div>
-
-            <div class="followup-task-side">
-              <span class="risk-pill" :class="priorityTone(item.priority)">{{ item.status }}</span>
-              <small>{{ priorityLabel(item.priority) }} / 数据支持：{{ supportLabel(item.dataSupport) }}</small>
-              <small v-if="item.lastActionBy || item.lastActionAt">
-                最近操作：{{ item.lastActionBy || '系统' }}<span v-if="item.lastActionAt"> / {{ item.lastActionAt }}</span>
-              </small>
-              <div class="card-actions followup-actions">
-                <button class="text-button" @click="emit('open-patient', item.patientId)">打开患者</button>
-                <button class="text-button" @click="emit('open-archive', item.patientId)">打开档案</button>
-                <button
-                  v-if="canOperateTask(item)"
-                  class="text-button"
-                  @click="emit('complete-task', { patientId: item.patientId, taskId: item.taskId! })"
-                >
-                  标记完成
-                </button>
-                <button
-                  v-if="canOperateTask(item)"
-                  class="text-button"
-                  @click="emit('close-task', { patientId: item.patientId, taskId: item.taskId! })"
-                >
-                  关闭任务
-                </button>
-              </div>
-            </div>
-          </article>
-        </div>
-
-        <article v-else-if="!loading" class="empty-card compact">
-          <p>当前筛选条件下没有匹配的任务。</p>
-        </article>
-
-        <div class="pagination-bar">
-          <span class="panel-meta">每页 {{ pageSize }} 条</span>
-          <div class="archive-footer-actions">
-            <button class="secondary-button" :disabled="taskPage <= 1" @click="prevTaskPage">上一页</button>
-            <button class="secondary-button" :disabled="taskPage >= taskTotalPages" @click="nextTaskPage">下一页</button>
-          </div>
-        </div>
-      </section>
-
-      <section v-else-if="activeView === 'flow'" class="followup-tab-panel">
-        <div class="panel-head">
-          <div>
-            <p class="eyebrow">流程状态板</p>
-            <h3>患者处理进度</h3>
-          </div>
-          <span class="panel-meta">第 {{ flowPage }} / {{ flowTotalPages }} 页</span>
-        </div>
-
-        <div v-if="pagedFlowBoard.length" class="flow-board-list">
-          <article
-            v-for="item in pagedFlowBoard"
-            :key="`${item.patientId}-${item.flowStatus}`"
-            class="flow-board-row"
-            :class="{ 'is-highlighted': isSelected(item.patientId) }"
-          >
-            <div class="queue-main">
-              <strong>{{ item.patientName }} / {{ item.patientId }}</strong>
-              <span>{{ item.primaryDisease }} / {{ stageLabel(item.currentStage) }}</span>
-              <small>最近就诊：{{ item.lastVisit }} / 数据支持：{{ supportLabel(item.dataSupport) }}</small>
-            </div>
-            <div class="queue-side">
-              <span class="risk-pill" :class="priorityTone(item.riskLevel)">{{ item.flowStatus }}</span>
-              <small>{{ item.nextAction }}</small>
-            </div>
-          </article>
-        </div>
-
-        <article v-else-if="!loading" class="empty-card compact">
-          <p>当前没有可展示的流程状态数据。</p>
-        </article>
-
-        <div class="pagination-bar">
-          <span class="panel-meta">每页 {{ pageSize }} 条</span>
-          <div class="archive-footer-actions">
-            <button class="secondary-button" :disabled="flowPage <= 1" @click="prevFlowPage">上一页</button>
-            <button class="secondary-button" :disabled="flowPage >= flowTotalPages" @click="nextFlowPage">下一页</button>
-          </div>
-        </div>
-      </section>
-
-      <section v-else class="followup-tab-panel">
-        <div class="panel-head">
-          <div>
-            <p class="eyebrow">快捷入口</p>
-            <h3>重点患者快捷访问</h3>
-          </div>
-          <span class="panel-meta">第 {{ quickPage }} / {{ quickTotalPages }} 页</span>
-        </div>
-
-        <div v-if="pagedQuickPatients.length" class="quick-entry-list">
-          <button
-            v-for="item in pagedQuickPatients"
-            :key="`${item.patientId}-${item.flowStatus}`"
-            class="quick-entry-row"
-            :class="{ 'is-highlighted': isSelected(item.patientId) }"
-            @click="emit('open-patient', item.patientId)"
-          >
-            <div class="queue-main">
+            <div>
               <strong>{{ item.patientName }}</strong>
-              <span>{{ item.patientId }} / {{ item.primaryDisease }}</span>
-              <small>{{ item.nextAction }}</small>
+              <p>{{ item.patientId }} / {{ item.primaryDisease }}</p>
             </div>
-            <div class="queue-side">
-              <span class="risk-pill" :class="priorityTone(item.riskLevel)">{{ item.flowStatus }}</span>
-              <small>{{ item.lastVisit }}</small>
+            <div class="patient-item-right">
+              <span class="risk-pill" :class="riskToneClass(item.riskLevel)">{{ item.riskLevel }}</span>
+              <small>{{ item.dueDate }}</small>
             </div>
-          </button>
-        </div>
+          </article>
 
-        <article v-else-if="!loading" class="empty-card compact">
-          <p>当前没有可用的患者快捷入口。</p>
-        </article>
-
-        <div class="pagination-bar">
-          <span class="panel-meta">每页 {{ pageSize }} 条</span>
-          <div class="archive-footer-actions">
-            <button class="secondary-button" :disabled="quickPage <= 1" @click="prevQuickPage">上一页</button>
-            <button class="secondary-button" :disabled="quickPage >= quickTotalPages" @click="nextQuickPage">下一页</button>
-          </div>
+          <p v-if="!filteredTasks.length" class="empty">No tasks under current filter.</p>
         </div>
-      </section>
-    </article>
+      </aside>
+
+      <main class="middle-pane card">
+        <template v-if="selectedTask">
+          <header class="panel-head">
+            <div>
+              <h3>Current Follow-up Summary</h3>
+              <p>{{ selectedTask.patientName }} / {{ selectedTask.patientId }} / {{ selectedTask.primaryDisease }}</p>
+            </div>
+            <span class="status-pill" :class="statusToneClass(selectedTask.localStatus)">
+              {{ selectedTask.localStatus }}
+            </span>
+          </header>
+
+          <section class="summary-grid">
+            <article>
+              <span>Task Type</span>
+              <strong>{{ selectedTask.taskType }}</strong>
+            </article>
+            <article>
+              <span>Owner</span>
+              <strong>{{ selectedTask.owner }}</strong>
+            </article>
+            <article>
+              <span>Last Updated</span>
+              <strong>{{ formatDateTime(selectedTask.localUpdatedAt) }}</strong>
+            </article>
+            <article>
+              <span>Data Support</span>
+              <strong>{{ selectedTask.dataSupport }}</strong>
+            </article>
+          </section>
+
+          <section class="middle-block">
+            <h4>Recent Advice</h4>
+            <ul>
+              <li v-for="(text, idx) in recentAdvice" :key="`advice-${idx}`">{{ text }}</li>
+              <li v-if="!recentAdvice.length">No advice available.</li>
+            </ul>
+          </section>
+
+          <section class="middle-block">
+            <h4>Recent Prediction Change</h4>
+            <ul>
+              <li v-for="(text, idx) in predictionChange" :key="`pred-${idx}`">{{ text }}</li>
+            </ul>
+            <p class="todo-note">TODO(api): currently adapted from /api/worklists/followups + flow-board snapshot only.</p>
+          </section>
+
+          <section class="middle-block">
+            <h4>Status Flow and Timestamps</h4>
+            <div class="timeline">
+              <article v-for="record in rightPanelHistory" :key="record.id" class="timeline-row">
+                <div>
+                  <strong>{{ record.label }}</strong>
+                  <p>{{ record.status }} - {{ record.note }}</p>
+                </div>
+                <span>{{ formatDateTime(record.at) }}</span>
+              </article>
+            </div>
+          </section>
+        </template>
+
+        <div v-else class="empty">Select one follow-up task on the left.</div>
+      </main>
+
+      <aside class="right-pane card">
+        <template v-if="selectedTask">
+          <section class="right-block">
+            <h4>Contact Records</h4>
+            <div class="timeline">
+              <article v-for="record in rightPanelHistory.slice(0, 5)" :key="`contact-${record.id}`" class="timeline-row">
+                <div>
+                  <strong>{{ record.status }}</strong>
+                  <p>{{ record.note }}</p>
+                </div>
+                <span>{{ formatDateTime(record.at) }}</span>
+              </article>
+            </div>
+          </section>
+
+          <section class="right-block">
+            <h4>Next Follow-up Plan</h4>
+            <label class="field">
+              <span>Planned Date</span>
+              <input
+                type="date"
+                :value="selectedTask.nextFollowupDate"
+                @input="ensureState(selectedTask).nextFollowupDate = ($event.target as HTMLInputElement).value"
+              />
+            </label>
+            <p class="plan-note">Owner: {{ selectedTask.owner }}, source: {{ selectedTask.source }}</p>
+          </section>
+
+          <section class="right-block">
+            <h4>Quick Actions</h4>
+            <div class="actions">
+              <button class="secondary-button" :disabled="savingContactLog" @click="markReached(selectedTask)">Reached</button>
+              <button class="secondary-button" :disabled="savingContactLog" @click="markUnreached(selectedTask)">Unreached</button>
+              <button class="secondary-button" :disabled="savingContactLog" @click="markNeedReview(selectedTask)">Need Doctor Review</button>
+              <button class="primary-button" :disabled="savingContactLog" @click="markCompleted(selectedTask)">Complete</button>
+            </div>
+            <div class="actions secondary">
+              <button class="text-button" @click="emit('open-patient', selectedTask.patientId)">Open Patient Detail</button>
+              <button class="text-button" @click="emit('open-archive', selectedTask.patientId)">Open Patient Archive</button>
+            </div>
+          </section>
+        </template>
+
+        <div v-else class="empty">Select a task before action.</div>
+      </aside>
+    </section>
   </section>
 </template>
+
+<style scoped>
+.followup-workbench {
+  display: grid;
+  gap: 12px;
+}
+
+.card {
+  border: 1px solid #cfd9e5;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.top-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  padding: 12px;
+}
+
+.top-metrics article {
+  border: 1px solid #d4dee9;
+  border-radius: 8px;
+  background: #f8fbff;
+  padding: 10px;
+  display: grid;
+  gap: 4px;
+}
+
+.top-metrics span {
+  color: #5b7388;
+  font-size: 0.78rem;
+}
+
+.top-metrics strong {
+  color: #10263c;
+  font-size: 1.35rem;
+}
+
+.top-metrics p {
+  margin: 0;
+  color: #6b8195;
+  font-size: 0.75rem;
+}
+
+.metric-high {
+  background: #fff4f5 !important;
+  border-color: #efc2c5 !important;
+}
+
+.metric-ok {
+  background: #eef9f3 !important;
+  border-color: #bde7d1 !important;
+}
+
+.metric-warn {
+  background: #fff8eb !important;
+  border-color: #efdbb2 !important;
+}
+
+.workbench-grid {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr) 360px;
+  gap: 12px;
+}
+
+.left-pane,
+.middle-pane,
+.right-pane {
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.left-pane h3,
+.middle-pane h3,
+.right-pane h4 {
+  margin: 0;
+  color: #10263c;
+}
+
+.field {
+  display: grid;
+  gap: 4px;
+}
+
+.field span {
+  color: #5f788d;
+  font-size: 0.76rem;
+}
+
+.field input,
+.field select {
+  border: 1px solid #cfd9e5;
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 0.82rem;
+  background: #fff;
+}
+
+.field.inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.patient-list {
+  display: grid;
+  gap: 8px;
+}
+
+.patient-item {
+  border: 1px solid #d6e0eb;
+  border-radius: 8px;
+  padding: 8px;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+  background: #fbfdff;
+}
+
+.patient-item.active {
+  border-color: #8fb3d6;
+  background: #edf5fc;
+}
+
+.patient-item p {
+  margin: 2px 0 0;
+  color: #617a8f;
+  font-size: 0.78rem;
+}
+
+.patient-item-right {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+}
+
+.patient-item-right small {
+  color: #617a8f;
+  font-size: 0.74rem;
+}
+
+.panel-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+
+.panel-head p {
+  margin: 4px 0 0;
+  color: #617a8f;
+  font-size: 0.82rem;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.summary-grid article {
+  border: 1px solid #d6e0eb;
+  border-radius: 8px;
+  padding: 8px;
+  background: #fbfdff;
+  display: grid;
+  gap: 4px;
+}
+
+.summary-grid span {
+  color: #60798d;
+  font-size: 0.76rem;
+}
+
+.summary-grid strong {
+  color: #10263c;
+  font-size: 0.86rem;
+}
+
+.middle-block,
+.right-block {
+  border: 1px solid #d6e0eb;
+  border-radius: 8px;
+  padding: 10px;
+  background: #fbfdff;
+  display: grid;
+  gap: 8px;
+}
+
+.middle-block h4,
+.right-block h4 {
+  margin: 0;
+  color: #14314a;
+}
+
+.middle-block ul {
+  margin: 0;
+  padding-left: 18px;
+  color: #24445f;
+  display: grid;
+  gap: 4px;
+  font-size: 0.82rem;
+}
+
+.todo-note {
+  margin: 0;
+  color: #8a641f;
+  font-size: 0.76rem;
+}
+
+.timeline {
+  display: grid;
+  gap: 6px;
+}
+
+.timeline-row {
+  border: 1px solid #d9e3ee;
+  border-radius: 8px;
+  padding: 8px;
+  background: #fff;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.timeline-row p {
+  margin: 3px 0 0;
+  color: #617a8f;
+  font-size: 0.78rem;
+}
+
+.timeline-row span {
+  color: #60798d;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.actions {
+  display: grid;
+  gap: 8px;
+}
+
+.actions.secondary {
+  grid-template-columns: 1fr 1fr;
+}
+
+.plan-note {
+  margin: 0;
+  color: #60798d;
+  font-size: 0.78rem;
+}
+
+.risk-pill,
+.status-pill {
+  display: inline-flex;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  width: fit-content;
+}
+
+.risk-high {
+  background: #fdeced;
+  border-color: #efc2c5;
+  color: #a4383f;
+}
+
+.risk-medium {
+  background: #fff4e2;
+  border-color: #efdbb2;
+  color: #9b6518;
+}
+
+.risk-low {
+  background: #e9f8f1;
+  border-color: #bde7d1;
+  color: #1d7b5c;
+}
+
+.status-pending {
+  background: #eef3f9;
+  border-color: #cfdae7;
+  color: #3f6283;
+}
+
+.status-contacted {
+  background: #e9f8f1;
+  border-color: #bde7d1;
+  color: #1d7b5c;
+}
+
+.status-unreached {
+  background: #fff4e2;
+  border-color: #efdbb2;
+  color: #9b6518;
+}
+
+.status-review {
+  background: #fdeced;
+  border-color: #efc2c5;
+  color: #a4383f;
+}
+
+.status-completed {
+  background: #eaf2fb;
+  border-color: #c7d8ec;
+  color: #2f5f8f;
+}
+
+.empty {
+  border: 1px dashed #c2d4e6;
+  border-radius: 8px;
+  padding: 14px;
+  color: #627b90;
+  text-align: center;
+  font-size: 0.84rem;
+}
+
+@media (max-width: 1480px) {
+  .workbench-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .top-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 840px) {
+  .top-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .summary-grid,
+  .actions.secondary {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

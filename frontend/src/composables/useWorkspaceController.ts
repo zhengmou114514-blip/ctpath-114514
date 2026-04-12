@@ -44,6 +44,7 @@ import type {
   PredictResponse,
   RegisterPayload,
 } from '../services/types'
+import { useAuditTrailStore } from '../stores/auditTrailStore'
 import { allowedSectionsForRole, sectionLabel } from '../config/workspaceMenu'
 import type { AppSection, ArchiveFocusSection, ArchiveMode, DoctorMode } from '../types/workspace'
 
@@ -63,6 +64,7 @@ const APP_SECTIONS: AppSection[] = [
 ]
 
 export function useWorkspaceController() {
+  const auditTrail = useAuditTrailStore()
   const username = ref('demo_clinic')
   const password = ref('demo123456')
   const loginError = ref('')
@@ -185,6 +187,26 @@ export function useWorkspaceController() {
     archiveSuccess.value = ''
     screenError.value = ''
     permissionHint.value = ''
+  }
+
+  function logAudit(
+    action: 'login' | 'view_patient_detail' | 'trigger_prediction' | 'generate_advice' | 'create_followup_task' | 'modify_archive',
+    target: { type: string; id: string; label?: string },
+    result: 'success' | 'failed' | 'degraded',
+    detail: string,
+    actor?: { username?: string; name?: string; role?: 'doctor' | 'nurse' | 'archivist' | 'unknown' }
+  ) {
+    auditTrail.addAuditLog({
+      actor: actor ?? {
+        username: currentDoctor.value?.username,
+        name: currentDoctor.value?.name,
+        role: currentDoctor.value?.role,
+      },
+      action,
+      target,
+      result,
+      detail,
+    })
   }
 
   function defaultPatientForm(): PatientUpsertPayload {
@@ -610,8 +632,20 @@ export function useWorkspaceController() {
         archiveFocusSection.value = focusSection
         updateWindowQuery('archive', 'detail', patientId, focusSection)
       }
+      logAudit(
+        'view_patient_detail',
+        { type: 'patient', id: patient.patientId, label: patient.name },
+        'success',
+        `Opened patient detail in ${resolvedTarget} workspace.`
+      )
     } catch (error) {
       screenError.value = error instanceof Error ? error.message : 'Failed to open patient.'
+      logAudit(
+        'view_patient_detail',
+        { type: 'patient', id: patientId },
+        'failed',
+        error instanceof Error ? error.message : 'Failed to open patient detail.'
+      )
     } finally {
       loadingPatient.value = false
     }
@@ -729,8 +763,30 @@ export function useWorkspaceController() {
     try {
       const session = await loginDoctor(username.value.trim(), password.value)
       await finishLogin(session.doctor)
+      logAudit(
+        'login',
+        { type: 'session', id: session.doctor.username, label: session.doctor.name },
+        'success',
+        'User login succeeded.',
+        {
+          username: session.doctor.username,
+          name: session.doctor.name,
+          role: session.doctor.role,
+        }
+      )
     } catch (error) {
       loginError.value = error instanceof Error ? error.message : 'Login failed.'
+      logAudit(
+        'login',
+        { type: 'session', id: username.value.trim() || 'unknown' },
+        'failed',
+        error instanceof Error ? error.message : 'User login failed.',
+        {
+          username: username.value.trim() || 'unknown',
+          name: username.value.trim() || 'Unknown User',
+          role: 'unknown',
+        }
+      )
     } finally {
       loadingLogin.value = false
     }
@@ -809,9 +865,33 @@ export function useWorkspaceController() {
         asOfTime: selectedPatient.value.lastVisit,
         topk: 3,
       })
+      logAudit(
+        'trigger_prediction',
+        { type: 'patient', id: selectedPatient.value.patientId, label: selectedPatient.value.name },
+        predictionResult.value.mode === 'model' ? 'success' : 'degraded',
+        `Prediction completed via ${predictionResult.value.mode}/${predictionResult.value.strategy}.`
+      )
+      logAudit(
+        'generate_advice',
+        { type: 'patient', id: selectedPatient.value.patientId, label: selectedPatient.value.name },
+        predictionResult.value.advice.length ? (predictionResult.value.mode === 'model' ? 'success' : 'degraded') : 'failed',
+        `Advice count: ${predictionResult.value.advice.length}.`
+      )
       await loadOperationalBoards()
     } catch (error) {
       screenError.value = error instanceof Error ? error.message : 'Failed to run prediction.'
+      logAudit(
+        'trigger_prediction',
+        { type: 'patient', id: selectedPatient.value.patientId, label: selectedPatient.value.name },
+        'failed',
+        error instanceof Error ? error.message : 'Prediction failed.'
+      )
+      logAudit(
+        'generate_advice',
+        { type: 'patient', id: selectedPatient.value.patientId, label: selectedPatient.value.name },
+        'failed',
+        'Advice generation failed because prediction failed.'
+      )
     } finally {
       loadingPredict.value = false
     }
@@ -867,8 +947,20 @@ export function useWorkspaceController() {
       archiveFocusSection.value = 'overview'
       updateWindowQuery('archive', 'detail', saved.patientId, 'overview')
       archiveSuccess.value = creating ? 'Archive created successfully.' : 'Archive updated successfully.'
+      logAudit(
+        'modify_archive',
+        { type: 'patient_archive', id: saved.patientId, label: saved.name },
+        'success',
+        creating ? 'Created patient archive.' : 'Updated patient archive.'
+      )
     } catch (error) {
       screenError.value = error instanceof Error ? error.message : 'Failed to submit archive.'
+      logAudit(
+        'modify_archive',
+        { type: 'patient_archive', id: selectedPatientId.value || patientForm.value.patientId || 'unknown' },
+        'failed',
+        error instanceof Error ? error.message : 'Failed to submit archive.'
+      )
     } finally {
       savingPatient.value = false
     }
@@ -902,8 +994,20 @@ export function useWorkspaceController() {
       eventForm.value = defaultEventForm()
       await refreshWorkspaceData()
       archiveSuccess.value = 'Clinical event saved successfully.'
+      logAudit(
+        'modify_archive',
+        { type: 'patient_archive', id: updated.patientId, label: updated.name },
+        'success',
+        'Updated archive timeline with a clinical event.'
+      )
     } catch (error) {
       screenError.value = error instanceof Error ? error.message : 'Failed to submit clinical event.'
+      logAudit(
+        'modify_archive',
+        { type: 'patient_archive', id: patientId },
+        'failed',
+        error instanceof Error ? error.message : 'Failed to update archive timeline.'
+      )
     } finally {
       savingEvent.value = false
     }
@@ -995,8 +1099,20 @@ export function useWorkspaceController() {
       }
       await loadOperationalBoards()
       archiveSuccess.value = 'Outpatient task created successfully.'
+      logAudit(
+        'create_followup_task',
+        { type: 'followup_task', id: patientId, label: item.title },
+        'success',
+        `Created follow-up task: ${item.title}.`
+      )
     } catch (error) {
       screenError.value = error instanceof Error ? error.message : 'Failed to create outpatient task.'
+      logAudit(
+        'create_followup_task',
+        { type: 'followup_task', id: patientId, label: item.title },
+        'failed',
+        error instanceof Error ? error.message : 'Failed to create follow-up task.'
+      )
     }
   }
 

@@ -482,3 +482,52 @@ export interface FlowBoardResponse {
   mode: string
   items: FlowBoardRow[]
 }
+
+export type GovernanceStatusTone = 'ok' | 'warning' | 'danger' | 'neutral' | 'healthy' | 'normal'
+
+export interface GovernanceDataQualityOverview {
+  missingFieldCount: number
+  duplicateArchiveCount: number
+  timelineAnomalyCount: number
+  highRiskOverdueFollowup: number
+}
+
+export interface GovernanceModelServiceOverview {
+  modelAvailable: boolean
+  predictionCalls7d: number | null
+  fallbackRatio: number | null
+  adviceApprovalRate: number | null
+}
+
+export interface GovernanceArchiveRow {
+  patientId: string
+  patientName: string
+  issueType: string
+  detail: string
+  source: string
+  priority: 'high' | 'medium' | 'low'
+}
+
+export interface GovernanceOperationRecord {
+  id: string
+  actionType: 'governance_action' | 'correction_record' | 'risk_escalation'
+  patientId: string
+  patientName: string
+  summary: string
+  operator: string
+  createdAt: string
+}
+
+export interface GovernanceCenterViewModel {
+  dataQuality: GovernanceDataQualityOverview
+  modelGovernance: GovernanceModelServiceOverview
+  archiveGovernance: {
+    pendingCompletionRows: GovernanceArchiveRow[]
+    pendingReviewRows: GovernanceArchiveRow[]
+  }
+  operationTraces: {
+    governanceActions: GovernanceOperationRecord[]
+    correctionRecords: GovernanceOperationRecord[]
+    riskEscalations: GovernanceOperationRecord[]
+  }
+}

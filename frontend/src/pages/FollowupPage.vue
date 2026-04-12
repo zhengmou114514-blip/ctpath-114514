@@ -3,7 +3,6 @@ import { onBeforeUnmount, onMounted, ref } from 'vue'
 import type { ContactLogCreatePayload, DoctorUser, FlowBoardRow, FollowupTaskRow } from '../services/types'
 import FollowupWorklistBoard from '../components/FollowupWorklistBoard.vue'
 import MobileFollowupTodayBoard from '../components/MobileFollowupTodayBoard.vue'
-import NurseShiftOverview from '../components/NurseShiftOverview.vue'
 
 const props = defineProps<{
   loading: boolean
@@ -44,12 +43,6 @@ onBeforeUnmount(() => {
 
 <template>
   <section class="role-page-stack">
-    <NurseShiftOverview
-      v-if="!isMobile && props.doctorRole === 'nurse'"
-      :followup-items="props.followupItems"
-      @open-patient="emit('open-patient', $event)"
-    />
-
     <MobileFollowupTodayBoard
       v-if="isMobile"
       :loading="props.loading"

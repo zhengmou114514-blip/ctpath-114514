@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import GovernancePageSimple from './GovernancePageSimple.vue'
 import type {
   DoctorUser,
@@ -29,10 +29,10 @@ const emit = defineEmits<{
     :doctor-role="props.doctorRole"
     :health="props.health"
     :maintenance="props.maintenance"
+    :governance-modules="props.governanceModules"
     :model-metrics="props.modelMetrics"
     :loading-maintenance="props.loadingMaintenance || props.loadingGovernance"
     :loading-metrics="props.loadingMetrics"
     @refresh="emit('refresh')"
   />
 </template>
-

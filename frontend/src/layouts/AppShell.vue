@@ -1,5 +1,6 @@
 ﻿<script setup lang="ts">
 import AppSidebar from '../components/AppSidebar.vue'
+import AuditTrailPanel from '../components/audit/AuditTrailPanel.vue'
 import RoleWorkspaceBanner from '../components/RoleWorkspaceBanner.vue'
 import WorkspaceTopbar from '../components/WorkspaceTopbar.vue'
 import type { DoctorUser, HealthResponse } from '../services/types'
@@ -48,6 +49,7 @@ const emit = defineEmits<{
       />
 
       <slot />
+      <AuditTrailPanel title="Recent Operation Records" :limit="10" compact />
     </main>
   </div>
 </template>

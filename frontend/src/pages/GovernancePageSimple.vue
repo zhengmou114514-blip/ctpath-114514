@@ -1,16 +1,22 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import type { 
-  DoctorUser, 
-  HealthResponse, 
+import { computed } from 'vue'
+import type {
+  DoctorUser,
+  GovernanceArchiveRow,
+  GovernanceCenterViewModel,
+  GovernanceModulesResponse,
+  GovernanceOperationRecord,
+  GovernanceStatusTone,
+  HealthResponse,
   MaintenanceOverview,
-  ModelMetricsResponse 
+  ModelMetricsResponse,
 } from '../services/types'
 
 const props = defineProps<{
   doctorRole: DoctorUser['role']
   health: HealthResponse | null
   maintenance: MaintenanceOverview | null
+  governanceModules: GovernanceModulesResponse | null
   modelMetrics: ModelMetricsResponse | null
   loadingMaintenance: boolean
   loadingMetrics: boolean
@@ -20,329 +26,664 @@ const emit = defineEmits<{
   (e: 'refresh'): void
 }>()
 
-// 当前激活的标签页
-const activeTab = ref('system')
+function toPercent(value: number | null): string {
+  if (value === null || Number.isNaN(value)) return '--'
+  return `${(value * 100).toFixed(1)}%`
+}
 
-// 系统状态
-const systemStatus = computed(() => {
-  if (!props.health) return '未知'
-  return props.health.status === 'ok' ? '正常' : '异常'
-})
+function toneByRatio(value: number | null): GovernanceStatusTone {
+  if (value === null) return 'neutral'
+  if (value >= 0.8) return 'danger'
+  if (value >= 0.4) return 'warning'
+  return 'ok'
+}
 
-// 数据库状态
-const dbStatus = computed(() => {
-  if (!props.health?.db) return '未知'
-  return props.health.db === 'connected' ? '已连接' : '未连接'
-})
+function safeLower(value: string): string {
+  return String(value || '').toLowerCase()
+}
 
-// 模型状态
-const modelStatus = computed(() => {
-  if (!props.modelMetrics) return '未加载'
-  return '已加载'
-})
-
-// 患者统计
-const patientStats = computed(() => {
+const viewModel = computed<GovernanceCenterViewModel | null>(() => {
   if (!props.maintenance) return null
+
+  const maintenance = props.maintenance
+  const recentEvents = maintenance.recentEvents ?? []
+  const recentPatients = maintenance.recentPatients ?? []
+
+  const missingFieldCount =
+    (maintenance.missingMrnCount ?? 0) +
+    (maintenance.pendingConsentCount ?? 0) +
+    (maintenance.lowSupportCount ?? 0)
+
+  const duplicateArchiveCount = maintenance.duplicateRiskCount ?? 0
+
+  const timelineAnomalyCount = recentEvents.filter((event) => {
+    const emptyRelation = !String(event.relation || '').trim()
+    const emptyObject = !String(event.objectValue || '').trim()
+    const futureTime = new Date(event.eventTime).getTime() > Date.now()
+    return emptyRelation || emptyObject || futureTime
+  }).length
+
+  const highRiskOverdueFollowup = Math.min(
+    maintenance.highRiskCount ?? 0,
+    maintenance.overdueFollowupCount ?? 0
+  )
+
+  const modelAvailable = Boolean(props.health?.model_available) || Boolean(maintenance.modelAvailable)
+
+  // TODO(api): backend does not provide real 7-day prediction call count yet.
+  const predictionCalls7d: number | null = null
+
+  // TODO(api): backend does not provide direct fallback ratio yet.
+  const fallbackRatio: number | null = modelAvailable ? null : 1
+
+  // TODO(api): backend does not provide advice review approval rate yet.
+  const adviceApprovalRate: number | null = null
+
+  const pendingCompletionRows: GovernanceArchiveRow[] = (maintenance.masterIndexAlerts ?? []).map((item) => ({
+    patientId: item.patientId,
+    patientName: item.name,
+    issueType: item.issueLabel,
+    detail: item.detail,
+    source: item.archiveSource,
+    priority: safeLower(item.issueLabel).includes('duplicate') ? 'high' : 'medium',
+  }))
+
+  const pendingReviewRows: GovernanceArchiveRow[] = recentPatients
+    .filter((item) => {
+      const riskHigh = safeLower(item.riskLevel).includes('high')
+      const supportLow = item.dataSupport === 'low'
+      return riskHigh || supportLow
+    })
+    .map((item) => ({
+      patientId: item.patientId,
+      patientName: item.name,
+      issueType: 'Pending clinical review',
+      detail: `${item.riskLevel}; data support: ${item.dataSupport}`,
+      source: 'maintenance-overview',
+      priority: safeLower(item.riskLevel).includes('high') ? 'high' : 'medium',
+    }))
+
+  const governanceActions: GovernanceOperationRecord[] = recentEvents.slice(0, 8).map((event, index) => ({
+    id: `gov-${index + 1}`,
+    actionType: 'governance_action',
+    patientId: event.patientId,
+    patientName: event.patientName,
+    summary: `${event.relationLabel}: ${event.objectValue}`,
+    operator: event.source || 'system',
+    createdAt: event.eventTime,
+  }))
+
+  const correctionRecords: GovernanceOperationRecord[] = recentEvents
+    .filter((event) => ['stage', 'diagnosis', 'medication'].includes(safeLower(event.relation)))
+    .slice(0, 8)
+    .map((event, index) => ({
+      id: `fix-${index + 1}`,
+      actionType: 'correction_record',
+      patientId: event.patientId,
+      patientName: event.patientName,
+      summary: `Corrected ${event.relationLabel}: ${event.objectValue}`,
+      operator: event.source || 'system',
+      createdAt: event.eventTime,
+    }))
+
+  const riskEscalations: GovernanceOperationRecord[] = recentEvents
+    .filter((event) => {
+      const relation = safeLower(event.relation)
+      const detail = safeLower(event.objectValue)
+      return relation.includes('risk') || detail.includes('high')
+    })
+    .slice(0, 8)
+    .map((event, index) => ({
+      id: `risk-${index + 1}`,
+      actionType: 'risk_escalation',
+      patientId: event.patientId,
+      patientName: event.patientName,
+      summary: `Risk event: ${event.objectValue}`,
+      operator: event.source || 'system',
+      createdAt: event.eventTime,
+    }))
+
   return {
-    total: props.maintenance.patientCount || 0,
-    highRisk: props.maintenance.highRiskCount || 0,
-    lowSupport: props.maintenance.lowSupportCount || 0
+    dataQuality: {
+      missingFieldCount,
+      duplicateArchiveCount,
+      timelineAnomalyCount,
+      highRiskOverdueFollowup,
+    },
+    modelGovernance: {
+      modelAvailable,
+      predictionCalls7d,
+      fallbackRatio,
+      adviceApprovalRate,
+    },
+    archiveGovernance: {
+      pendingCompletionRows,
+      pendingReviewRows,
+    },
+    operationTraces: {
+      governanceActions,
+      correctionRecords,
+      riskEscalations,
+    },
   }
 })
+
+const modelStatusText = computed(() => {
+  if (!viewModel.value) return 'Unknown'
+  return viewModel.value.modelGovernance.modelAvailable ? 'Available' : 'Unavailable / Fallback'
+})
+
+const fallbackTone = computed(() => toneByRatio(viewModel.value?.modelGovernance.fallbackRatio ?? null))
+
+const approvalTone = computed(() => {
+  const rate = viewModel.value?.modelGovernance.adviceApprovalRate ?? null
+  if (rate === null) return 'neutral'
+  if (rate >= 0.85) return 'ok'
+  if (rate >= 0.65) return 'warning'
+  return 'danger'
+})
+
+const moduleStatusRows = computed(() => (props.governanceModules?.items ?? []).map((item) => ({
+  moduleKey: item.moduleKey,
+  title: item.title,
+  ownerRole: item.ownerRole,
+  status: item.status,
+  tone: item.tone,
+  description: item.description,
+})))
 </script>
 
 <template>
-  <div class="governance-page-simple">
-    <!-- 标签页切换 -->
-    <div class="tabs">
-      <button :class="{ active: activeTab === 'system' }" @click="activeTab = 'system'">
-        系统状态
-      </button>
-      <button :class="{ active: activeTab === 'data' }" @click="activeTab = 'data'">
-        数据概览
-      </button>
-      <button v-if="doctorRole === 'doctor'" :class="{ active: activeTab === 'model' }" @click="activeTab = 'model'">
-        模型信息
-      </button>
-    </div>
-    
-    <!-- 系统状态 -->
-    <div v-if="activeTab === 'system'" class="tab-content">
-      <div class="status-grid">
-        <div class="status-card">
-          <div class="label">系统状态</div>
-          <div class="value" :class="systemStatus === '正常' ? 'success' : 'error'">
-            {{ systemStatus }}
-          </div>
-        </div>
-        
-        <div class="status-card">
-          <div class="label">数据库</div>
-          <div class="value" :class="dbStatus === '已连接' ? 'success' : 'error'">
-            {{ dbStatus }}
-          </div>
-        </div>
-        
-        <div class="status-card">
-          <div class="label">预测模型</div>
-          <div class="value" :class="modelStatus === '已加载' ? 'success' : 'warning'">
-            {{ modelStatus }}
-          </div>
-        </div>
-        
-        <div class="status-card">
-          <div class="label">版本</div>
-          <div class="value">{{ health?.version || '-' }}</div>
-        </div>
+  <section class="governance-center">
+    <header class="page-head card">
+      <div>
+        <h2>Data Quality and Clinical Decision Governance Center</h2>
+        <p>
+          Unified view for data quality, model-service governance, archive governance, and auditable operational traces.
+          Metrics marked as TODO are frontend adapter placeholders pending dedicated backend fields.
+        </p>
       </div>
-      
-      <div class="action-bar">
-        <button @click="emit('refresh')">刷新状态</button>
-      </div>
-    </div>
-    
-    <!-- 数据概览 -->
-    <div v-else-if="activeTab === 'data'" class="tab-content">
-      <div v-if="patientStats" class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-value">{{ patientStats.total }}</div>
-          <div class="stat-label">患者总数</div>
+      <button class="secondary-button" @click="emit('refresh')">Refresh Governance Data</button>
+    </header>
+
+    <section v-if="loadingMaintenance" class="card state">Loading governance data...</section>
+    <section v-else-if="!viewModel" class="card state">No governance data available.</section>
+
+    <template v-else>
+      <section class="metric-block card">
+        <div class="block-head">
+          <h3>1. Data Quality Overview</h3>
+          <span class="hint">Focus on records that directly affect clinical reliability.</span>
         </div>
-        
-        <div class="stat-card highlight">
-          <div class="stat-value">{{ patientStats.highRisk }}</div>
-          <div class="stat-label">高风险患者</div>
+
+        <div class="metric-grid">
+          <article class="metric-card">
+            <h4>Missing Core Fields</h4>
+            <strong>{{ viewModel.dataQuality.missingFieldCount }}</strong>
+            <p>Sum of missing MRN, pending consent, and low-support records.</p>
+          </article>
+
+          <article class="metric-card">
+            <h4>Duplicate Archive Risk</h4>
+            <strong>{{ viewModel.dataQuality.duplicateArchiveCount }}</strong>
+            <p>Potential duplicate archive count from master index risk checks.</p>
+          </article>
+
+          <article class="metric-card">
+            <h4>Timeline Anomalies</h4>
+            <strong>{{ viewModel.dataQuality.timelineAnomalyCount }}</strong>
+            <p>Detected by frontend rules: empty relation/object or future timestamp.</p>
+          </article>
+
+          <article class="metric-card critical">
+            <h4>High-Risk Not Followed Up</h4>
+            <strong>{{ viewModel.dataQuality.highRiskOverdueFollowup }}</strong>
+            <p>Adapter estimate: min(high-risk count, overdue follow-up count). TODO(api)</p>
+          </article>
         </div>
-        
-        <div class="stat-card warning">
-          <div class="stat-value">{{ patientStats.lowSupport }}</div>
-          <div class="stat-label">低支持度患者</div>
+      </section>
+
+      <section class="metric-block card">
+        <div class="block-head">
+          <h3>2. Model Service Governance</h3>
+          <span class="hint">Service health and fallback behavior monitoring.</span>
         </div>
-      </div>
-      
-      <div v-else class="empty">暂无数据</div>
-    </div>
-    
-    <!-- 模型信息 -->
-    <div v-else-if="activeTab === 'model'" class="tab-content">
-      <div v-if="modelMetrics" class="model-info">
-        <div class="info-section">
-          <h3>模型性能</h3>
-          <div class="info-row">
-            <span class="label">准确率</span>
-            <span class="value">{{ (modelMetrics.accuracy * 100).toFixed(1) }}%</span>
-          </div>
-          <div class="info-row">
-            <span class="label">召回率</span>
-            <span class="value">{{ (modelMetrics.recall * 100).toFixed(1) }}%</span>
-          </div>
-          <div class="info-row">
-            <span class="label">F1分数</span>
-            <span class="value">{{ (modelMetrics.f1Score * 100).toFixed(1) }}%</span>
-          </div>
+
+        <div class="metric-grid model-grid">
+          <article class="metric-card">
+            <h4>Model Availability</h4>
+            <strong>{{ modelStatusText }}</strong>
+            <p>Based on health/model flags from backend status endpoints.</p>
+          </article>
+
+          <article class="metric-card">
+            <h4>Prediction Calls (7d)</h4>
+            <strong>{{ viewModel.modelGovernance.predictionCalls7d ?? '--' }}</strong>
+            <p>TODO(api): add backend metric for rolling 7-day predict invocation count.</p>
+          </article>
+
+          <article class="metric-card" :class="`tone-${fallbackTone}`">
+            <h4>Fallback Ratio (Rules/Similar-case)</h4>
+            <strong>{{ toPercent(viewModel.modelGovernance.fallbackRatio) }}</strong>
+            <p>TODO(api): ratio currently inferred from model availability only.</p>
+          </article>
+
+          <article class="metric-card" :class="`tone-${approvalTone}`">
+            <h4>Advice Approval Rate</h4>
+            <strong>{{ toPercent(viewModel.modelGovernance.adviceApprovalRate) }}</strong>
+            <p>TODO(api): requires persisted advice review workflow metrics.</p>
+          </article>
         </div>
-        
-        <div class="info-section">
-          <h3>训练信息</h3>
-          <div class="info-row">
-            <span class="label">训练样本</span>
-            <span class="value">{{ modelMetrics.trainingSamples }}</span>
-          </div>
-          <div class="info-row">
-            <span class="label">最后训练</span>
-            <span class="value">{{ modelMetrics.lastTrained || '-' }}</span>
-          </div>
+
+        <div class="subtable">
+          <h4>Governance Modules Status</h4>
+          <table>
+            <thead>
+              <tr>
+                <th>Module</th>
+                <th>Owner Role</th>
+                <th>Status</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="!moduleStatusRows.length">
+                <td colspan="4">No module status data.</td>
+              </tr>
+              <tr v-for="row in moduleStatusRows" :key="row.moduleKey">
+                <td>{{ row.title }}</td>
+                <td>{{ row.ownerRole }}</td>
+                <td><span class="status-pill" :class="`tone-${row.tone}`">{{ row.status }}</span></td>
+                <td>{{ row.description }}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-      </div>
-      
-      <div v-else class="empty">模型信息未加载</div>
-    </div>
-  </div>
+      </section>
+
+      <section class="metric-block card">
+        <div class="block-head">
+          <h3>3. Archive Governance</h3>
+          <span class="hint">Queue-based archive remediation and review.</span>
+        </div>
+
+        <div class="table-grid">
+          <article class="subtable">
+            <h4>Pending Completion Archives</h4>
+            <table>
+              <thead>
+                <tr>
+                  <th>Patient</th>
+                  <th>Issue</th>
+                  <th>Detail</th>
+                  <th>Source</th>
+                  <th>Priority</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="!viewModel.archiveGovernance.pendingCompletionRows.length">
+                  <td colspan="5">No pending completion archives.</td>
+                </tr>
+                <tr v-for="row in viewModel.archiveGovernance.pendingCompletionRows" :key="`completion-${row.patientId}-${row.issueType}`">
+                  <td>{{ row.patientId }} / {{ row.patientName }}</td>
+                  <td>{{ row.issueType }}</td>
+                  <td>{{ row.detail }}</td>
+                  <td>{{ row.source }}</td>
+                  <td><span class="status-pill" :class="`priority-${row.priority}`">{{ row.priority }}</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </article>
+
+          <article class="subtable">
+            <h4>Pending Review Archives</h4>
+            <table>
+              <thead>
+                <tr>
+                  <th>Patient</th>
+                  <th>Issue</th>
+                  <th>Detail</th>
+                  <th>Source</th>
+                  <th>Priority</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="!viewModel.archiveGovernance.pendingReviewRows.length">
+                  <td colspan="5">No pending review archives.</td>
+                </tr>
+                <tr v-for="row in viewModel.archiveGovernance.pendingReviewRows" :key="`review-${row.patientId}-${row.issueType}`">
+                  <td>{{ row.patientId }} / {{ row.patientName }}</td>
+                  <td>{{ row.issueType }}</td>
+                  <td>{{ row.detail }}</td>
+                  <td>{{ row.source }}</td>
+                  <td><span class="status-pill" :class="`priority-${row.priority}`">{{ row.priority }}</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </article>
+        </div>
+      </section>
+
+      <section class="metric-block card">
+        <div class="block-head">
+          <h3>4. Operation Traces</h3>
+          <span class="hint">Recent auditable governance actions and risk changes.</span>
+        </div>
+
+        <div class="table-grid">
+          <article class="subtable">
+            <h4>Recent Governance Actions</h4>
+            <table>
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Patient</th>
+                  <th>Action</th>
+                  <th>Operator</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="!viewModel.operationTraces.governanceActions.length">
+                  <td colspan="4">No governance actions.</td>
+                </tr>
+                <tr v-for="row in viewModel.operationTraces.governanceActions" :key="row.id">
+                  <td>{{ row.createdAt.replace('T', ' ').slice(0, 16) }}</td>
+                  <td>{{ row.patientId }} / {{ row.patientName }}</td>
+                  <td>{{ row.summary }}</td>
+                  <td>{{ row.operator }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </article>
+
+          <article class="subtable">
+            <h4>Recent Correction Records</h4>
+            <table>
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Patient</th>
+                  <th>Correction</th>
+                  <th>Operator</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="!viewModel.operationTraces.correctionRecords.length">
+                  <td colspan="4">No correction records.</td>
+                </tr>
+                <tr v-for="row in viewModel.operationTraces.correctionRecords" :key="row.id">
+                  <td>{{ row.createdAt.replace('T', ' ').slice(0, 16) }}</td>
+                  <td>{{ row.patientId }} / {{ row.patientName }}</td>
+                  <td>{{ row.summary }}</td>
+                  <td>{{ row.operator }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </article>
+
+          <article class="subtable full-width">
+            <h4>Recent Risk Escalations</h4>
+            <table>
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Patient</th>
+                  <th>Escalation</th>
+                  <th>Operator</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="!viewModel.operationTraces.riskEscalations.length">
+                  <td colspan="4">No risk escalation records.</td>
+                </tr>
+                <tr v-for="row in viewModel.operationTraces.riskEscalations" :key="row.id">
+                  <td>{{ row.createdAt.replace('T', ' ').slice(0, 16) }}</td>
+                  <td>{{ row.patientId }} / {{ row.patientName }}</td>
+                  <td>{{ row.summary }}</td>
+                  <td>{{ row.operator }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </article>
+        </div>
+      </section>
+    </template>
+  </section>
 </template>
 
 <style scoped>
-.governance-page-simple {
-  padding: 20px;
-  background: #f5f5f5;
-  min-height: 100vh;
-}
-
-.tabs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
-  background: white;
-  padding: 8px;
-  border-radius: 4px;
-}
-
-.tabs button {
-  flex: 1;
-  padding: 10px;
-  border: none;
-  background: none;
-  cursor: pointer;
-  font-size: 14px;
-  color: #666;
-  border-radius: 4px;
-  transition: all 0.3s;
-}
-
-.tabs button:hover {
-  background: #f5f5f5;
-}
-
-.tabs button.active {
-  background: #1890ff;
-  color: white;
-}
-
-.tab-content {
-  background: white;
-  border-radius: 4px;
-  padding: 20px;
-}
-
-/* 系统状态 */
-.status-grid {
+.governance-center {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  margin-bottom: 20px;
+  gap: 12px;
+  color: #17324b;
 }
 
-.status-card {
-  padding: 16px;
-  background: #fafafa;
-  border-radius: 4px;
-  text-align: center;
-}
-
-.status-card .label {
-  font-size: 13px;
-  color: #999;
-  margin-bottom: 8px;
-}
-
-.status-card .value {
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.status-card .value.success {
-  color: #52c41a;
-}
-
-.status-card .value.error {
-  color: #f5222d;
-}
-
-.status-card .value.warning {
-  color: #fa8c16;
-}
-
-.action-bar {
-  text-align: center;
-  padding-top: 16px;
-  border-top: 1px solid #f0f0f0;
-}
-
-.action-bar button {
-  padding: 8px 24px;
-  background: #1890ff;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-/* 数据概览 */
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-}
-
-.stat-card {
-  padding: 24px;
-  background: #fafafa;
-  border-radius: 4px;
-  text-align: center;
-}
-
-.stat-card .stat-value {
-  font-size: 32px;
-  font-weight: 700;
-  color: #333;
-  margin-bottom: 8px;
-}
-
-.stat-card .stat-label {
-  font-size: 14px;
-  color: #999;
-}
-
-.stat-card.highlight {
-  background: #fff1f0;
-}
-
-.stat-card.highlight .stat-value {
-  color: #f5222d;
-}
-
-.stat-card.warning {
-  background: #fff7e6;
-}
-
-.stat-card.warning .stat-value {
-  color: #fa8c16;
-}
-
-/* 模型信息 */
-.model-info {
-  max-width: 600px;
-}
-
-.info-section {
-  margin-bottom: 24px;
-}
-
-.info-section h3 {
-  margin: 0 0 12px 0;
-  font-size: 15px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.info-row {
+.page-head {
   display: flex;
   justify-content: space-between;
-  padding: 8px 0;
-  border-bottom: 1px solid #fafafa;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
 }
 
-.info-row .label {
-  color: #666;
+.page-head h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: #10263c;
 }
 
-.info-row .value {
-  font-weight: 500;
+.page-head p {
+  margin: 6px 0 0;
+  color: #5d7387;
+  font-size: 0.84rem;
+  max-width: 900px;
 }
 
-.empty {
-  padding: 40px;
-  text-align: center;
-  color: #999;
+.card {
+  border: 1px solid #cfd9e5;
+  border-radius: 10px;
+  background: #ffffff;
 }
 
-/* 响应式 */
-@media (max-width: 768px) {
-  .status-grid {
-    grid-template-columns: repeat(2, 1fr);
+.state {
+  padding: 16px;
+  color: #5d7387;
+}
+
+.metric-block {
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.block-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.block-head h3 {
+  margin: 0;
+  color: #10263c;
+  font-size: 0.98rem;
+}
+
+.hint {
+  color: #637b8f;
+  font-size: 0.78rem;
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.metric-card {
+  border: 1px solid #d4dee9;
+  border-radius: 8px;
+  background: #f9fcff;
+  padding: 10px;
+  display: grid;
+  gap: 6px;
+}
+
+.metric-card h4 {
+  margin: 0;
+  font-size: 0.84rem;
+  color: #1a3750;
+}
+
+.metric-card strong {
+  font-size: 1.3rem;
+  color: #10263c;
+}
+
+.metric-card p {
+  margin: 0;
+  color: #637b8f;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.metric-card.critical {
+  border-color: #efc2c5;
+  background: #fff5f6;
+}
+
+.tone-neutral {
+  border-color: #d4dee9;
+  background: #f9fcff;
+}
+
+.tone-ok {
+  border-color: #c4e5d7;
+  background: #eef9f3;
+}
+
+.tone-warning {
+  border-color: #efdbb2;
+  background: #fff8eb;
+}
+
+.tone-danger {
+  border-color: #efc2c5;
+  background: #fff2f4;
+}
+
+.table-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.subtable {
+  border: 1px solid #d4dee9;
+  border-radius: 8px;
+  background: #fbfdff;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.subtable.full-width {
+  grid-column: 1 / -1;
+}
+
+.subtable h4 {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #10263c;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+th,
+td {
+  border-bottom: 1px solid #e4ebf3;
+  text-align: left;
+  padding: 8px 6px;
+  vertical-align: top;
+}
+
+th {
+  color: #516b82;
+  font-weight: 600;
+  background: #f4f8fc;
+}
+
+td {
+  color: #1f3850;
+}
+
+.status-pill {
+  display: inline-flex;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.status-pill.tone-healthy,
+.status-pill.tone-ok {
+  background: #eaf8f1;
+  border-color: #bfe5d2;
+  color: #1d7b5c;
+}
+
+.status-pill.tone-warning {
+  background: #fff4e5;
+  border-color: #efd7ad;
+  color: #9b6518;
+}
+
+.status-pill.tone-normal,
+.status-pill.tone-neutral {
+  background: #eef3f9;
+  border-color: #cfdae7;
+  color: #3f6283;
+}
+
+.status-pill.priority-high {
+  background: #fdeced;
+  border-color: #efc2c5;
+  color: #a4383f;
+}
+
+.status-pill.priority-medium {
+  background: #fff4e2;
+  border-color: #efdbb2;
+  color: #9b6518;
+}
+
+.status-pill.priority-low {
+  background: #e9f8f1;
+  border-color: #bde7d1;
+  color: #1d7b5c;
+}
+
+@media (max-width: 1400px) {
+  .metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  
-  .stats-grid {
+
+  .table-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 920px) {
+  .page-head {
+    flex-direction: column;
+  }
+
+  .metric-grid {
     grid-template-columns: 1fr;
   }
 }
