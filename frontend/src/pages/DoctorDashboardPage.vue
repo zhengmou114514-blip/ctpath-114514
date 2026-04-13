@@ -129,21 +129,49 @@ function dataSupportLabel(value?: string) {
         <div v-if="props.loadingPatients" class="empty-state">加载中</div>
         <div v-else-if="!filteredPatients.length" class="empty-state">无数据</div>
 
-        <section v-else class="queue-list">
-          <button
-            v-for="patient in filteredPatients"
-            :key="patient.patientId"
-            class="queue-row"
-            :class="{ active: selectedPatientId === patient.patientId }"
-            @click="emit('open', patient.patientId)"
-          >
-            <div class="queue-main">
-              <strong>{{ patient.name }}</strong>
-              <p>{{ patient.patientId }} · {{ patient.primaryDisease }}</p>
-              <small>最近就诊：{{ patient.lastVisit || '--' }}</small>
-            </div>
-            <span class="risk-badge" :class="riskClass(patient.riskLevel)">{{ patient.riskLevel }}</span>
-          </button>
+        <!-- 优化后的患者列表：表格形式 -->
+        <section v-else class="patient-table-container">
+          <table class="patient-table">
+            <thead>
+              <tr>
+                <th>姓名</th>
+                <th>患者ID</th>
+                <th>主诊断</th>
+                <th>风险等级</th>
+                <th>最近就诊</th>
+                <th>预测状态</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="patient in filteredPatients"
+                :key="patient.patientId"
+                :class="{ active: selectedPatientId === patient.patientId }"
+                @click="emit('open', patient.patientId)"
+              >
+                <td class="patient-name">
+                  <strong>{{ patient.name }}</strong>
+                </td>
+                <td class="patient-id">{{ patient.patientId }}</td>
+                <td class="patient-disease">{{ patient.primaryDisease }}</td>
+                <td class="patient-risk">
+                  <span class="risk-badge" :class="riskClass(patient.riskLevel)">
+                    {{ patient.riskLevel }}
+                  </span>
+                </td>
+                <td class="patient-visit">{{ patient.lastVisit || '--' }}</td>
+                <td class="patient-prediction">
+                  <span class="prediction-status">已预测</span>
+                </td>
+                <td class="patient-actions">
+                  <button class="table-action-btn" @click.stop="emit('open', patient.patientId)">
+                    查看
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </section>
       </aside>
 

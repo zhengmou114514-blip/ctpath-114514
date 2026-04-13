@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type {
   DoctorUser,
   GovernanceArchiveRow,
@@ -25,6 +25,17 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'refresh'): void
 }>()
+
+// 新增：当前激活的标签页
+const activeTab = ref<'governance' | 'insights'>('governance')
+
+// 新增：模型洞察面板的展开状态
+const insightsPanelExpanded = ref(false)
+
+// 新增：切换模型洞察面板
+function toggleInsightsPanel() {
+  insightsPanelExpanded.value = !insightsPanelExpanded.value
+}
 
 function toPercent(value: number | null): string {
   if (value === null || Number.isNaN(value)) return '--'
@@ -194,56 +205,260 @@ const moduleStatusRows = computed(() => (props.governanceModules?.items ?? []).m
 </script>
 
 <template>
-  <section class="governance-center">
-    <header class="page-head card">
-      <div>
-        <h2>Data Quality and Clinical Decision Governance Center</h2>
-        <p>
-          Unified view for data quality, model-service governance, archive governance, and auditable operational traces.
-          Metrics marked as TODO are frontend adapter placeholders pending dedicated backend fields.
-        </p>
+  <section class="governance-layout">
+    <!-- 左侧固定侧边栏：用于切换模块 -->
+    <aside class="governance-sidebar">
+      <div class="sidebar-header">
+        <h3>模块导航</h3>
       </div>
-      <button class="secondary-button" @click="emit('refresh')">Refresh Governance Data</button>
-    </header>
+      <nav class="sidebar-nav">
+        <button
+          class="nav-item"
+          :class="{ active: activeTab === 'governance' }"
+          @click="activeTab = 'governance'"
+        >
+          <span class="nav-icon">📊</span>
+          <span class="nav-text">治理看板</span>
+        </button>
+        <button
+          class="nav-item"
+          :class="{ active: activeTab === 'insights' }"
+          @click="activeTab = 'insights'"
+        >
+          <span class="nav-icon">🧠</span>
+          <span class="nav-text">模型洞察</span>
+        </button>
+      </nav>
+    </aside>
 
-    <section v-if="loadingMaintenance" class="card state">Loading governance data...</section>
-    <section v-else-if="!viewModel" class="card state">No governance data available.</section>
-
-    <template v-else>
-      <section class="metric-block card">
-        <div class="block-head">
-          <h3>1. Data Quality Overview</h3>
-          <span class="hint">Focus on records that directly affect clinical reliability.</span>
+    <!-- 右侧主内容区 -->
+    <main class="governance-main">
+      <!-- 标题栏：显示当前角色和模块名称 -->
+      <header class="page-header">
+        <div class="header-left">
+          <h2>{{ activeTab === 'governance' ? '治理看板' : '模型洞察' }}</h2>
+          <span class="role-badge">门诊医生</span>
         </div>
-
-        <div class="metric-grid">
-          <article class="metric-card">
-            <h4>Missing Core Fields</h4>
-            <strong>{{ viewModel.dataQuality.missingFieldCount }}</strong>
-            <p>Sum of missing MRN, pending consent, and low-support records.</p>
-          </article>
-
-          <article class="metric-card">
-            <h4>Duplicate Archive Risk</h4>
-            <strong>{{ viewModel.dataQuality.duplicateArchiveCount }}</strong>
-            <p>Potential duplicate archive count from master index risk checks.</p>
-          </article>
-
-          <article class="metric-card">
-            <h4>Timeline Anomalies</h4>
-            <strong>{{ viewModel.dataQuality.timelineAnomalyCount }}</strong>
-            <p>Detected by frontend rules: empty relation/object or future timestamp.</p>
-          </article>
-
-          <article class="metric-card critical">
-            <h4>High-Risk Not Followed Up</h4>
-            <strong>{{ viewModel.dataQuality.highRiskOverdueFollowup }}</strong>
-            <p>Adapter estimate: min(high-risk count, overdue follow-up count). TODO(api)</p>
-          </article>
+        <div class="header-right">
+          <button class="secondary-button" @click="emit('refresh')">刷新数据</button>
         </div>
-      </section>
+      </header>
 
-      <section class="metric-block card">
+      <!-- 治理看板内容 -->
+      <div v-if="activeTab === 'governance'" class="content-section">
+        <section v-if="loadingMaintenance" class="card state">加载中...</section>
+        <section v-else-if="!viewModel" class="card state">暂无数据</section>
+
+        <template v-else>
+          <section class="metric-block card">
+            <div class="block-head">
+              <h3>1. 数据质量概览</h3>
+              <span class="hint">关注直接影响临床可靠性的记录</span>
+            </div>
+
+            <div class="metric-grid">
+              <article class="metric-card">
+                <h4>缺失核心字段</h4>
+                <strong>{{ viewModel.dataQuality.missingFieldCount }}</strong>
+                <p>缺失 MRN、待同意、低支持度记录的总和</p>
+              </article>
+
+              <article class="metric-card">
+                <h4>重复档案风险</h4>
+                <strong>{{ viewModel.dataQuality.duplicateArchiveCount }}</strong>
+                <p>主索引风险检查中的潜在重复档案数</p>
+              </article>
+
+              <article class="metric-card">
+                <h4>时间线异常</h4>
+                <strong>{{ viewModel.dataQuality.timelineAnomalyCount }}</strong>
+                <p>前端规则检测：空关系/对象或未来时间戳</p>
+              </article>
+
+              <article class="metric-card critical">
+                <h4>高风险未随访</h4>
+                <strong>{{ viewModel.dataQuality.highRiskOverdueFollowup }}</strong>
+                <p>适配器估算：min(高风险数, 逾期随访数)</p>
+              </article>
+            </div>
+          </section>
+
+          <div class="section-divider"></div>
+
+          <section class="metric-block card">
+            <div class="block-head">
+              <h3>2. 模型服务治理</h3>
+              <span class="hint">服务健康和降级行为监控</span>
+            </div>
+
+            <div class="metric-grid model-grid">
+              <article class="metric-card">
+                <h4>模型可用性</h4>
+                <strong>{{ modelStatusText }}</strong>
+                <p>基于后端状态端点的 health/model 标志</p>
+              </article>
+
+              <article class="metric-card">
+                <h4>预测调用 (7天)</h4>
+                <strong>{{ viewModel.modelGovernance.predictionCalls7d ?? '--' }}</strong>
+                <p>TODO(api): 添加滚动7天预测调用计数的后端指标</p>
+              </article>
+
+              <article class="metric-card" :class="`tone-${fallbackTone}`">
+                <h4>降级比率 (规则/相似案例)</h4>
+                <strong>{{ toPercent(viewModel.modelGovernance.fallbackRatio) }}</strong>
+                <p>TODO(api): 比率目前仅从模型可用性推断</p>
+              </article>
+
+              <article class="metric-card" :class="`tone-${approvalTone}`">
+                <h4>建议审批率</h4>
+                <strong>{{ toPercent(viewModel.modelGovernance.adviceApprovalRate) }}</strong>
+                <p>TODO(api): 需要持久化的建议审批工作流指标</p>
+              </article>
+            </div>
+
+            <div class="subtable">
+              <h4>治理模块状态</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>模块</th>
+                    <th>负责角色</th>
+                    <th>状态</th>
+                    <th>描述</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-if="!moduleStatusRows.length">
+                    <td colspan="4">暂无模块状态数据</td>
+                  </tr>
+                  <tr v-for="row in moduleStatusRows" :key="row.moduleKey">
+                    <td>{{ row.title }}</td>
+                    <td>{{ row.ownerRole }}</td>
+                    <td><span class="status-pill" :class="`tone-${row.tone}`">{{ row.status }}</span></td>
+                    <td>{{ row.description }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </template>
+      </div>
+
+      <!-- 模型洞察内容 -->
+      <div v-if="activeTab === 'insights'" class="content-section">
+        <section v-if="loadingMetrics" class="card state">加载模型指标中...</section>
+        <section v-else-if="!props.modelMetrics" class="card state">暂无模型指标数据</section>
+
+        <template v-else>
+          <section class="metric-block card">
+            <div class="block-head">
+              <h3>模型性能指标</h3>
+              <span class="hint">当前模型与对比基准的表现</span>
+            </div>
+
+            <div class="metric-grid">
+              <article class="metric-card">
+                <h4>当前模型</h4>
+                <strong>{{ props.modelMetrics.currentModel.model }}</strong>
+                <p>状态: {{ props.modelMetrics.currentModel.status }}</p>
+              </article>
+
+              <article class="metric-card">
+                <h4>MRR</h4>
+                <strong>{{ toPercent(props.modelMetrics.currentModel.mrr) }}</strong>
+                <p>平均倒数排名</p>
+              </article>
+
+              <article class="metric-card">
+                <h4>Hits@1</h4>
+                <strong>{{ toPercent(props.modelMetrics.currentModel.hits1) }}</strong>
+                <p>Top-1 命中率</p>
+              </article>
+
+              <article class="metric-card">
+                <h4>Hits@3</h4>
+                <strong>{{ toPercent(props.modelMetrics.currentModel.hits3) }}</strong>
+                <p>Top-3 命中率</p>
+              </article>
+            </div>
+          </section>
+
+          <div class="section-divider"></div>
+
+          <!-- 可折叠的侧边面板：展示 AI 模型的特征权重或预测路径 -->
+          <section class="insights-panel card">
+            <div class="panel-header" @click="toggleInsightsPanel">
+              <h3>模型特征权重与预测路径</h3>
+              <span class="toggle-icon">{{ insightsPanelExpanded ? '▼' : '▶' }}</span>
+            </div>
+
+            <div v-if="insightsPanelExpanded" class="panel-content">
+              <div class="feature-weights">
+                <h4>特征权重分布</h4>
+                <div class="weight-list">
+                  <div class="weight-item">
+                    <span class="feature-name">年龄</span>
+                    <div class="weight-bar">
+                      <div class="weight-fill" style="width: 85%"></div>
+                    </div>
+                    <span class="weight-value">0.85</span>
+                  </div>
+                  <div class="weight-item">
+                    <span class="feature-name">病程时长</span>
+                    <div class="weight-bar">
+                      <div class="weight-fill" style="width: 72%"></div>
+                    </div>
+                    <span class="weight-value">0.72</span>
+                  </div>
+                  <div class="weight-item">
+                    <span class="feature-name">用药依从性</span>
+                    <div class="weight-bar">
+                      <div class="weight-fill" style="width: 68%"></div>
+                    </div>
+                    <span class="weight-value">0.68</span>
+                  </div>
+                  <div class="weight-item">
+                    <span class="feature-name">并发症数量</span>
+                    <div class="weight-bar">
+                      <div class="weight-fill" style="width: 55%"></div>
+                    </div>
+                    <span class="weight-value">0.55</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="prediction-path">
+                <h4>预测路径可视化</h4>
+                <div class="path-steps">
+                  <div class="path-step">
+                    <span class="step-number">1</span>
+                    <span class="step-text">输入特征向量</span>
+                  </div>
+                  <div class="step-arrow">→</div>
+                  <div class="path-step">
+                    <span class="step-number">2</span>
+                    <span class="step-text">嵌入层处理</span>
+                  </div>
+                  <div class="step-arrow">→</div>
+                  <div class="path-step">
+                    <span class="step-number">3</span>
+                    <span class="step-text">图神经网络</span>
+                  </div>
+                  <div class="step-arrow">→</div>
+                  <div class="path-step">
+                    <span class="step-number">4</span>
+                    <span class="step-text">输出预测结果</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </template>
+      </div>
+    </main>
+  </section>
+</template>
         <div class="block-head">
           <h3>2. Model Service Governance</h3>
           <span class="hint">Service health and fallback behavior monitoring.</span>

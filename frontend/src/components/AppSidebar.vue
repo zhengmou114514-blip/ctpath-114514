@@ -46,18 +46,24 @@ const roleLabel = computed(() => {
       <small>当前模块：{{ sectionLabel(props.activeSection) }}</small>
     </section>
 
-    <section class="sidebar-card sidebar-kpi-card">
-      <div class="sidebar-kpi-row">
-        <span>患者总数</span>
-        <strong>{{ props.patientCount }}</strong>
+    <!-- 重构后的统计指标区域：独立卡片，高度对比配色 -->
+    <section class="sidebar-stats-section">
+      <!-- 患者总数卡片 -->
+      <div class="stat-card">
+        <span class="stat-label">患者总数</span>
+        <strong class="stat-value">{{ props.patientCount }}</strong>
       </div>
-      <div class="sidebar-kpi-row">
-        <span>随访任务</span>
-        <strong>{{ props.followupCount }}</strong>
+      
+      <!-- 随访任务卡片 -->
+      <div class="stat-card">
+        <span class="stat-label">随访任务</span>
+        <strong class="stat-value">{{ props.followupCount }}</strong>
       </div>
-      <div class="sidebar-kpi-row">
-        <span>系统模式</span>
-        <strong>{{ props.health?.mode ?? '未知' }}</strong>
+      
+      <!-- 系统模式卡片：使用标签样式 -->
+      <div class="stat-card">
+        <span class="stat-label">系统模式</span>
+        <span class="mode-tag">{{ props.health?.mode ?? '未知' }}</span>
       </div>
     </section>
 

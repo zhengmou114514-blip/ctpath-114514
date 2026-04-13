@@ -267,25 +267,293 @@ tbody tr:last-child td {
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.sidebar-kpi-card {
+/* 重构后的统计指标区域样式 */
+.sidebar-stats-section {
   display: grid;
-  gap: 10px;
-}
-
-.sidebar-kpi-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   gap: 12px;
 }
 
-.sidebar-kpi-row span {
-  color: rgba(255, 255, 255, 0.72);
-  font-size: var(--fs-caption);
+.stat-card {
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  display: grid;
+  gap: 8px;
+  transition: box-shadow 0.2s ease;
 }
 
-.sidebar-kpi-row strong {
+.stat-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.stat-label {
+  color: #262626;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.stat-value {
+  color: #1890ff;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* 治理看板与模型洞察的新布局样式 */
+.governance-layout {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 0;
+  min-height: calc(100vh - 200px);
+}
+
+/* 左侧固定侧边栏 */
+.governance-sidebar {
+  background: #f8f9fa;
+  border-right: 1px solid #e2e8f0;
+  padding: 20px 0;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 20px;
+}
+
+.governance-sidebar .sidebar-header {
+  padding: 0 20px;
+}
+
+.governance-sidebar .sidebar-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.governance-sidebar .sidebar-nav {
+  display: grid;
+  gap: 4px;
+  padding: 0 12px;
+}
+
+.governance-sidebar .nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #4a5568;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.governance-sidebar .nav-item:hover {
+  background: #edf2f7;
+}
+
+.governance-sidebar .nav-item.active {
+  background: #1890ff;
   color: #fff;
+}
+
+.governance-sidebar .nav-icon {
+  font-size: 18px;
+}
+
+.governance-sidebar .nav-text {
+  flex: 1;
+}
+
+/* 右侧主内容区 */
+.governance-main {
+  padding: 24px;
+  display: grid;
+  gap: 24px;
+  align-content: start;
+}
+
+/* 标题栏 */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding: 20px 24px;
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.page-header .header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.page-header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.page-header .role-badge {
+  padding: 4px 12px;
+  border-radius: 4px;
+  background: #e6f7ff;
+  color: #1890ff;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* 内容区域 */
+.content-section {
+  display: grid;
+  gap: 24px;
+}
+
+/* 分割线 */
+.section-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #e2e8f0, transparent);
+  margin: 8px 0;
+}
+
+/* 可折叠面板 */
+.insights-panel {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.insights-panel .panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e2e8f0;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.insights-panel .panel-header:hover {
+  background: #edf2f7;
+}
+
+.insights-panel .panel-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.insights-panel .toggle-icon {
+  color: #718096;
+  font-size: 14px;
+}
+
+.insights-panel .panel-content {
+  padding: 20px;
+  display: grid;
+  gap: 24px;
+}
+
+/* 特征权重 */
+.feature-weights h4,
+.prediction-path h4 {
+  margin: 0 0 12px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.weight-list {
+  display: grid;
+  gap: 12px;
+}
+
+.weight-item {
+  display: grid;
+  grid-template-columns: 120px 1fr 60px;
+  gap: 12px;
+  align-items: center;
+}
+
+.feature-name {
+  font-size: 13px;
+  color: #4a5568;
+  font-weight: 500;
+}
+
+.weight-bar {
+  height: 8px;
+  background: #edf2f7;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.weight-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #1890ff, #40a9ff);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.weight-value {
+  font-size: 13px;
+  color: #1890ff;
+  font-weight: 600;
+  text-align: right;
+}
+
+/* 预测路径 */
+.path-steps {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.path-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: #f0f5ff;
+  border: 1px solid #d6e4ff;
+}
+
+.step-number {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #1890ff;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.step-text {
+  font-size: 13px;
+  color: #2d3748;
+  font-weight: 500;
+}
+
+.step-arrow {
+  color: #a0aec0;
+  font-size: 16px;
 }
 
 .sidebar-label {
@@ -3290,4 +3558,618 @@ tbody tr:last-child td {
   .mobile-contact-actions .secondary-button {
     width: 100%;
   }
+}
+
+/* 治理看板与模型洞察的新布局样式 */
+.governance-layout {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 0;
+  min-height: calc(100vh - 200px);
+}
+
+/* 左侧固定侧边栏 */
+.governance-sidebar {
+  background: #f8f9fa;
+  border-right: 1px solid #e2e8f0;
+  padding: 20px 0;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 20px;
+}
+
+.governance-sidebar .sidebar-header {
+  padding: 0 20px;
+}
+
+.governance-sidebar .sidebar-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.governance-sidebar .sidebar-nav {
+  display: grid;
+  gap: 4px;
+  padding: 0 12px;
+}
+
+.governance-sidebar .nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #4a5568;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.governance-sidebar .nav-item:hover {
+  background: #edf2f7;
+}
+
+.governance-sidebar .nav-item.active {
+  background: #1890ff;
+  color: #fff;
+}
+
+.governance-sidebar .nav-icon {
+  font-size: 18px;
+}
+
+.governance-sidebar .nav-text {
+  flex: 1;
+}
+
+/* 右侧主内容区 */
+.governance-main {
+  padding: 24px;
+  display: grid;
+  gap: 24px;
+  align-content: start;
+}
+
+/* 标题栏 */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding: 20px 24px;
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.page-header .header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.page-header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.page-header .role-badge {
+  padding: 4px 12px;
+  border-radius: 4px;
+  background: #e6f7ff;
+  color: #1890ff;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* 内容区域 */
+.content-section {
+  display: grid;
+  gap: 24px;
+}
+
+/* 分割线 */
+.section-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #e2e8f0, transparent);
+  margin: 8px 0;
+}
+
+/* 可折叠面板 */
+.insights-panel {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.insights-panel .panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e2e8f0;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.insights-panel .panel-header:hover {
+  background: #edf2f7;
+}
+
+.insights-panel .panel-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.insights-panel .toggle-icon {
+  color: #718096;
+  font-size: 14px;
+}
+
+.insights-panel .panel-content {
+  padding: 20px;
+  display: grid;
+  gap: 24px;
+}
+
+/* 特征权重 */
+.feature-weights h4,
+.prediction-path h4 {
+  margin: 0 0 12px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.weight-list {
+  display: grid;
+  gap: 12px;
+}
+
+.weight-item {
+  display: grid;
+  grid-template-columns: 120px 1fr 60px;
+  gap: 12px;
+  align-items: center;
+}
+
+.feature-name {
+  font-size: 13px;
+  color: #4a5568;
+  font-weight: 500;
+}
+
+.weight-bar {
+  height: 8px;
+  background: #edf2f7;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.weight-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #1890ff, #40a9ff);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.weight-value {
+  font-size: 13px;
+  color: #1890ff;
+  font-weight: 600;
+  text-align: right;
+}
+
+/* 预测路径 */
+.path-steps {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.path-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: #f0f5ff;
+  border: 1px solid #d6e4ff;
+}
+
+.step-number {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #1890ff;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.step-text {
+  font-size: 13px;
+  color: #2d3748;
+  font-weight: 500;
+}
+
+.step-arrow {
+  color: #a0aec0;
+  font-size: 16px;
+}
+
+/* 治理看板与模型洞察的新布局样式 */
+.governance-layout {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 0;
+  min-height: calc(100vh - 200px);
+}
+
+/* 左侧固定侧边栏 */
+.governance-sidebar {
+  background: #f8f9fa;
+  border-right: 1px solid #e2e8f0;
+  padding: 20px 0;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 20px;
+}
+
+.governance-sidebar .sidebar-header {
+  padding: 0 20px;
+}
+
+.governance-sidebar .sidebar-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.governance-sidebar .sidebar-nav {
+  display: grid;
+  gap: 4px;
+  padding: 0 12px;
+}
+
+.governance-sidebar .nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #4a5568;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.governance-sidebar .nav-item:hover {
+  background: #edf2f7;
+}
+
+.governance-sidebar .nav-item.active {
+  background: #1890ff;
+  color: #fff;
+}
+
+.governance-sidebar .nav-icon {
+  font-size: 18px;
+}
+
+.governance-sidebar .nav-text {
+  flex: 1;
+}
+
+/* 右侧主内容区 */
+.governance-main {
+  padding: 24px;
+  display: grid;
+  gap: 24px;
+  align-content: start;
+}
+
+/* 标题栏 */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding: 20px 24px;
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.page-header .header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.page-header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.page-header .role-badge {
+  padding: 4px 12px;
+  border-radius: 4px;
+  background: #e6f7ff;
+  color: #1890ff;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* 内容区域 */
+.content-section {
+  display: grid;
+  gap: 24px;
+}
+
+/* 分割线 */
+.section-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #e2e8f0, transparent);
+  margin: 8px 0;
+}
+
+/* 可折叠面板 */
+.insights-panel {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.insights-panel .panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e2e8f0;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.insights-panel .panel-header:hover {
+  background: #edf2f7;
+}
+
+.insights-panel .panel-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.insights-panel .toggle-icon {
+  color: #718096;
+  font-size: 14px;
+}
+
+.insights-panel .panel-content {
+  padding: 20px;
+  display: grid;
+  gap: 24px;
+}
+
+/* 特征权重 */
+.feature-weights h4,
+.prediction-path h4 {
+  margin: 0 0 12px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.weight-list {
+  display: grid;
+  gap: 12px;
+}
+
+.weight-item {
+  display: grid;
+  grid-template-columns: 120px 1fr 60px;
+  gap: 12px;
+  align-items: center;
+}
+
+.feature-name {
+  font-size: 13px;
+  color: #4a5568;
+  font-weight: 500;
+}
+
+.weight-bar {
+  height: 8px;
+  background: #edf2f7;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.weight-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #1890ff, #40a9ff);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.weight-value {
+  font-size: 13px;
+  color: #1890ff;
+  font-weight: 600;
+  text-align: right;
+}
+
+/* 预测路径 */
+.path-steps {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.path-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: #f0f5ff;
+  border: 1px solid #d6e4ff;
+}
+
+.step-number {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #1890ff;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.step-text {
+  font-size: 13px;
+  color: #2d3748;
+  font-weight: 500;
+}
+
+.step-arrow {
+  color: #a0aec0;
+  font-size: 16px;
+}
+
+/* 患者列表表格样式 */
+.patient-table-container {
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.patient-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.patient-table thead {
+  background: #f8f9fa;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.patient-table th {
+  padding: 14px 16px;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 600;
+  color: #4a5568;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.patient-table tbody tr {
+  border-bottom: 1px solid #f1f3f5;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.patient-table tbody tr:hover {
+  background: #f8f9fa;
+}
+
+.patient-table tbody tr.active {
+  background: #e6f7ff;
+  border-left: 3px solid #1890ff;
+}
+
+.patient-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.patient-table td {
+  padding: 14px 16px;
+  font-size: 14px;
+  color: #2d3748;
+}
+
+.patient-table .patient-name strong {
+  font-weight: 600;
+  color: #1a202c;
+}
+
+.patient-table .patient-id,
+.patient-table .patient-disease {
+  color: #718096;
+  font-size: 13px;
+}
+
+.patient-table .patient-visit {
+  color: #a0aec0;
+  font-size: 13px;
+}
+
+.patient-table .patient-prediction .prediction-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 4px;
+  background: #f0fff4;
+  color: #38a169;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.patient-table .patient-actions {
+  text-align: right;
+}
+
+.table-action-btn {
+  padding: 6px 12px;
+  border: 1px solid #1890ff;
+  border-radius: 4px;
+  background: transparent;
+  color: #1890ff;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.table-action-btn:hover {
+  background: #1890ff;
+  color: #fff;
 }
