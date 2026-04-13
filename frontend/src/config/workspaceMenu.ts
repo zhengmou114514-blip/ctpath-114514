@@ -11,70 +11,76 @@ export const ROLE_WORKSPACE_MENUS: Record<DoctorUser['role'], WorkspaceMenuItem[
   doctor: [
     {
       section: 'doctor',
-      label: '\u8bca\u7597\u5de5\u4f5c\u53f0',
-      description: '\u6162\u75c5\u8f85\u52a9\u8bca\u7597\u3001\u98ce\u9669\u8bc6\u522b\u4e0e\u5904\u7f6e\u5efa\u8bae',
+      label: '诊疗工作台',
+      description: '慢病辅助诊疗、风险识别与处置建议',
     },
     {
       section: 'archive',
-      label: '\u60a3\u8005\u6863\u6848',
-      description: '\u60a3\u8005\u6863\u6848\u7ef4\u62a4\u4e0e\u4e8b\u4ef6\u8865\u5f55',
+      label: '患者档案',
+      description: '患者档案维护与事件补录',
     },
     {
-      section: 'governance',
-      label: '\u6a21\u578b\u770b\u677f',
-      description: '\u6a21\u578b\u7248\u672c\u3001\u8bad\u7ec3\u4efb\u52a1\u4e0e\u8fd0\u884c\u6307\u6807\u7ba1\u7406',
+      section: 'model-dashboard',
+      label: '模型看板',
+      description: '模型版本、训练任务与运行指标管理',
     },
     {
       section: 'insights',
-      label: '\u6a21\u578b\u6d1e\u5bdf',
-      description: '\u6a21\u578b\u8868\u73b0\u3001\u9884\u6d4b\u4f9d\u636e\u4e0e\u8d8b\u52bf\u89c2\u5bdf',
+      label: '模型洞察',
+      description: '模型表现、预测依据与趋势观察',
+    },
+    {
+      section: 'governance',
+      label: '治理看板',
+      description: '数据质量、档案完整性与治理动作',
     },
   ],
   nurse: [
     {
       section: 'tasks',
-      label: '\u968f\u8bbf\u4efb\u52a1',
-      description: '\u5f85\u529e\u968f\u8bbf\u4efb\u52a1\u4e0e\u6267\u884c\u60c5\u51b5',
+      label: '随访任务',
+      description: '待办随访任务与执行情况',
     },
     {
       section: 'contacts',
-      label: '\u60a3\u8005\u8054\u7cfb\u8bb0\u5f55',
-      description: '\u7535\u8bdd/\u5fae\u4fe1/\u5bb6\u5c5e\u8054\u7cfb\u8bb0\u5f55\u7ba1\u7406',
+      label: '患者联络记录',
+      description: '电话/微信/家属联络记录管理',
     },
     {
       section: 'flow',
-      label: '\u6d41\u8f6c\u770b\u677f',
-      description: '\u60a3\u8005\u6d41\u8f6c\u72b6\u6001\u4e0e\u4e0b\u4e00\u6b65\u52a8\u4f5c',
+      label: '流转看板',
+      description: '患者流转状态与下一步动作',
     },
   ],
   archivist: [
     {
       section: 'archive',
-      label: '\u6863\u6848\u7ba1\u7406',
-      description: '\u6863\u6848\u5efa\u6863\u3001\u66f4\u65b0\u4e0e\u8d28\u91cf\u7ef4\u62a4',
+      label: '档案管理',
+      description: '档案建档、更新与质量维护',
     },
     {
       section: 'data-quality',
-      label: '\u6570\u636e\u5b8c\u6574\u6027',
-      description: '\u7ed3\u6784\u5316\u5b57\u6bb5\u4e0e\u5173\u952e\u4fe1\u606f\u5b8c\u6574\u6027\u68c0\u67e5',
+      label: '数据完整性',
+      description: '结构化字段与关键信息完整性检查',
     },
     {
       section: 'governance',
-      label: '\u6cbb\u7406\u6a21\u5757',
-      description: '\u6cbb\u7406\u6a21\u5757\u4e0e\u6570\u636e\u7ef4\u62a4\u72b6\u6001',
+      label: '治理模块',
+      description: '治理模块与数据维护状态',
     },
   ],
 }
 
 export const SECTION_LABELS: Record<AppSection, string> = {
-  doctor: '\u8bca\u7597\u5de5\u4f5c\u53f0',
-  archive: '\u60a3\u8005\u6863\u6848',
-  tasks: '\u968f\u8bbf\u4efb\u52a1',
-  governance: '\u6a21\u578b\u770b\u677f',
-  insights: '\u6a21\u578b\u6d1e\u5bdf',
-  contacts: '\u60a3\u8005\u8054\u7cfb\u8bb0\u5f55',
-  flow: '\u6d41\u8f6c\u770b\u677f',
-  'data-quality': '\u6570\u636e\u5b8c\u6574\u6027',
+  doctor: '诊疗工作台',
+  archive: '患者档案',
+  tasks: '随访任务',
+  'model-dashboard': '模型看板',
+  governance: '治理看板',
+  insights: '模型洞察',
+  contacts: '患者联络记录',
+  flow: '流转看板',
+  'data-quality': '数据完整性',
 }
 
 export function allowedSectionsForRole(role: DoctorUser['role']): AppSection[] {

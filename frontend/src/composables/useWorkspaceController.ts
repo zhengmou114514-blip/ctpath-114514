@@ -335,11 +335,12 @@ export function useWorkspaceController() {
   const archiveNoPermission = computed(() => Boolean(currentDoctor.value) && !canManageArchive())
   const followupNoPermission = computed(() => Boolean(currentDoctor.value) && !canUseFollowupWorkspace())
   const currentWorkspace = computed<
-    'doctor' | 'archive' | 'governance' | 'model-insight' | 'followup' | 'unknown'
+    'doctor' | 'archive' | 'governance' | 'model-dashboard' | 'model-insight' | 'followup' | 'unknown'
   >(() => {
     if (section.value === 'doctor') return 'doctor'
     if (section.value === 'archive' || section.value === 'data-quality') return 'archive'
     if (section.value === 'governance') return 'governance'
+    if (section.value === 'model-dashboard') return 'model-dashboard'
     if (section.value === 'insights') return 'model-insight'
     if (section.value === 'tasks' || section.value === 'contacts' || section.value === 'flow') return 'followup'
     return 'unknown'
@@ -647,6 +648,12 @@ export function useWorkspaceController() {
     await loadGovernanceBoards()
   }
 
+  async function refreshModelMetrics() {
+    await refreshHealthStatus()
+    // TODO: 添加专门的模型指标加载逻辑
+    // 目前使用 health 状态中的模型信息
+  }
+
   async function openPatient(
     patientId: string,
     target: 'doctor' | 'archive' = 'doctor',
@@ -718,7 +725,15 @@ export function useWorkspaceController() {
   }
 
   function isGovernanceSection(value: AppSection) {
-    return value === 'governance' || value === 'insights'
+    return value === 'governance'
+  }
+
+  function isModelDashboardSection(value: AppSection) {
+    return value === 'model-dashboard'
+  }
+
+  function isModelInsightSection(value: AppSection) {
+    return value === 'insights'
   }
 
   function isArchiveSection(value: AppSection) {
@@ -755,6 +770,21 @@ export function useWorkspaceController() {
       if (!maintenanceOverview.value) {
         await refreshGovernanceWorkspace()
       }
+      return
+    }
+
+    if (isModelDashboardSection(nextSection)) {
+      section.value = nextSection
+      updateWindowQuery(nextSection)
+      if (!modelMetrics.value) {
+        await refreshModelMetrics()
+      }
+      return
+    }
+
+    if (isModelInsightSection(nextSection)) {
+      section.value = nextSection
+      updateWindowQuery(nextSection)
       return
     }
 
@@ -1441,6 +1471,7 @@ export function useWorkspaceController() {
     prevArchivePage,
     nextArchivePage,
     refreshGovernanceWorkspace,
+    refreshModelMetrics,
     taskStatusCompleted: TASK_STATUS_COMPLETED,
     taskStatusClosed: TASK_STATUS_CLOSED,
   })

@@ -3,6 +3,7 @@
   | 'archive'
   | 'tasks'
   | 'governance'
+  | 'model-dashboard'
   | 'insights'
   | 'contacts'
   | 'flow'

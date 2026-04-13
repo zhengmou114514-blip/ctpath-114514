@@ -6,6 +6,7 @@ import AppShell from './layouts/AppShell.vue'
 import DoctorDashboardPage from './pages/DoctorDashboardPage.vue'
 import FollowupWorkbenchPage from './pages/FollowupWorkbenchPage.vue'
 import GovernancePage from './pages/GovernancePage.vue'
+import ModelDashboardPage from './pages/ModelDashboardPage.vue'
 import ModelInsightPage from './pages/ModelInsightPage.vue'
 import PatientArchivePage from './pages/PatientArchivePage.vue'
 
@@ -126,6 +127,14 @@ onMounted(async () => {
         :loading-metrics="workspace.loadingModelMetrics"
         :patient-count="workspace.allPatients.length"
         @refresh="workspace.refreshGovernanceWorkspace"
+      />
+
+      <ModelDashboardPage
+        v-else-if="workspace.currentWorkspace === 'model-dashboard'"
+        :model-metrics="workspace.modelMetrics"
+        :health="workspace.health"
+        :loading-metrics="workspace.loadingModelMetrics"
+        @refresh="workspace.refreshModelMetrics"
       />
 
       <ModelInsightPage
