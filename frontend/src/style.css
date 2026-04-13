@@ -4173,3 +4173,277 @@ tbody tr:last-child td {
   background: #1890ff;
   color: #fff;
 }
+
+/* ========== 优化后的侧边栏样式 ========== */
+
+/* 侧边栏：深色调背景 */
+.workstation-sidebar {
+  background: #001529;
+  color: rgba(255, 255, 255, 0.85);
+  border-right: none;
+}
+
+/* 品牌面板 */
+.workstation-sidebar .brand-panel {
+  padding: 20px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.workstation-sidebar .brand-panel strong {
+  color: #fff;
+  font-size: 16px;
+}
+
+.workstation-sidebar .eyebrow.inverse {
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 12px;
+}
+
+/* 医生信息区域 */
+.sidebar-user-section {
+  padding: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.user-department {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.45);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.user-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.user-title {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.user-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.current-module {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+/* 角色标签：蓝色背景，白色文字 */
+.role-tag {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #1890ff;
+  color: #fff;
+}
+
+.role-tag-role-doctor {
+  background: #1890ff;
+}
+
+.role-tag-role-admin {
+  background: #722ed1;
+}
+
+.role-tag-role-researcher {
+  background: #13c2c2;
+}
+
+/* 统计指标区域：参考门诊队列样式 */
+.sidebar-stats-section {
+  padding: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stats-header {
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #1e3a5f 0%, #2c5282 100%);
+  border-radius: 0;
+  box-shadow: 0 2px 8px rgba(30, 58, 95, 0.15);
+}
+
+.stats-header .eyebrow {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #bee3f8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stats-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.stats-grid {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  transition: background 0.2s ease;
+}
+
+.stat-item:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.stat-label {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 500;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1890ff;
+  line-height: 1;
+}
+
+.stat-mode {
+  font-size: 14px;
+  font-weight: 600;
+  color: #faad14;
+  padding: 4px 12px;
+  background: rgba(250, 173, 20, 0.2);
+  border-radius: 4px;
+}
+
+/* 导航菜单 */
+.workstation-sidebar .sidebar-nav {
+  padding: 16px 0;
+}
+
+.workstation-sidebar .nav-item {
+  padding: 12px 16px;
+  color: rgba(255, 255, 255, 0.65);
+  border-left: 3px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.workstation-sidebar .nav-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.workstation-sidebar .nav-item.active {
+  background: #1890ff;
+  color: #fff;
+  border-left-color: #fff;
+}
+
+.workstation-sidebar .nav-item strong {
+  color: inherit;
+  font-size: 14px;
+}
+
+.workstation-sidebar .nav-item span {
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 12px;
+}
+
+.workstation-sidebar .nav-item.active span {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* 退出按钮 */
+.workstation-sidebar .sidebar-actions {
+  padding: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.workstation-sidebar .sidebar-button.ghost {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.workstation-sidebar .sidebar-button.ghost:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* ========== 按钮样式优化 ========== */
+
+.primary-button {
+  padding: 8px 16px;
+  border-radius: 6px;
+  background: #1890ff;
+  color: #fff;
+  border: 1px solid #1890ff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.primary-button:hover {
+  background: #40a9ff;
+  border-color: #40a9ff;
+}
+
+.primary-button:disabled {
+  background: #d9d9d9;
+  border-color: #d9d9d9;
+  color: #fff;
+  cursor: not-allowed;
+}
+
+.secondary-button {
+  padding: 8px 16px;
+  border-radius: 6px;
+  background: #fff;
+  color: #1890ff;
+  border: 1px solid #1890ff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.secondary-button:hover {
+  background: #e6f7ff;
+}
+
+.secondary-button:disabled {
+  color: #d9d9d9;
+  border-color: #d9d9d9;
+  cursor: not-allowed;
+}
+
+/* ========== 卡片基础样式 ========== */
+
+.card {
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}

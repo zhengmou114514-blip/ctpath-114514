@@ -36,34 +36,44 @@ const roleLabel = computed(() => {
       </div>
     </div>
 
-    <section class="sidebar-card doctor-panel">
-      <span class="sidebar-label">{{ props.doctor.department }}</span>
-      <strong>{{ props.doctor.name }} / {{ props.doctor.title }}</strong>
-      <small>
-        角色：
+    <!-- 优化后的医生信息区域 -->
+    <section class="sidebar-user-section">
+      <div class="user-info">
+        <span class="user-department">{{ props.doctor.department }}</span>
+        <strong class="user-name">{{ props.doctor.name }}</strong>
+        <span class="user-title">{{ props.doctor.title }}</span>
+      </div>
+      <div class="user-meta">
         <span class="role-tag" :class="`role-tag-${props.doctor.role}`">{{ roleLabel }}</span>
-      </small>
-      <small>当前模块：{{ sectionLabel(props.activeSection) }}</small>
+        <span class="current-module">当前模块：{{ sectionLabel(props.activeSection) }}</span>
+      </div>
     </section>
 
-    <!-- 重构后的统计指标区域：独立卡片，高度对比配色 -->
+    <!-- 重构后的统计指标区域：参考门诊队列样式 -->
     <section class="sidebar-stats-section">
-      <!-- 患者总数卡片 -->
-      <div class="stat-card">
-        <span class="stat-label">患者总数</span>
-        <strong class="stat-value">{{ props.patientCount }}</strong>
-      </div>
+      <header class="stats-header">
+        <p class="eyebrow">统计概览</p>
+        <h3>关键指标</h3>
+      </header>
       
-      <!-- 随访任务卡片 -->
-      <div class="stat-card">
-        <span class="stat-label">随访任务</span>
-        <strong class="stat-value">{{ props.followupCount }}</strong>
-      </div>
-      
-      <!-- 系统模式卡片：使用标签样式 -->
-      <div class="stat-card">
-        <span class="stat-label">系统模式</span>
-        <span class="mode-tag">{{ props.health?.mode ?? '未知' }}</span>
+      <div class="stats-grid">
+        <!-- 患者总数 -->
+        <div class="stat-item">
+          <span class="stat-label">患者总数</span>
+          <strong class="stat-value">{{ props.patientCount }}</strong>
+        </div>
+        
+        <!-- 随访任务 -->
+        <div class="stat-item">
+          <span class="stat-label">随访任务</span>
+          <strong class="stat-value">{{ props.followupCount }}</strong>
+        </div>
+        
+        <!-- 系统模式 -->
+        <div class="stat-item">
+          <span class="stat-label">系统模式</span>
+          <span class="stat-mode">{{ props.health?.mode ?? '未知' }}</span>
+        </div>
       </div>
     </section>
 
