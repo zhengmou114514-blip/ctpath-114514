@@ -21,8 +21,8 @@ export const ROLE_WORKSPACE_MENUS: Record<DoctorUser['role'], WorkspaceMenuItem[
     },
     {
       section: 'governance',
-      label: '\u6cbb\u7406\u770b\u677f',
-      description: '\u7cfb\u7edf\u72b6\u6001\u4e0e\u6570\u636e\u6cbb\u7406\u603b\u89c8',
+      label: '\u6a21\u578b\u770b\u677f',
+      description: '\u6a21\u578b\u7248\u672c\u3001\u8bad\u7ec3\u4efb\u52a1\u4e0e\u8fd0\u884c\u6307\u6807\u7ba1\u7406',
     },
     {
       section: 'insights',
@@ -70,7 +70,7 @@ export const SECTION_LABELS: Record<AppSection, string> = {
   doctor: '\u8bca\u7597\u5de5\u4f5c\u53f0',
   archive: '\u60a3\u8005\u6863\u6848',
   tasks: '\u968f\u8bbf\u4efb\u52a1',
-  governance: '\u6cbb\u7406\u770b\u677f',
+  governance: '\u6a21\u578b\u770b\u677f',
   insights: '\u6a21\u578b\u6d1e\u5bdf',
   contacts: '\u60a3\u8005\u8054\u7cfb\u8bb0\u5f55',
   flow: '\u6d41\u8f6c\u770b\u677f',

@@ -295,6 +295,7 @@ export interface MedicationAdequacyAssessment {
   hasDuplicateMedication: boolean
   hasContraindicationConflictPlaceholder: boolean
   alignsWithModelAdvice: boolean
+  needsPharmacistReview: boolean
   suggestSupplementClasses: string[]
   notes: string[]
   evaluatedAt: string
@@ -677,3 +678,19 @@ export interface ModelTrainingTaskRecord {
   logs: string[]
   source: 'mock-local'
 }
+
+export interface ModelBoardSnapshot {
+  currentModelVersion: string
+  currentModelName: string
+  recentTrainingTime: string
+  mrr: number
+  hits1: number
+  hits10: number
+  datasetCoverage: number
+  recentInferenceCalls: number | null
+  fallbackRatio: number | null
+  recentTrainingTaskStatus: string
+  source: 'mixed' | 'mock-local'
+}
+
+export type ModelCenterPanelKey = 'online' | 'offline'

@@ -172,6 +172,10 @@ watch(
           <span>是否与模型建议一致</span>
           <strong>{{ yesNo(assessment.alignsWithModelAdvice) }}</strong>
         </div>
+        <div class="assessment-item" :class="toneClass(assessment.needsPharmacistReview, true)">
+          <span>是否需要药师复核</span>
+          <strong>{{ yesNo(assessment.needsPharmacistReview) }}</strong>
+        </div>
       </div>
 
       <div class="assessment-sub" v-if="assessment.suggestSupplementClasses.length">
@@ -253,6 +257,7 @@ watch(
   border: 1px solid #d8e2ee;
   border-radius: 8px;
   overflow: hidden;
+  overflow-x: auto;
 }
 
 .med-table header,
@@ -320,7 +325,7 @@ watch(
 
 .assessment-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 8px;
 }
 

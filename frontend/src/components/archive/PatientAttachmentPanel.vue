@@ -25,6 +25,7 @@ const docTypeOptions: Array<{ value: PatientAttachmentType; label: string }> = [
 
 const patientPhotos = computed(() => allAttachments.value.filter((item) => item.type === 'patient_photo'))
 const documentAttachments = computed(() => allAttachments.value.filter((item) => item.type !== 'patient_photo'))
+const attachmentRegistry = computed(() => allAttachments.value)
 
 const latestPatientPhoto = computed(() => patientPhotos.value[0] ?? null)
 
@@ -111,6 +112,27 @@ watch(
           </div>
         </div>
         <p v-else class="empty-inline">暂无患者照片</p>
+      </article>
+
+      <article class="block registry-block" v-if="attachmentRegistry.length">
+        <div class="block-head">
+          <h4>附件登记清单</h4>
+          <span class="meta">用于病案追溯与审计</span>
+        </div>
+        <div class="list-table">
+          <header>
+            <span>附件类型</span>
+            <span>文件名</span>
+            <span>上传时间</span>
+            <span>上传人</span>
+          </header>
+          <article v-for="item in attachmentRegistry" :key="`registry-${item.attachmentId}`">
+            <span>{{ item.typeLabel }}</span>
+            <span>{{ item.fileName }}</span>
+            <span>{{ formatDateTime(item.uploadedAt) }}</span>
+            <span>{{ item.uploadedBy }}</span>
+          </article>
+        </div>
       </article>
 
       <article class="block doc-block">

@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { ref, watch } from 'vue'
 import AppSidebar from '../components/AppSidebar.vue'
 import RoleWorkspaceBanner from '../components/RoleWorkspaceBanner.vue'
@@ -90,7 +90,7 @@ watch(() => props.successMessage, (newVal) => {
         :followup-count="followupCount"
       />
 
-      <slot />
+      <slot name="workspace" />
 
       <slot v-if="$slots['bottom-panel']" name="bottom-panel" />
     </main>

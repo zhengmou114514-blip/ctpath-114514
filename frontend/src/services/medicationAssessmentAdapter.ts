@@ -161,11 +161,15 @@ export function evaluateMedicationAdequacy(
     ? []
     : baseline.map((item) => `建议补充：${item}`)
 
+  const needsPharmacistReview =
+    hasDuplicate || hasConflict || !coversBaselineTherapy || !alignsWithModelAdvice
+
   const notes: string[] = []
   if (!coversBaselineTherapy) notes.push('基础治疗覆盖不足，请结合指南核对首选药物。')
   if (hasDuplicate) notes.push('检测到疑似重复用药，请复核通用名与适应症。')
   if (hasConflict) notes.push('检测到ACEI/ARB并用提示，仅作冲突占位，请人工判读。')
   if (!alignsWithModelAdvice) notes.push('当前用药与模型建议不一致，建议联合复核。')
+  if (needsPharmacistReview) notes.push('建议发起药师复核，确认用药安全性与充分性。')
   if (!notes.length) notes.push('当前评估未发现明显不足，建议继续随访监测。')
 
   // TODO: replace rule-based mock evaluation with a real medication knowledge-base service.
@@ -174,6 +178,7 @@ export function evaluateMedicationAdequacy(
     hasDuplicateMedication: hasDuplicate,
     hasContraindicationConflictPlaceholder: hasConflict,
     alignsWithModelAdvice,
+    needsPharmacistReview,
     suggestSupplementClasses,
     notes,
     evaluatedAt: new Date().toISOString(),

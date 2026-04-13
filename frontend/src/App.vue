@@ -1,5 +1,5 @@
-﻿<script setup lang="ts">
-import { computed, onMounted } from 'vue'
+<script setup lang="ts">
+import { onMounted } from 'vue'
 import LoginScreen from './components/LoginScreen.vue'
 import { useWorkspaceController } from './composables/useWorkspaceController'
 import AppShell from './layouts/AppShell.vue'
@@ -10,15 +10,6 @@ import ModelInsightPage from './pages/ModelInsightPage.vue'
 import PatientArchivePage from './pages/PatientArchivePage.vue'
 
 const workspace = useWorkspaceController()
-
-const activeModule = computed(() => {
-  if (workspace.section === 'governance') return 'governance'
-  if (workspace.section === 'insights') return 'model-insight'
-  if (workspace.section === 'archive' || workspace.section === 'data-quality') return 'archive'
-  if (workspace.section === 'tasks' || workspace.section === 'contacts' || workspace.section === 'flow') return 'followup'
-  if (workspace.section === 'doctor') return 'doctor'
-  return 'unknown'
-})
 
 onMounted(async () => {
   await workspace.initialize()
@@ -57,115 +48,121 @@ onMounted(async () => {
     @select="workspace.selectSection"
     @logout="workspace.logout"
   >
-    <DoctorDashboardPage
-      v-if="activeModule === 'doctor'"
-      :all-patients="workspace.allPatients"
-      :patients="workspace.visiblePendingPatients"
-      :selected-patient="workspace.selectedPatient"
-      :patient-quadruples="workspace.patientQuadruples"
-      :prediction-result="workspace.predictionResult"
-      :loading-patients="workspace.loadingPatients"
-      :loading-patient="workspace.loadingPatient"
-      :loading-predict="workspace.loadingPredict"
-      :loading-open-archive="workspace.loadingOpenArchive"
-      :loading-open-followup="workspace.loadingOpenFollowup"
-      :loading-encounter-status="workspace.loadingEncounterStatus"
-      :loading-create-task="workspace.loadingCreateTask"
-      :model-unavailable="workspace.modelUnavailable"
-      :no-permission="workspace.doctorNoPermission"
-      :search-text="workspace.workspaceSearchText"
-      :risk-filter="workspace.workspaceRiskFilter"
-      :risk-options="workspace.riskOptions"
-      @update:search-text="workspace.workspaceSearchText = $event"
-      @update:risk-filter="workspace.workspaceRiskFilter = $event"
-      @open="workspace.openPatient($event, 'doctor')"
-      @open-archive="workspace.openArchiveInNewTab"
-      @open-followup="workspace.openFollowupModule"
-      @update-encounter-status="workspace.applyEncounterStatus"
-      @create-outpatient-task="workspace.registerOutpatientTask"
-      @predict="workspace.runPrediction"
-    />
+    <template #workspace>
+      <DoctorDashboardPage
+        v-if="workspace.currentWorkspace === 'doctor'"
+        :all-patients="workspace.allPatients"
+        :patients="workspace.visiblePendingPatients"
+        :selected-patient="workspace.selectedPatient"
+        :patient-quadruples="workspace.patientQuadruples"
+        :prediction-result="workspace.predictionResult"
+        :loading-patients="workspace.loadingPatients"
+        :loading-patient="workspace.loadingPatient"
+        :loading-predict="workspace.loadingPredict"
+        :loading-open-archive="workspace.loadingOpenArchive"
+        :loading-open-followup="workspace.loadingOpenFollowup"
+        :loading-encounter-status="workspace.loadingEncounterStatus"
+        :loading-create-task="workspace.loadingCreateTask"
+        :model-unavailable="workspace.modelUnavailable"
+        :no-permission="workspace.doctorNoPermission"
+        :search-text="workspace.workspaceSearchText"
+        :risk-filter="workspace.workspaceRiskFilter"
+        :risk-options="workspace.riskOptions"
+        @update:search-text="workspace.workspaceSearchText = $event"
+        @update:risk-filter="workspace.workspaceRiskFilter = $event"
+        @open="workspace.openPatient($event, 'doctor')"
+        @open-archive="workspace.openArchiveInNewTab"
+        @open-followup="workspace.openFollowupModule"
+        @update-encounter-status="workspace.applyEncounterStatus"
+        @create-outpatient-task="workspace.registerOutpatientTask"
+        @predict="workspace.runPrediction"
+      />
 
-    <PatientArchivePage
-      v-else-if="activeModule === 'archive'"
-      :mode="workspace.archiveMode"
-      :all-patients="workspace.allPatients"
-      :patients="workspace.archivePagedPatients"
-      :loading-patients="workspace.loadingPatients"
-      :current-page="workspace.archivePage"
-      :total-pages="workspace.archiveTotalPages"
-      :patient-count="workspace.allPatients.length"
-      :patient-form="workspace.patientForm"
-      :selected-patient-id="workspace.selectedPatientId"
-      :event-form="workspace.eventForm"
-      :relation-options="workspace.relationOptions"
-      :saving-patient="workspace.savingPatient"
-      :saving-event="workspace.savingEvent"
-      :timeline-items="workspace.selectedPatient?.timeline ?? []"
-      :selected-patient="workspace.selectedPatient"
-      :focus-section="workspace.archiveFocusSection"
-      :importing-archive="workspace.importingArchive"
-      :import-result-text="workspace.importResultText"
-      :doctor-role="workspace.currentDoctor.role"
-      :no-permission="workspace.archiveNoPermission"
-      :model-unavailable="workspace.modelUnavailable"
-      @open="workspace.openPatient($event, 'archive')"
-      @create="workspace.openCreateModule"
-      @import="workspace.openImportModule"
-      @export="workspace.handleExportPatients"
-      @prev-page="workspace.prevArchivePage"
-      @next-page="workspace.nextArchivePage"
-      @submit-archive="workspace.submitArchive"
-      @submit-event="workspace.submitEvent"
-      @submit-import="workspace.submitImport"
-      @prepare-new="workspace.openCreateModule"
-      @back="workspace.backToArchiveList"
-    />
+      <PatientArchivePage
+        v-else-if="workspace.currentWorkspace === 'archive'"
+        :mode="workspace.archiveMode"
+        :all-patients="workspace.allPatients"
+        :patients="workspace.archivePagedPatients"
+        :loading-patients="workspace.loadingPatients"
+        :current-page="workspace.archivePage"
+        :total-pages="workspace.archiveTotalPages"
+        :patient-count="workspace.allPatients.length"
+        :patient-form="workspace.patientForm"
+        :selected-patient-id="workspace.selectedPatientId"
+        :event-form="workspace.eventForm"
+        :relation-options="workspace.relationOptions"
+        :saving-patient="workspace.savingPatient"
+        :saving-event="workspace.savingEvent"
+        :timeline-items="workspace.selectedPatient?.timeline ?? []"
+        :selected-patient="workspace.selectedPatient"
+        :focus-section="workspace.archiveFocusSection"
+        :importing-archive="workspace.importingArchive"
+        :import-result-text="workspace.importResultText"
+        :doctor-role="workspace.currentDoctor.role"
+        :no-permission="workspace.archiveNoPermission"
+        :model-unavailable="workspace.modelUnavailable"
+        @open="workspace.openPatient($event, 'archive')"
+        @create="workspace.openCreateModule"
+        @import="workspace.openImportModule"
+        @export="workspace.handleExportPatients"
+        @prev-page="workspace.prevArchivePage"
+        @next-page="workspace.nextArchivePage"
+        @submit-archive="workspace.submitArchive"
+        @submit-event="workspace.submitEvent"
+        @submit-import="workspace.submitImport"
+        @prepare-new="workspace.openCreateModule"
+        @back="workspace.backToArchiveList"
+      />
 
-    <GovernancePage
-      v-else-if="activeModule === 'governance'"
-      :doctor-role="workspace.currentDoctor.role"
-      :health="workspace.health"
-      :maintenance="workspace.maintenanceOverview"
-      :governance-modules="workspace.governanceModules"
-      :model-metrics="workspace.modelMetrics"
-      :loading-governance="workspace.loadingGovernance"
-      :loading-maintenance="workspace.loadingMaintenance"
-      :loading-metrics="workspace.loadingModelMetrics"
-      @refresh="workspace.refreshGovernanceWorkspace"
-    />
+      <GovernancePage
+        v-else-if="workspace.currentWorkspace === 'governance'"
+        :doctor-role="workspace.currentDoctor.role"
+        :health="workspace.health"
+        :maintenance="workspace.maintenanceOverview"
+        :governance-modules="workspace.governanceModules"
+        :model-metrics="workspace.modelMetrics"
+        :loading-governance="workspace.loadingGovernance"
+        :loading-maintenance="workspace.loadingMaintenance"
+        :loading-metrics="workspace.loadingModelMetrics"
+        :patient-count="workspace.allPatients.length"
+        @refresh="workspace.refreshGovernanceWorkspace"
+      />
 
-    <ModelInsightPage
-      v-else-if="activeModule === 'model-insight'"
-      :model-metrics="workspace.modelMetrics"
-      :patient-count="workspace.allPatients.length"
-      :followup-count="workspace.followupItems.length"
-      :system-mode="workspace.health?.mode ?? 'unknown'"
-      @refresh="workspace.refreshGovernanceWorkspace"
-      @export-report="() => console.log('瀵煎嚭鎶ヨ〃')"
-    />
+      <ModelInsightPage
+        v-else-if="workspace.currentWorkspace === 'model-insight'"
+        :selected-patient="workspace.selectedPatient"
+        :prediction-result="workspace.predictionResult"
+        :loading-predict="workspace.loadingPredict"
+        :model-unavailable="workspace.modelUnavailable"
+        :system-mode="workspace.health?.mode ?? 'unknown'"
+        @refresh="workspace.refreshGovernanceWorkspace"
+        @run-predict="workspace.runPrediction"
+        @open-patient-detail="workspace.selectedPatientId && workspace.openPatient(workspace.selectedPatientId, 'doctor')"
+        @open-followup="workspace.selectedPatientId && workspace.openFollowupModule(workspace.selectedPatientId)"
+      />
 
-    <FollowupWorkbenchPage
-      v-else-if="activeModule === 'followup'"
-      :loading="workspace.loadingBoards"
-      :loading-task-action="workspace.loadingTaskStatus || workspace.loadingEncounterStatus"
-      :followup-items="workspace.followupItems"
-      :flow-board-items="workspace.flowBoardItems"
-      :selected-patient-id="workspace.followupFocusPatientId"
-      :saving-contact-log="workspace.savingContactLog"
-      :doctor-role="workspace.currentDoctor.role"
-      :no-permission="workspace.followupNoPermission"
-      :model-unavailable="workspace.modelUnavailable"
-      @open-patient="workspace.openPatient($event, 'doctor')"
-      @open-archive="workspace.openArchiveInNewTab"
-      @complete-task="workspace.changeOutpatientTaskStatus($event.patientId, $event.taskId, workspace.taskStatusCompleted)"
-      @close-task="workspace.changeOutpatientTaskStatus($event.patientId, $event.taskId, workspace.taskStatusClosed)"
-      @submit-contact-log="workspace.submitContactLog"
-    />
+      <FollowupWorkbenchPage
+        v-else-if="workspace.currentWorkspace === 'followup'"
+        :loading="workspace.loadingBoards"
+        :loading-task-action="workspace.loadingTaskStatus || workspace.loadingEncounterStatus"
+        :followup-items="workspace.followupItems"
+        :flow-board-items="workspace.flowBoardItems"
+        :selected-patient-id="workspace.followupFocusPatientId"
+        :saving-contact-log="workspace.savingContactLog"
+        :doctor-role="workspace.currentDoctor.role"
+        :no-permission="workspace.followupNoPermission"
+        :model-unavailable="workspace.modelUnavailable"
+        @open-patient="workspace.openPatient($event, 'doctor')"
+        @open-archive="workspace.openArchiveInNewTab"
+        @complete-task="workspace.changeOutpatientTaskStatus($event.patientId, $event.taskId, workspace.taskStatusCompleted)"
+        @close-task="workspace.changeOutpatientTaskStatus($event.patientId, $event.taskId, workspace.taskStatusClosed)"
+        @submit-contact-log="workspace.submitContactLog"
+      />
 
-    <section v-else class="empty-state-card">
-      <h3>Module unavailable</h3>
-      <p>You do not have permission to access this module. Please choose an available workspace from the left menu.</p>
-    </section>
+      <section v-else class="empty-state-card">
+        <h3>Module unavailable</h3>
+        <p>You do not have permission to access this module. Please choose an available workspace from the left menu.</p>
+      </section>
+    </template>
   </AppShell>
 </template>

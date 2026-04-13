@@ -1,4 +1,4 @@
-﻿import { computed, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import {
   addPatientContactLog,
   addPatientEvent,
@@ -334,6 +334,16 @@ export function useWorkspaceController() {
   const doctorNoPermission = computed(() => Boolean(currentDoctor.value) && !canUseDoctorWorkspace())
   const archiveNoPermission = computed(() => Boolean(currentDoctor.value) && !canManageArchive())
   const followupNoPermission = computed(() => Boolean(currentDoctor.value) && !canUseFollowupWorkspace())
+  const currentWorkspace = computed<
+    'doctor' | 'archive' | 'governance' | 'model-insight' | 'followup' | 'unknown'
+  >(() => {
+    if (section.value === 'doctor') return 'doctor'
+    if (section.value === 'archive' || section.value === 'data-quality') return 'archive'
+    if (section.value === 'governance') return 'governance'
+    if (section.value === 'insights') return 'model-insight'
+    if (section.value === 'tasks' || section.value === 'contacts' || section.value === 'flow') return 'followup'
+    return 'unknown'
+  })
 
   function sortPatients(items: PatientSummary[]) {
     return [...items].sort((left, right) => {
@@ -1403,6 +1413,7 @@ export function useWorkspaceController() {
     doctorNoPermission,
     archiveNoPermission,
     followupNoPermission,
+    currentWorkspace,
     initialize,
     submitLogin,
     submitRegister,

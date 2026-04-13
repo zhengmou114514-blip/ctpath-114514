@@ -415,27 +415,29 @@ watch(
       <section class="workstation-grid">
         <PatientWorkstationLeftPanel :patient="patient!" />
         <PatientWorkstationMiddlePanel :timeline="patient!.timeline" :quadruples="quadruples" />
-        <PatientWorkstationRightPanel
-          :patient="patient!"
-          :prediction-result="prediction"
-          :loading-predict="loadingPredict"
-          :predict-error="predictError"
-          :loading-action="loadingAction"
-          :action-loading="actionLoading"
-          :watched="isWatched"
-          @refresh-predict="refreshPrediction"
-          @create-followup="createFollowupTask"
-          @toggle-watch="toggleWatch"
-          @mark-review="markForReview"
-          @copy-to-followup="copySuggestionToFollowup"
-          @add-followup-task="onAddFollowupTask"
-          @create-revisit-task="onCreateRevisitTask"
-          @mark-pending-review="onMarkPendingReview"
-          @add-medication-check="onAddMedicationCheck"
-        />
+        <div class="right-stack">
+          <PatientWorkstationRightPanel
+            :patient="patient!"
+            :prediction-result="prediction"
+            :loading-predict="loadingPredict"
+            :predict-error="predictError"
+            :loading-action="loadingAction"
+            :action-loading="actionLoading"
+            :watched="isWatched"
+            @refresh-predict="refreshPrediction"
+            @create-followup="createFollowupTask"
+            @toggle-watch="toggleWatch"
+            @mark-review="markForReview"
+            @copy-to-followup="copySuggestionToFollowup"
+            @add-followup-task="onAddFollowupTask"
+            @create-revisit-task="onCreateRevisitTask"
+            @mark-pending-review="onMarkPendingReview"
+            @add-medication-check="onAddMedicationCheck"
+          />
+          <MedicationAdequacyPanel :patient="patient!" :model-advice="prediction?.advice ?? patient!.careAdvice" />
+        </div>
       </section>
-      <MedicationAdequacyPanel :patient="patient!" :model-advice="prediction?.advice ?? patient!.careAdvice" />
-      <PatientAttachmentPanel :patient-id="patient!.patientId" title="患者详情附件区（照片/证件/单据）" />
+      <PatientAttachmentPanel :patient-id="patient!.patientId" title="患者照片与证件/单据附件区" />
 
       <PatientWorkstationBottomPanel :patient="patient!" />
     </template>
@@ -513,10 +515,15 @@ watch(
 
 .workstation-grid {
   display: grid;
-  grid-template-columns: 320px minmax(0, 1fr) 360px;
+  grid-template-columns: 320px minmax(0, 1fr) 440px;
   gap: 12px;
   align-items: start;
 }
+.right-stack {
+  display: grid;
+  gap: 12px;
+}
+
 
 @media (max-width: 1420px) {
   .workstation-grid {
@@ -524,3 +531,4 @@ watch(
   }
 }
 </style>
+
