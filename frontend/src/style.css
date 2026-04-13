@@ -1,28 +1,29 @@
+/* 统一色彩系统：蓝灰中性色工作站风格 */
 :root {
   font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  color: #1a2b3c;
-  background: #eef3f8;
+  color: #2d3748;
+  background: #f7fafc;
   line-height: 1.5;
   font-weight: 400;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  --bg: #eef3f8;
+  --bg: #f7fafc;
   --card: #ffffff;
-  --card-muted: #f7f9fc;
-  --border: #d7e0ea;
-  --border-strong: #c1d0df;
-  --ink-soft: #5c6e80;
-  --ink-muted: #7a8795;
-  --navy: #12324a;
-  --navy-soft: #1d4668;
-  --accent: #2a74b8;
-  --accent-soft: #d9e9f8;
-  --success: #17825d;
-  --warning: #a76a12;
-  --danger: #c14a3c;
-  --shadow: 0 14px 32px rgba(18, 50, 74, 0.08);
+  --card-muted: #f7fafc;
+  --border: #e2e8f0;
+  --border-strong: #cbd5e0;
+  --ink-soft: #4a5568;
+  --ink-muted: #718096;
+  --navy: #2d3748;
+  --navy-soft: #4a5568;
+  --accent: #3182ce;
+  --accent-soft: #bee3f8;
+  --success: #38a169;
+  --warning: #d69e2e;
+  --danger: #e53e3e;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   --fs-title-page: 24px;
   --fs-title-section: 18px;
   --fs-title-card: 16px;
@@ -123,11 +124,12 @@ textarea {
   resize: vertical;
 }
 
+/* 统一卡片风格：轻微阴影，蓝灰中性色 */
 .card {
-  background: var(--card);
-  border: 1px solid var(--border);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
   border-radius: 10px;
-  box-shadow: var(--shadow);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .eyebrow,
@@ -217,40 +219,28 @@ tbody tr:last-child td {
   grid-template-columns: 280px 1fr;
 }
 
-.app-role-doctor {
-  --role-accent: #2a74b8;
-  --role-soft: #dbeaf8;
-}
-
-.app-role-nurse {
-  --role-accent: #17825d;
-  --role-soft: #def4ea;
-}
-
+/* 角色区分改为小标签方式，不通过整块背景区分 */
+.app-role-doctor,
+.app-role-nurse,
 .app-role-archivist {
-  --role-accent: #a76a12;
-  --role-soft: #f8edda;
+  /* 统一使用中性色，不定义角色特定颜色 */
 }
 
+/* 统一侧边栏风格：蓝灰中性色工作站风格 */
 .sidebar-shell {
-  background: #243648;
-  color: #eef5fb;
+  background: #2d3748;
+  color: #e2e8f0;
   padding: var(--space-16);
   display: flex;
   flex-direction: column;
   gap: var(--space-12);
 }
 
-.sidebar-role-doctor {
-  background: #243648;
-}
-
-.sidebar-role-nurse {
-  background: #243648;
-}
-
+/* 所有角色使用统一的侧边栏背景 */
+.sidebar-role-doctor,
+.sidebar-role-nurse,
 .sidebar-role-archivist {
-  background: #243648;
+  background: #2d3748;
 }
 
 .brand-panel {
@@ -380,13 +370,15 @@ tbody tr:last-child td {
   gap: var(--space-24);
 }
 
+/* 统一顶部栏风格：蓝灰中性色工作站风格 */
 .workspace-topbar {
   padding: var(--space-16);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-12);
-  background: #fff;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
 }
 
 .workspace-topbar-main {
@@ -423,13 +415,14 @@ tbody tr:last-child td {
   font-weight: 600;
 }
 
+/* 统一角色横幅风格：蓝灰中性色工作站风格 */
 .role-banner {
   padding: var(--space-16);
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(320px, 1fr);
   gap: var(--space-12);
-  border-color: var(--border);
-  background: #fff;
+  border-color: #e2e8f0;
+  background: #ffffff;
 }
 
 .role-banner h2 {
@@ -475,6 +468,7 @@ tbody tr:last-child td {
   color: var(--accent);
 }
 
+/* 角色标签：小标签方式，颜色区分清晰但不突兀 */
 .role-tag {
   display: inline-flex;
   align-items: center;
@@ -1635,14 +1629,13 @@ tbody tr:last-child td {
   gap: 16px;
 }
 
+/* 移除角色大面积渐变色，使用统一的中性色 */
 .role-focus-board {
   padding: 18px;
   display: grid;
   gap: 16px;
-  border-color: color-mix(in srgb, var(--role-accent, var(--accent)) 22%, white);
-  background:
-    radial-gradient(circle at top right, color-mix(in srgb, var(--role-soft, var(--accent-soft)) 90%, white) 0%, transparent 32%),
-    linear-gradient(135deg, #ffffff 0%, color-mix(in srgb, var(--role-soft, var(--card-muted)) 76%, white) 100%);
+  border-color: var(--border);
+  background: #ffffff;
 }
 
 .role-focus-metrics {
@@ -1651,11 +1644,12 @@ tbody tr:last-child td {
   gap: 12px;
 }
 
+/* 统一指标卡片风格 */
 .role-focus-metric {
   padding: 14px;
   border-radius: 14px;
-  border: 1px solid color-mix(in srgb, var(--role-accent, var(--accent)) 20%, white);
-  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--border);
+  background: var(--card-muted);
   display: grid;
   gap: 6px;
 }
@@ -1701,9 +1695,10 @@ tbody tr:last-child td {
   gap: 4px;
 }
 
+/* 统一 hover 效果 */
 .role-focus-row:hover {
-  border-color: color-mix(in srgb, var(--role-accent, var(--accent)) 36%, white);
-  background: color-mix(in srgb, var(--role-soft, var(--card-muted)) 58%, white);
+  border-color: #bee3f8;
+  background: #f7fafc;
 }
 
 .role-focus-row span {
@@ -1716,14 +1711,10 @@ tbody tr:last-child td {
   color: var(--ink-soft);
 }
 
-.nurse-focus-board {
-  --role-accent: #17825d;
-  --role-soft: #def4ea;
-}
-
+/* 移除特定角色的颜色定义，统一使用中性色 */
+.nurse-focus-board,
 .archivist-focus-board {
-  --role-accent: #a76a12;
-  --role-soft: #f8edda;
+  /* 不定义特定颜色，使用统一的中性色 */
 }
 
 .archive-quality-board {
@@ -2972,19 +2963,23 @@ tbody tr:last-child td {
   color: var(--success);
 }
 
+/* 风险色：只用于高风险/中风险/低风险/待复核/告警 */
 .risk-high {
   background: rgba(193, 74, 60, 0.12);
   color: var(--danger);
+  border: 1px solid rgba(193, 74, 60, 0.24);
 }
 
 .risk-medium {
   background: rgba(167, 106, 18, 0.14);
   color: var(--warning);
+  border: 1px solid rgba(167, 106, 18, 0.28);
 }
 
 .risk-low {
   background: rgba(23, 130, 93, 0.12);
   color: var(--success);
+  border: 1px solid rgba(23, 130, 93, 0.24);
 }
 
 .event-visit {

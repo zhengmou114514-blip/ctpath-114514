@@ -434,6 +434,8 @@ export function useWorkspaceController() {
       if (ok) {
         archiveSuccess.value = 'Patient archive opened successfully.'
       }
+    } catch (error) {
+      screenError.value = error instanceof Error ? error.message : 'Failed to open patient archive.'
     } finally {
       loadingOpenArchive.value = false
     }
@@ -452,8 +454,15 @@ export function useWorkspaceController() {
       return
     }
 
+    // 确保使用正确的 patientId
+    const targetPatientId = patientId || selectedPatientId.value || ''
+    if (!targetPatientId) {
+      screenError.value = 'Please select a patient before opening follow-up workspace.'
+      return
+    }
+
     loadingOpenFollowup.value = true
-    followupFocusPatientId.value = patientId || selectedPatientId.value || ''
+    followupFocusPatientId.value = targetPatientId
     section.value = targetSection
     clearMessages()
     updateWindowQuery(targetSection)
@@ -461,6 +470,8 @@ export function useWorkspaceController() {
     try {
       await loadOperationalBoards()
       archiveSuccess.value = 'Follow-up workspace opened successfully.'
+    } catch (error) {
+      screenError.value = error instanceof Error ? error.message : 'Failed to open follow-up workspace.'
     } finally {
       loadingOpenFollowup.value = false
     }
