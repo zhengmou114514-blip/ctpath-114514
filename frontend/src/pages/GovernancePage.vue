@@ -2,8 +2,14 @@
 import { computed } from 'vue'
 
 const props = defineProps<{
-  viewModel: any
+  doctorRole: string
+  health: any
+  maintenance: any
+  governanceModules: any
+  modelMetrics: any
+  loadingGovernance: boolean
   loadingMaintenance: boolean
+  loadingMetrics: boolean
 }>()
 
 const emit = defineEmits<{
@@ -16,16 +22,16 @@ function toPercent(value: number | null | undefined): string {
 }
 
 const modelStatusText = computed(() => {
-  if (!props.viewModel) return '--'
-  const { modelAvailable, rulesFallbackActive, similarCaseFallbackActive } = props.viewModel.modelGovernance
-  if (modelAvailable) return '正常'
-  if (rulesFallbackActive || similarCaseFallbackActive) return '降级'
-  return '异常'
+  if (!props.health) return '--'
+  const { model_available, model_error } = props.health
+  if (model_available) return '正常'
+  if (model_error) return '异常'
+  return '降级'
 })
 
 const fallbackTone = computed(() => {
-  if (!props.viewModel) return 'neutral'
-  const ratio = props.viewModel.modelGovernance.fallbackRatio
+  if (!props.modelMetrics) return 'neutral'
+  const ratio = props.modelMetrics.currentModel?.fallbackRatio
   if (ratio === null || ratio === undefined) return 'neutral'
   if (ratio > 0.3) return 'critical'
   if (ratio > 0.1) return 'warning'
@@ -33,39 +39,44 @@ const fallbackTone = computed(() => {
 })
 
 const approvalTone = computed(() => {
-  if (!props.viewModel) return 'neutral'
-  const rate = props.viewModel.modelGovernance.adviceApprovalRate
+  if (!props.modelMetrics) return 'neutral'
+  const rate = props.modelMetrics.currentModel?.adviceApprovalRate
   if (rate === null || rate === undefined) return 'neutral'
   if (rate < 0.6) return 'critical'
   if (rate < 0.8) return 'warning'
   return 'success'
 })
 
+const viewModel = computed(() => {
+  if (!props.maintenance) return null
+  return props.maintenance
+})
+
 const moduleStatusRows = computed(() => {
-  if (!props.viewModel) return []
+  if (!viewModel.value) return []
   return [
     {
       moduleKey: 'data-quality',
       title: '数据质量治理',
       ownerRole: '系统管理员',
-      status: props.viewModel.dataQuality.missingFieldCount > 0 ? '需关注' : '正常',
-      tone: props.viewModel.dataQuality.missingFieldCount > 0 ? 'warning' : 'success',
+      status: viewModel.value.dataQuality.missingFieldCount > 0 ? '需关注' : '正常',
+      tone: viewModel.value.dataQuality.missingFieldCount > 0 ? 'warning' : 'success',
       description: '监控核心字段缺失、重复档案、时间线异常'
     },
     {
       moduleKey: 'model-service',
       title: '模型服务治理',
       ownerRole: '技术团队',
-      status: props.viewModel.modelGovernance.modelAvailable ? '正常' : '降级',
-      tone: props.viewModel.modelGovernance.modelAvailable ? 'success' : 'warning',
+      status: viewModel.value.modelGovernance.modelAvailable ? '正常' : '降级',
+      tone: viewModel.value.modelGovernance.modelAvailable ? 'success' : 'warning',
       description: '模型可用性、降级策略、预测调用监控'
     },
     {
       moduleKey: 'archive',
       title: '档案治理',
       ownerRole: '档案管理员',
-      status: (props.viewModel.archiveGovernance.pendingCompletionRows.length + props.viewModel.archiveGovernance.pendingReviewRows.length) > 0 ? '需处理' : '正常',
-      tone: (props.viewModel.archiveGovernance.pendingCompletionRows.length + props.viewModel.archiveGovernance.pendingReviewRows.length) > 0 ? 'warning' : 'success',
+      status: (viewModel.value.archiveGovernance.pendingCompletionRows.length + viewModel.value.archiveGovernance.pendingReviewRows.length) > 0 ? '需处理' : '正常',
+      tone: (viewModel.value.archiveGovernance.pendingCompletionRows.length + viewModel.value.archiveGovernance.pendingReviewRows.length) > 0 ? 'warning' : 'success',
       description: '待完成档案、待审核档案队列管理'
     }
   ]

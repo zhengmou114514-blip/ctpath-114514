@@ -716,6 +716,14 @@ export function useWorkspaceController() {
   }
 
   async function navigateToSection(nextSection: AppSection) {
+    // 清理上一个模块的状态
+    clearModuleState()
+
+    // 重置滚动位置到顶部
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+
     if (nextSection === 'doctor') {
       section.value = 'doctor'
       doctorMode.value = 'list'
@@ -747,6 +755,35 @@ export function useWorkspaceController() {
 
     section.value = defaultSectionForRole(currentDoctor.value?.role)
     updateWindowQuery(section.value)
+  }
+
+  // 清理模块状态的方法
+  function clearModuleState() {
+    // 清理选中的患者
+    selectedPatientId.value = ''
+    selectedPatient.value = null
+
+    // 清理预测结果
+    predictionResult.value = null
+
+    // 清理患者详情
+    patientQuadruples.value = []
+
+    // 清理档案相关状态
+    archiveMode.value = 'list'
+    archiveFocusSection.value = 'overview'
+    archivePage.value = 1
+
+    // 清理随访相关状态
+    followupFocusPatientId.value = ''
+
+    // 清理表单数据
+    patientForm.value = defaultPatientForm()
+    eventForm.value = defaultEventForm()
+
+    // 清理导入导出状态
+    importingArchive.value = false
+    importResultText.value = ''
   }
 
   function selectSection(nextSection: AppSection) {

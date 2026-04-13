@@ -6,6 +6,7 @@ import AppShell from './layouts/AppShell.vue'
 import DoctorDashboardPage from './pages/DoctorDashboardPage.vue'
 import FollowupWorkbenchPage from './pages/FollowupWorkbenchPage.vue'
 import GovernancePage from './pages/GovernancePage.vue'
+import InsightsPage from './pages/InsightsPage.vue'
 import PatientArchivePage from './pages/PatientArchivePage.vue'
 
 const workspace = useWorkspaceController()
@@ -113,7 +114,7 @@ onMounted(async () => {
     />
 
     <GovernancePage
-      v-else-if="workspace.section === 'governance' || workspace.section === 'insights'"
+      v-else-if="workspace.section === 'governance'"
       :doctor-role="workspace.currentDoctor.role"
       :health="workspace.health"
       :maintenance="workspace.maintenanceOverview"
@@ -123,6 +124,16 @@ onMounted(async () => {
       :loading-maintenance="workspace.loadingMaintenance"
       :loading-metrics="workspace.loadingModelMetrics"
       @refresh="workspace.refreshGovernanceWorkspace"
+    />
+
+    <InsightsPage
+      v-else-if="workspace.section === 'insights'"
+      :model-metrics="workspace.modelMetrics"
+      :patient-count="workspace.allPatients.length"
+      :followup-count="workspace.followupItems.length"
+      :system-mode="workspace.health?.mode ?? 'unknown'"
+      @refresh="workspace.refreshGovernanceWorkspace"
+      @export-report="() => console.log('导出报表')"
     />
 
     <FollowupWorkbenchPage
