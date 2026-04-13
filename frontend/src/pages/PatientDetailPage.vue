@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
+import type { AdviceActionKey } from '../components/clinical/ClinicalAdviceCardBoard.vue'
+import PatientAttachmentPanel from '../components/archive/PatientAttachmentPanel.vue'
+import MedicationAdequacyPanel from '../components/patient-workstation/MedicationAdequacyPanel.vue'
 import PatientWorkstationBottomPanel from '../components/patient-workstation/PatientWorkstationBottomPanel.vue'
 import PatientWorkstationHeaderBar from '../components/patient-workstation/PatientWorkstationHeaderBar.vue'
 import PatientWorkstationLeftPanel from '../components/patient-workstation/PatientWorkstationLeftPanel.vue'
@@ -32,17 +35,24 @@ const health = ref<HealthResponse | null>(null)
 const loadingPatient = ref(false)
 const loadingHealth = ref(false)
 const loadingPredict = ref(false)
-const loadingAction = ref(false)
+const actionLoading = reactive<Record<AdviceActionKey, boolean>>({
+  'add-followup': false,
+  'create-revisit': false,
+  'mark-review': false,
+  'add-medication-check': false,
+})
 
 const screenError = ref('')
 const predictError = ref('')
 const actionMessage = ref('')
+const actionMessageTone = ref<'success' | 'error' | 'info'>('info')
 const lastUpdatedAt = ref('')
 const isWatched = ref(false)
 const auditTrail = useAuditTrailStore()
 
 const hasPatient = computed(() => Boolean(patient.value))
 const loading = computed(() => loadingPatient.value || loadingHealth.value)
+const loadingAction = computed(() => Object.values(actionLoading).some(Boolean))
 
 const degradedReasons = computed(() => {
   const reasons: string[] = []
@@ -68,6 +78,31 @@ function riskPriority(level: string): 'high' | 'medium' | 'low' {
   return 'low'
 }
 
+function setActionMessage(message: string, tone: 'success' | 'error' | 'info' = 'info') {
+  actionMessage.value = message
+  actionMessageTone.value = tone
+}
+
+function setActionLoading(action: AdviceActionKey, loadingState: boolean) {
+  actionLoading[action] = loadingState
+}
+
+async function refreshAfterAction(patientId: string) {
+  const [patientRes, quadruplesRes] = await Promise.all([getPatientCase(patientId), getPatientQuadruples(patientId)])
+  patient.value = patientRes
+  quadruples.value = quadruplesRes
+  lastUpdatedAt.value = new Date().toISOString()
+
+  // TODO(api): replace this event bridge with backend event stream / websocket push.
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(
+      new CustomEvent('ctpath:followup-worklist-refresh', {
+        detail: { patientId },
+      })
+    )
+  }
+}
+
 async function loadHealth() {
   loadingHealth.value = true
   try {
@@ -83,7 +118,7 @@ async function loadPatientDetail(id: string) {
   if (!id) return
   loadingPatient.value = true
   screenError.value = ''
-  actionMessage.value = ''
+  setActionMessage('', 'info')
   predictError.value = ''
 
   try {
@@ -118,7 +153,7 @@ async function refreshPrediction() {
   if (!patient.value) return
   loadingPredict.value = true
   predictError.value = ''
-  actionMessage.value = ''
+  setActionMessage('', 'info')
 
   try {
     prediction.value = await predictPatient({
@@ -158,71 +193,173 @@ async function refreshPrediction() {
   }
 }
 
-async function createFollowupTask(title?: string) {
+async function onAddFollowupTask(actionTitle = '') {
   if (!patient.value) return
-  loadingAction.value = true
-  actionMessage.value = ''
+  setActionLoading('add-followup', true)
+  setActionMessage('', 'info')
 
   try {
     const dueDate = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10)
-    const updated = await createPatientOutpatientTask(patient.value.patientId, {
+    await createPatientOutpatientTask(patient.value.patientId, {
       category: 'recheck',
-      title: title || 'Clinical follow-up task',
+      title: actionTitle ? `Follow-up: ${actionTitle}` : 'Clinical follow-up task',
       owner: patient.value.caseManager || 'Follow-up Nurse',
       dueDate,
       priority: riskPriority(patient.value.riskLevel),
-      note: title ? `Copied from advice card: ${title}` : 'Generated from patient workstation quick action.',
+      note: actionTitle
+        ? `Created from model advice action: ${actionTitle}`
+        : 'Created from patient workstation quick action.',
       status: 'Pending',
       source: 'workspace',
     })
-    patient.value = updated
-    actionMessage.value = title ? 'Advice copied to follow-up plan.' : 'Follow-up task created.'
-    lastUpdatedAt.value = new Date().toISOString()
+    await refreshAfterAction(patient.value.patientId)
+    setActionMessage('Follow-up task added and data refreshed.', 'success')
     auditTrail.addAuditLog({
       action: 'create_followup_task',
-      target: { type: 'followup_task', id: patient.value.patientId, label: title || 'Clinical follow-up task' },
+      target: { type: 'followup_task', id: patient.value.patientId, label: actionTitle || 'Clinical follow-up task' },
       result: 'success',
-      detail: title ? `Created follow-up task from advice: ${title}` : 'Created follow-up task from quick action.',
+      detail: actionTitle ? `Added follow-up task from advice: ${actionTitle}` : 'Added follow-up task.',
     })
   } catch (error) {
-    actionMessage.value = error instanceof Error ? error.message : 'Failed to create follow-up task.'
+    setActionMessage(error instanceof Error ? error.message : 'Failed to add follow-up task.', 'error')
     auditTrail.addAuditLog({
       action: 'create_followup_task',
-      target: { type: 'followup_task', id: patient.value.patientId, label: title || 'Clinical follow-up task' },
+      target: { type: 'followup_task', id: patient.value.patientId, label: actionTitle || 'Clinical follow-up task' },
       result: 'failed',
-      detail: error instanceof Error ? error.message : 'Failed to create follow-up task.',
+      detail: error instanceof Error ? error.message : 'Failed to add follow-up task.',
     })
   } finally {
-    loadingAction.value = false
+    setActionLoading('add-followup', false)
   }
 }
 
-async function markForReview() {
+async function onCreateRevisitTask(actionTitle = '') {
   if (!patient.value) return
-  loadingAction.value = true
-  actionMessage.value = ''
+  setActionLoading('create-revisit', true)
+  setActionMessage('', 'info')
 
   try {
-    const updated = await updatePatientEncounterStatus(patient.value.patientId, {
+    const dueDate = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10)
+    await createPatientOutpatientTask(patient.value.patientId, {
+      category: 'recheck',
+      title: actionTitle ? `Revisit: ${actionTitle}` : 'Revisit task',
+      owner: patient.value.primaryDoctor || 'Attending Physician',
+      dueDate,
+      priority: riskPriority(patient.value.riskLevel),
+      note: actionTitle
+        ? `Revisit task created from model advice: ${actionTitle}`
+        : 'Created from model card quick action.',
+      status: 'Pending',
+      source: 'workspace',
+    })
+    await refreshAfterAction(patient.value.patientId)
+    setActionMessage('Revisit task created and data refreshed.', 'success')
+    auditTrail.addAuditLog({
+      action: 'create_followup_task',
+      target: { type: 'followup_task', id: patient.value.patientId, label: actionTitle || 'Revisit task' },
+      result: 'success',
+      detail: actionTitle ? `Created revisit task from advice: ${actionTitle}` : 'Created revisit task.',
+    })
+  } catch (error) {
+    setActionMessage(error instanceof Error ? error.message : 'Failed to create revisit task.', 'error')
+    auditTrail.addAuditLog({
+      action: 'create_followup_task',
+      target: { type: 'followup_task', id: patient.value.patientId, label: actionTitle || 'Revisit task' },
+      result: 'failed',
+      detail: error instanceof Error ? error.message : 'Failed to create revisit task.',
+    })
+  } finally {
+    setActionLoading('create-revisit', false)
+  }
+}
+
+async function onMarkPendingReview(actionTitle = '') {
+  if (!patient.value) return
+  setActionLoading('mark-review', true)
+  setActionMessage('', 'info')
+
+  try {
+    await updatePatientEncounterStatus(patient.value.patientId, {
       status: 'pending_review',
     })
-    patient.value = updated
-    actionMessage.value = 'Case has been marked for review.'
-    lastUpdatedAt.value = new Date().toISOString()
+    await refreshAfterAction(patient.value.patientId)
+    setActionMessage('Case marked as pending review and data refreshed.', 'success')
+    auditTrail.addAuditLog({
+      action: 'generate_advice',
+      target: { type: 'patient', id: patient.value.patientId, label: patient.value.name },
+      result: 'success',
+      detail: actionTitle
+        ? `Marked pending review from model advice: ${actionTitle}`
+        : 'Marked pending review from patient workstation action.',
+    })
   } catch (error) {
-    actionMessage.value = error instanceof Error ? error.message : 'Failed to update review status.'
+    setActionMessage(error instanceof Error ? error.message : 'Failed to mark pending review.', 'error')
+    auditTrail.addAuditLog({
+      action: 'generate_advice',
+      target: { type: 'patient', id: patient.value.patientId, label: patient.value.name },
+      result: 'failed',
+      detail: error instanceof Error ? error.message : 'Failed to mark pending review.',
+    })
   } finally {
-    loadingAction.value = false
+    setActionLoading('mark-review', false)
+  }
+}
+
+async function onAddMedicationCheck(actionTitle = '') {
+  if (!patient.value) return
+  setActionLoading('add-medication-check', true)
+  setActionMessage('', 'info')
+
+  try {
+    const dueDate = new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10)
+    await createPatientOutpatientTask(patient.value.patientId, {
+      category: 'exam',
+      title: actionTitle ? `Medication check: ${actionTitle}` : 'Medication check task',
+      owner: patient.value.caseManager || 'Follow-up Nurse',
+      dueDate,
+      priority: riskPriority(patient.value.riskLevel),
+      note: actionTitle
+        ? `Medication adequacy check requested from model advice: ${actionTitle}`
+        : 'Medication adequacy check requested from model card action.',
+      status: 'Pending',
+      source: 'workspace',
+    })
+    await refreshAfterAction(patient.value.patientId)
+    setActionMessage('Medication check task added and data refreshed.', 'success')
+    auditTrail.addAuditLog({
+      action: 'create_followup_task',
+      target: { type: 'followup_task', id: patient.value.patientId, label: actionTitle || 'Medication check task' },
+      result: 'success',
+      detail: actionTitle ? `Added medication check task from advice: ${actionTitle}` : 'Added medication check task.',
+    })
+  } catch (error) {
+    setActionMessage(error instanceof Error ? error.message : 'Failed to add medication check task.', 'error')
+    auditTrail.addAuditLog({
+      action: 'create_followup_task',
+      target: { type: 'followup_task', id: patient.value.patientId, label: actionTitle || 'Medication check task' },
+      result: 'failed',
+      detail: error instanceof Error ? error.message : 'Failed to add medication check task.',
+    })
+  } finally {
+    setActionLoading('add-medication-check', false)
   }
 }
 
 function toggleWatch() {
   isWatched.value = !isWatched.value
-  actionMessage.value = isWatched.value ? 'Patient added to watchlist.' : 'Patient removed from watchlist.'
+  setActionMessage(isWatched.value ? 'Patient added to watchlist.' : 'Patient removed from watchlist.', 'success')
 }
 
 function copySuggestionToFollowup(actionTitle: string) {
-  void createFollowupTask(actionTitle)
+  void onAddFollowupTask(actionTitle)
+}
+
+function createFollowupTask() {
+  void onAddFollowupTask('')
+}
+
+function markForReview() {
+  void onMarkPendingReview('')
 }
 
 watch(
@@ -238,7 +375,16 @@ watch(
   <section class="patient-workstation-page">
     <div class="page-head">
       <button class="secondary-button" @click="emit('back')">Back to Patient List</button>
-      <p v-if="actionMessage" class="workstation-tip">{{ actionMessage }}</p>
+      <p
+        v-if="actionMessage"
+        class="workstation-tip"
+        :class="{
+          success: actionMessageTone === 'success',
+          error: actionMessageTone === 'error',
+        }"
+      >
+        {{ actionMessage }}
+      </p>
     </div>
 
     <div v-if="loading" class="state-card loading">Loading patient workstation...</div>
@@ -275,14 +421,21 @@ watch(
           :loading-predict="loadingPredict"
           :predict-error="predictError"
           :loading-action="loadingAction"
+          :action-loading="actionLoading"
           :watched="isWatched"
           @refresh-predict="refreshPrediction"
           @create-followup="createFollowupTask"
           @toggle-watch="toggleWatch"
           @mark-review="markForReview"
           @copy-to-followup="copySuggestionToFollowup"
+          @add-followup-task="onAddFollowupTask"
+          @create-revisit-task="onCreateRevisitTask"
+          @mark-pending-review="onMarkPendingReview"
+          @add-medication-check="onAddMedicationCheck"
         />
       </section>
+      <MedicationAdequacyPanel :patient="patient!" :model-advice="prediction?.advice ?? patient!.careAdvice" />
+      <PatientAttachmentPanel :patient-id="patient!.patientId" title="患者详情附件区（照片/证件/单据）" />
 
       <PatientWorkstationBottomPanel :patient="patient!" />
     </template>
@@ -305,6 +458,14 @@ watch(
   margin: 0;
   color: var(--ws-text-muted, #617385);
   font-size: 0.86rem;
+}
+
+.workstation-tip.success {
+  color: #1d7b5c;
+}
+
+.workstation-tip.error {
+  color: #a4383f;
 }
 
 .state-card {

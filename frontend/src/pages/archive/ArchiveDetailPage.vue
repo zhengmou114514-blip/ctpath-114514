@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import PatientAttachmentPanel from '../../components/archive/PatientAttachmentPanel.vue'
 import type { PatientCase, PatientEventPayload, PatientUpsertPayload, TimelineEvent } from '../../services/types'
 
 type ArchiveFocusSection = 'overview' | 'events'
@@ -80,8 +81,8 @@ const evidenceSummary = computed(() => ({
 
 function riskClass(level: string) {
   const normalized = level.toLowerCase()
-  if (normalized.includes('high') || level.includes('高')) return 'risk-high'
-  if (normalized.includes('medium') || level.includes('中')) return 'risk-medium'
+  if (normalized.includes('high')) return 'risk-high'
+  if (normalized.includes('medium')) return 'risk-medium'
   return 'risk-low'
 }
 </script>
@@ -94,7 +95,7 @@ function riskClass(level: string) {
         <p>
           {{ patient?.gender || patientForm.gender || '--' }} ·
           {{ patient?.age ?? patientForm.age ?? '--' }} 岁 ·
-          出生日期：{{ patient?.lastVisit || '--' }}
+          最近就诊：{{ patient?.lastVisit || patientForm.lastVisit || '--' }}
         </p>
       </div>
       <div class="master-tags">
@@ -121,7 +122,7 @@ function riskClass(level: string) {
           <p><span>姓名</span><strong>{{ patient?.name || patientForm.name || '--' }}</strong></p>
           <p><span>性别</span><strong>{{ patient?.gender || patientForm.gender || '--' }}</strong></p>
           <p><span>年龄</span><strong>{{ patient?.age ?? patientForm.age ?? '--' }}</strong></p>
-          <p><span>出生日期</span><strong>{{ patientForm.lastVisit || '--' }}</strong></p>
+          <p><span>最近就诊</span><strong>{{ patient?.lastVisit || patientForm.lastVisit || '--' }}</strong></p>
         </div>
 
         <h3>证件信息</h3>
@@ -154,8 +155,12 @@ function riskClass(level: string) {
           </div>
           <div class="attach-tile"><span>身份证附件</span><p>待上传</p></div>
           <div class="attach-tile"><span>医保卡附件</span><p>待上传</p></div>
-          <div class="attach-tile"><span>转诊单附件</span><p>待上传</p></div>
+          <div class="attach-tile"><span>转诊/检查单附件</span><p>待上传</p></div>
         </div>
+        <PatientAttachmentPanel
+          :patient-id="patient?.patientId || patientForm.patientId"
+          title="档案附件区（患者照片/证件/单据）"
+        />
       </aside>
 
       <main class="card col middle-col">

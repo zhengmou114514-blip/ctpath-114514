@@ -92,7 +92,7 @@ watch(() => props.successMessage, (newVal) => {
 
       <slot />
 
-      <slot name="bottom-panel" />
+      <slot v-if="$slots['bottom-panel']" name="bottom-panel" />
     </main>
   </div>
 </template>

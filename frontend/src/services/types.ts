@@ -265,6 +265,43 @@ export interface MedicationPlanResponse {
   adviceMeta: AdviceMeta
 }
 
+export interface CurrentMedicationItem {
+  medicationId: string
+  patientId: string
+  drugName: string
+  genericName: string
+  dosage: string
+  frequency: string
+  route: string
+  startedAt: string
+  expectedEndAt: string
+  indication: string
+  source: 'mock-local'
+}
+
+export interface CurrentMedicationInput {
+  drugName: string
+  genericName: string
+  dosage: string
+  frequency: string
+  route: string
+  startedAt: string
+  expectedEndAt: string
+  indication: string
+}
+
+export interface MedicationAdequacyAssessment {
+  coversBaselineTherapy: boolean
+  hasDuplicateMedication: boolean
+  hasContraindicationConflictPlaceholder: boolean
+  alignsWithModelAdvice: boolean
+  suggestSupplementClasses: string[]
+  notes: string[]
+  evaluatedAt: string
+  evaluator: string
+  source: 'mock-local'
+}
+
 export interface HealthResponse {
   status: string
   service: string
@@ -579,4 +616,64 @@ export interface GovernanceCenterViewModel {
     correctionRecords: GovernanceOperationRecord[]
     riskEscalations: GovernanceOperationRecord[]
   }
+}
+
+export type PatientAttachmentType =
+  | 'patient_photo'
+  | 'id_card'
+  | 'insurance_card'
+  | 'referral_form'
+  | 'exam_report'
+  | 'other_document'
+
+export interface PatientAttachmentRecord {
+  attachmentId: string
+  patientId: string
+  type: PatientAttachmentType
+  typeLabel: string
+  fileName: string
+  mimeType: string
+  previewUrl: string
+  uploadedAt: string
+  uploadedBy: string
+  source: 'mock-local'
+}
+
+export interface ModelDatasetImportRecord {
+  datasetId: string
+  datasetName: string
+  fileName: string
+  rowCount: number
+  uploadedAt: string
+  uploadedBy: string
+  status: 'ready' | 'processing' | 'failed'
+  source: 'mock-local'
+}
+
+export interface ModelTrainingParams {
+  epochs: number
+  batchSize: number
+  learningRate: number
+  embeddingDim: number
+  optimizer: 'adam' | 'sgd' | 'adamw'
+}
+
+export interface ModelTrainingTaskRecord {
+  taskId: string
+  datasetId: string
+  datasetName: string
+  modelName: string
+  status: 'queued' | 'running' | 'succeeded' | 'failed'
+  createdAt: string
+  startedAt?: string
+  finishedAt?: string
+  triggeredBy: string
+  params: ModelTrainingParams
+  metrics?: {
+    mrr: number
+    hits1: number
+    hits10: number
+  }
+  logs: string[]
+  source: 'mock-local'
 }

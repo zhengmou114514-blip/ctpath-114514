@@ -16,6 +16,8 @@ export interface ClinicalAdviceCard {
   needsHumanConfirm: boolean
 }
 
+export type AdviceActionKey = 'add-followup' | 'create-revisit' | 'mark-review' | 'add-medication-check'
+
 interface LocalAuditState {
   status: AdviceAuditStatus
   reviewer: string
@@ -25,6 +27,7 @@ interface LocalAuditState {
 const props = defineProps<{
   cards: ClinicalAdviceCard[]
   loading?: boolean
+  actionLoading?: Partial<Record<AdviceActionKey, boolean>>
 }>()
 
 const emit = defineEmits<{
@@ -32,6 +35,10 @@ const emit = defineEmits<{
   (e: 'reject', card: ClinicalAdviceCard): void
   (e: 'mark-review', card: ClinicalAdviceCard): void
   (e: 'copy-to-followup', card: ClinicalAdviceCard): void
+  (e: 'add-followup-task', card: ClinicalAdviceCard): void
+  (e: 'create-revisit-task', card: ClinicalAdviceCard): void
+  (e: 'mark-pending-review', card: ClinicalAdviceCard): void
+  (e: 'add-medication-check', card: ClinicalAdviceCard): void
 }>()
 
 const audits = reactive<Record<string, LocalAuditState>>({})
@@ -95,6 +102,10 @@ function onNeedsReview(card: ClinicalAdviceCard) {
   review(card, 'needs_review')
   emit('mark-review', card)
 }
+
+function isActionLoading(action: AdviceActionKey): boolean {
+  return Boolean(props.actionLoading?.[action])
+}
 </script>
 
 <template>
@@ -156,10 +167,40 @@ function onNeedsReview(card: ClinicalAdviceCard) {
       </div>
 
       <div class="actions">
-        <button class="secondary-button" @click="onConfirm(card)">Confirm</button>
-        <button class="secondary-button" @click="onReject(card)">Reject</button>
-        <button class="secondary-button" @click="onNeedsReview(card)">Needs Review</button>
-        <button class="primary-button" @click="emit('copy-to-followup', card)">Copy to Follow-up</button>
+        <button
+          class="primary-button"
+          :disabled="isActionLoading('add-followup')"
+          @click="emit('add-followup-task', card)"
+        >
+          {{ isActionLoading('add-followup') ? 'Submitting...' : 'Add Follow-up Task' }}
+        </button>
+        <button
+          class="secondary-button"
+          :disabled="isActionLoading('create-revisit')"
+          @click="emit('create-revisit-task', card)"
+        >
+          {{ isActionLoading('create-revisit') ? 'Submitting...' : 'Create Revisit Task' }}
+        </button>
+        <button
+          class="secondary-button"
+          :disabled="isActionLoading('mark-review')"
+          @click="emit('mark-pending-review', card)"
+        >
+          {{ isActionLoading('mark-review') ? 'Submitting...' : 'Mark Pending Review' }}
+        </button>
+        <button
+          class="secondary-button"
+          :disabled="isActionLoading('add-medication-check')"
+          @click="emit('add-medication-check', card)"
+        >
+          {{ isActionLoading('add-medication-check') ? 'Submitting...' : 'Add Medication Check' }}
+        </button>
+      </div>
+
+      <div class="audit-actions">
+        <button class="text-button" @click="onConfirm(card)">Confirm Advice</button>
+        <button class="text-button" @click="onReject(card)">Reject Advice</button>
+        <button class="text-button" @click="onNeedsReview(card)">Needs Review</button>
       </div>
     </article>
   </section>
@@ -310,6 +351,12 @@ function onNeedsReview(card: ClinicalAdviceCard) {
 .actions {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.audit-actions {
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 

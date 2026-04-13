@@ -144,7 +144,48 @@ async function demoRequest<T>(path: string, options: RequestInit = {}): Promise<
     const ps = demoPatients.map(sum)
     return { mode: 'demo', modelAvailable: false, modelError: 'Using frontend fallback data.', patientCount: ps.length, eventCount: demoPatients.reduce((n, p) => n + p.timeline.length, 0), highRiskCount: ps.filter((p) => p.riskLevel.toLowerCase().includes('high')).length, lowSupportCount: ps.filter((p) => p.dataSupport === 'low').length, overdueFollowupCount: demoPatients.reduce((n, p) => n + p.followUps.length, 0), missingMrnCount: 0, pendingConsentCount: 0, duplicateRiskCount: 0, topDiseases: [{ label: 'Diabetes', value: ps.filter((p) => p.primaryDisease === 'Diabetes').length }], sourceStats: [{ label: 'Outpatient', value: ps.length }], relationStats: [{ relation: 'has_disease', label: 'Disease', count: ps.length }, { relation: 'stage', label: 'Stage', count: ps.length }], recentPatients: ps.slice(0, 4).map((p) => ({ patientId: p.patientId, name: p.name, primaryDisease: p.primaryDisease, riskLevel: p.riskLevel, dataSupport: p.dataSupport, lastVisit: p.lastVisit })), masterIndexAlerts: ps.filter((p) => p.dataSupport === 'low').map((p) => ({ patientId: p.patientId, name: p.name, issueType: 'data_support', issueLabel: 'Low support', detail: 'More structured data is needed.', archiveSource: p.archiveSource })), recentEvents: demoPatients.flatMap((p) => p.timeline.map((e) => ({ patientId: p.patientId, patientName: p.name, eventTime: `${e.date}T09:00:00`, relation: e.type, relationLabel: e.title, objectValue: e.detail, source: 'demo' }))).slice(0, 8) } as T
   }
-  if (u.pathname === '/worklists/followups') return { mode: 'demo', items: demoPatients.flatMap((p) => p.followUps.map((t, i) => ({ taskId: `followup-${p.patientId}-${i + 1}`, patientId: p.patientId, patientName: p.name, primaryDisease: p.primaryDisease, riskLevel: p.riskLevel, dataSupport: p.dataSupport, dueDate: t.dueDate, owner: t.owner, priority: t.priority, taskType: t.title, status: 'Pending', source: 'followup' as const, lastActionBy: p.caseManager, lastActionAt: `${p.lastVisit}T09:00:00` }))) } as T
+  if (u.pathname === '/worklists/followups') {
+    return {
+      mode: 'demo',
+      items: demoPatients.flatMap((p) => {
+        const followupRows = p.followUps.map((t, i) => ({
+          taskId: `followup-${p.patientId}-${i + 1}`,
+          patientId: p.patientId,
+          patientName: p.name,
+          primaryDisease: p.primaryDisease,
+          riskLevel: p.riskLevel,
+          dataSupport: p.dataSupport,
+          dueDate: t.dueDate,
+          owner: t.owner,
+          priority: t.priority,
+          taskType: t.title,
+          status: 'Pending',
+          source: 'followup' as const,
+          lastActionBy: p.caseManager,
+          lastActionAt: `${p.lastVisit}T09:00:00`,
+        }))
+
+        const outpatientRows = p.outpatientTasks.map((task) => ({
+          taskId: task.taskId,
+          patientId: p.patientId,
+          patientName: p.name,
+          primaryDisease: p.primaryDisease,
+          riskLevel: p.riskLevel,
+          dataSupport: p.dataSupport,
+          dueDate: task.dueDate,
+          owner: task.owner,
+          priority: task.priority,
+          taskType: task.title,
+          status: task.status,
+          source: 'outpatient-task' as const,
+          lastActionBy: task.updatedBy ?? p.caseManager,
+          lastActionAt: task.updatedAt ?? `${p.lastVisit}T09:00:00`,
+        }))
+
+        return [...followupRows, ...outpatientRows]
+      }),
+    } as T
+  }
   if (u.pathname === '/worklists/flow-board') return { mode: 'demo', items: demoPatients.map((p) => ({ patientId: p.patientId, patientName: p.name, primaryDisease: p.primaryDisease, currentStage: p.currentStage, riskLevel: p.riskLevel, dataSupport: p.dataSupport, lastVisit: p.lastVisit, flowStatus: p.encounterStatus === 'pending_review' ? 'Pending review' : p.encounterStatus === 'in_progress' ? 'In clinic' : p.dataSupport === 'low' ? 'Need structured data' : 'Waiting', nextAction: p.followUps[0]?.title ?? 'Open patient workspace' })) } as T
   if (u.pathname === '/patient' && m === 'POST') {
     const p = body<PatientUpsertPayload>(options.body)

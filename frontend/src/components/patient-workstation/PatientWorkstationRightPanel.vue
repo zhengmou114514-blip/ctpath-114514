@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import ClinicalAdviceCardBoard from '../clinical/ClinicalAdviceCardBoard.vue'
 import type { ClinicalAdviceCard } from '../clinical/ClinicalAdviceCardBoard.vue'
+import type { AdviceActionKey } from '../clinical/ClinicalAdviceCardBoard.vue'
 import type { PatientCase, PredictResponse } from '../../services/types'
 
 const props = defineProps<{
@@ -10,6 +11,7 @@ const props = defineProps<{
   loadingPredict: boolean
   predictError: string
   loadingAction: boolean
+  actionLoading?: Partial<Record<AdviceActionKey, boolean>>
   watched: boolean
 }>()
 
@@ -19,6 +21,10 @@ const emit = defineEmits<{
   (e: 'toggle-watch'): void
   (e: 'mark-review'): void
   (e: 'copy-to-followup', actionTitle: string): void
+  (e: 'add-followup-task', actionTitle: string): void
+  (e: 'create-revisit-task', actionTitle: string): void
+  (e: 'mark-pending-review', actionTitle: string): void
+  (e: 'add-medication-check', actionTitle: string): void
 }>()
 
 const topk = computed(() => props.predictionResult?.topk ?? props.patient.predictions)
@@ -96,6 +102,22 @@ function onReject() {
 function onMarkReview() {
   emit('mark-review')
 }
+
+function onAddFollowupTask(card: ClinicalAdviceCard) {
+  emit('add-followup-task', card.recommendedAction)
+}
+
+function onCreateRevisitTask(card: ClinicalAdviceCard) {
+  emit('create-revisit-task', card.recommendedAction)
+}
+
+function onMarkPendingReview(card: ClinicalAdviceCard) {
+  emit('mark-pending-review', card.recommendedAction)
+}
+
+function onAddMedicationCheck(card: ClinicalAdviceCard) {
+  emit('add-medication-check', card.recommendedAction)
+}
 </script>
 
 <template>
@@ -138,10 +160,15 @@ function onMarkReview() {
       <ClinicalAdviceCardBoard
         :cards="adviceCards"
         :loading="loadingPredict"
+        :action-loading="props.actionLoading"
         @confirm="onConfirm"
         @reject="onReject"
         @mark-review="onMarkReview"
         @copy-to-followup="onCopyToFollowup"
+        @add-followup-task="onAddFollowupTask"
+        @create-revisit-task="onCreateRevisitTask"
+        @mark-pending-review="onMarkPendingReview"
+        @add-medication-check="onAddMedicationCheck"
       />
     </article>
 

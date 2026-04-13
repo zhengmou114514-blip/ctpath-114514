@@ -1,15 +1,24 @@
 ﻿<script setup lang="ts">
-import { onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import LoginScreen from './components/LoginScreen.vue'
 import { useWorkspaceController } from './composables/useWorkspaceController'
 import AppShell from './layouts/AppShell.vue'
 import DoctorDashboardPage from './pages/DoctorDashboardPage.vue'
 import FollowupWorkbenchPage from './pages/FollowupWorkbenchPage.vue'
 import GovernancePage from './pages/GovernancePage.vue'
-import InsightsPage from './pages/InsightsPage.vue'
+import ModelInsightPage from './pages/ModelInsightPage.vue'
 import PatientArchivePage from './pages/PatientArchivePage.vue'
 
 const workspace = useWorkspaceController()
+
+const activeModule = computed(() => {
+  if (workspace.section === 'governance') return 'governance'
+  if (workspace.section === 'insights') return 'model-insight'
+  if (workspace.section === 'archive' || workspace.section === 'data-quality') return 'archive'
+  if (workspace.section === 'tasks' || workspace.section === 'contacts' || workspace.section === 'flow') return 'followup'
+  if (workspace.section === 'doctor') return 'doctor'
+  return 'unknown'
+})
 
 onMounted(async () => {
   await workspace.initialize()
@@ -49,7 +58,7 @@ onMounted(async () => {
     @logout="workspace.logout"
   >
     <DoctorDashboardPage
-      v-if="workspace.section === 'doctor'"
+      v-if="activeModule === 'doctor'"
       :all-patients="workspace.allPatients"
       :patients="workspace.visiblePendingPatients"
       :selected-patient="workspace.selectedPatient"
@@ -78,7 +87,7 @@ onMounted(async () => {
     />
 
     <PatientArchivePage
-      v-else-if="workspace.section === 'archive' || workspace.section === 'data-quality'"
+      v-else-if="activeModule === 'archive'"
       :mode="workspace.archiveMode"
       :all-patients="workspace.allPatients"
       :patients="workspace.archivePagedPatients"
@@ -114,7 +123,7 @@ onMounted(async () => {
     />
 
     <GovernancePage
-      v-else-if="workspace.section === 'governance'"
+      v-else-if="activeModule === 'governance'"
       :doctor-role="workspace.currentDoctor.role"
       :health="workspace.health"
       :maintenance="workspace.maintenanceOverview"
@@ -126,18 +135,18 @@ onMounted(async () => {
       @refresh="workspace.refreshGovernanceWorkspace"
     />
 
-    <InsightsPage
-      v-else-if="workspace.section === 'insights'"
+    <ModelInsightPage
+      v-else-if="activeModule === 'model-insight'"
       :model-metrics="workspace.modelMetrics"
       :patient-count="workspace.allPatients.length"
       :followup-count="workspace.followupItems.length"
       :system-mode="workspace.health?.mode ?? 'unknown'"
       @refresh="workspace.refreshGovernanceWorkspace"
-      @export-report="() => console.log('导出报表')"
+      @export-report="() => console.log('瀵煎嚭鎶ヨ〃')"
     />
 
     <FollowupWorkbenchPage
-      v-else-if="workspace.section === 'tasks' || workspace.section === 'contacts' || workspace.section === 'flow'"
+      v-else-if="activeModule === 'followup'"
       :loading="workspace.loadingBoards"
       :loading-task-action="workspace.loadingTaskStatus || workspace.loadingEncounterStatus"
       :followup-items="workspace.followupItems"
@@ -160,4 +169,3 @@ onMounted(async () => {
     </section>
   </AppShell>
 </template>
-
