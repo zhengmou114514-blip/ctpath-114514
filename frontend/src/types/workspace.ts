@@ -1,4 +1,4 @@
-﻿export type AppSection =
+export type AppSection =
   | 'doctor'
   | 'archive'
   | 'tasks'
@@ -8,6 +8,7 @@
   | 'contacts'
   | 'flow'
   | 'data-quality'
+  | 'system'
 
 export type DoctorMode = 'list' | 'detail'
 

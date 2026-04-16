@@ -118,6 +118,14 @@ export interface DoctorUser {
   password?: string
 }
 
+export interface MeResponse {
+  username: string
+  name: string
+  title: string
+  department: string
+  role: 'doctor' | 'nurse' | 'archivist'
+}
+
 export interface AuthSession {
   token: string
   doctor: DoctorUser
@@ -309,6 +317,29 @@ export interface HealthResponse {
   mode: string
   model_available: boolean
   model_error: string | null
+}
+
+export interface AuthzCapabilityResponse {
+  role: string
+  allowedSections: string[]
+  allowedApis: string[]
+}
+
+export interface SystemAuditLog {
+  logId: string
+  action: string
+  result: string
+  role?: string | null
+  username?: string | null
+  path: string
+  method: string
+  detail: string
+  clientIp?: string | null
+  createdAt: string
+}
+
+export interface SystemAuditResponse {
+  items: SystemAuditLog[]
 }
 
 export interface PatientUpsertPayload {

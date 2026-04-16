@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import AppSidebar from '../components/AppSidebar.vue'
+import PatientContextBar from '../components/PatientContextBar.vue'
 import RoleWorkspaceBanner from '../components/RoleWorkspaceBanner.vue'
 import WorkspaceTopbar from '../components/WorkspaceTopbar.vue'
-import type { DoctorUser, HealthResponse } from '../services/types'
+import type { DoctorUser, HealthResponse, PatientCase } from '../services/types'
 import type { AppSection } from '../types/workspace'
 
 const props = defineProps<{
@@ -12,6 +13,7 @@ const props = defineProps<{
   health: HealthResponse | null
   patientCount: number
   followupCount: number
+  selectedPatient: PatientCase | null
   errorMessage: string
   successMessage: string
   loading: boolean
@@ -20,6 +22,9 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'select', section: AppSection): void
   (e: 'logout'): void
+  (e: 'open-archive', payload: { patientId: string; focus?: 'overview' | 'events' }): void
+  (e: 'open-followup', payload: { patientId: string; section?: 'tasks' | 'contacts' | 'flow' }): void
+  (e: 'back-to-list'): void
 }>()
 
 // 本地状态：用于控制提示的显示和自动消失
@@ -88,6 +93,14 @@ watch(() => props.successMessage, (newVal) => {
         :section="activeSection"
         :patient-count="patientCount"
         :followup-count="followupCount"
+      />
+
+      <PatientContextBar
+        v-if="props.selectedPatient"
+        :patient="props.selectedPatient"
+        @open-archive="emit('open-archive', $event)"
+        @open-followup="emit('open-followup', $event)"
+        @back-to-list="emit('back-to-list')"
       />
 
       <slot name="workspace" />

@@ -2,11 +2,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .api.analytics import router as analytics_router
+from .api.audit import router as audit_router
 from .api.auth import router as auth_router
+from .api.authz import router as authz_router
 from .api.governance import router as governance_router
 from .api.patients import router as patients_router
 from .api.predictions import router as predictions_router
 from .api.worklists import router as worklists_router
+from .auth.auth_state_middleware import AuthStateMiddleware
+from .auth.rbac_middleware import RBACMiddleware
 
 
 app = FastAPI(
@@ -23,6 +27,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Populate request.state.user_role for RBAC enforcement.
+app.add_middleware(AuthStateMiddleware)
+# Enforce API access control centrally (defense-in-depth).
+app.add_middleware(RBACMiddleware)
 
 
 @app.on_event("startup")
@@ -90,6 +99,8 @@ async def load_dataset_on_startup() -> None:
 
 app.include_router(analytics_router)
 app.include_router(auth_router)
+app.include_router(authz_router)
+app.include_router(audit_router)
 app.include_router(patients_router)
 app.include_router(predictions_router)
 app.include_router(worklists_router)

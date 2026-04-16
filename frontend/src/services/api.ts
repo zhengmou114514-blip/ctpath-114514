@@ -1,4 +1,4 @@
-import type { AdviceGeneratePayload, AdviceGenerateResponse, AuthSession, ContactLogCreatePayload, EncounterStatusPayload, FlowBoardResponse, GovernanceModulesResponse, FollowupWorklistResponse, HealthResponse, MaintenanceOverview, MedicationPlanGeneratePayload, MedicationPlanResponse, ModelMetricsResponse, OutpatientTaskCreatePayload, OutpatientTaskStatusUpdatePayload, PatientCase, PatientEventPayload, PatientQuadruple, PatientSummary, PatientUpsertPayload, PredictResponse, RegisterPayload, TimelineEvent } from './types'
+import type { AdviceGeneratePayload, AdviceGenerateResponse, AuthSession, AuthzCapabilityResponse, ContactLogCreatePayload, EncounterStatusPayload, FlowBoardResponse, GovernanceModulesResponse, FollowupWorklistResponse, HealthResponse, MaintenanceOverview, MeResponse, MedicationPlanGeneratePayload, MedicationPlanResponse, ModelMetricsResponse, OutpatientTaskCreatePayload, OutpatientTaskStatusUpdatePayload, PatientCase, PatientEventPayload, PatientQuadruple, PatientSummary, PatientUpsertPayload, PredictResponse, RegisterPayload, SystemAuditResponse, TimelineEvent } from './types'
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? '/api'
 const ENABLE_DEMO_FALLBACK = String(import.meta.env.VITE_ENABLE_DEMO_FALLBACK ?? '').toLowerCase() === 'true'
@@ -275,6 +275,9 @@ export async function predictPatient(payload: { patientId: string; asOfTime?: st
 export async function generateAdvice(payload: AdviceGeneratePayload): Promise<AdviceGenerateResponse> { return request('/advice/generate', { method: 'POST', body: JSON.stringify(payload) }) }
 export async function generateMedicationPlan(patientId: string, payload: MedicationPlanGeneratePayload): Promise<MedicationPlanResponse> { return request(`/patient/${patientId}/medication-plan/generate`, { method: 'POST', body: JSON.stringify(payload) }) }
 export async function healthCheck(): Promise<HealthResponse> { return request('/health', { method: 'GET' }) }
+export async function getMe(): Promise<MeResponse> { return request('/me', { method: 'GET' }) }
+export async function getAuthzCapabilities(): Promise<AuthzCapabilityResponse> { return request('/authz/capabilities', { method: 'GET' }) }
+export async function getSystemAudit(limit = 50): Promise<SystemAuditResponse> { return request(`/audit/system?limit=${encodeURIComponent(String(limit))}`, { method: 'GET' }) }
 export async function getModelMetrics(): Promise<ModelMetricsResponse> { return request('/model/metrics', { method: 'GET' }) }
 export async function getMaintenanceOverview(): Promise<MaintenanceOverview> { return request('/maintenance/overview', { method: 'GET' }) }
 export async function getGovernanceModules(): Promise<GovernanceModulesResponse> { return request('/governance/modules', { method: 'GET' }) }

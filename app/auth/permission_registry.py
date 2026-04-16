@@ -95,12 +95,58 @@ class PermissionRegistry:
             description="用户注册"
         ))
 
+        # 会话信息（需登录）
+        self.register(APIPermission(
+            path="/api/me",
+            method="GET",
+            required_permissions=set(),
+            allowed_roles={Role.ADMIN, Role.DOCTOR, Role.NURSE, Role.ARCHIVIST},
+            description="获取当前登录用户信息"
+        ))
+
+        # 权限能力查询（需登录）
+        self.register(APIPermission(
+            path="/api/authz/capabilities",
+            method="GET",
+            required_permissions=set(),
+            allowed_roles={Role.ADMIN, Role.DOCTOR, Role.NURSE, Role.ARCHIVIST},
+            description="获取当前角色可用模块与API能力"
+        ))
+
         # 患者管理API
         self.register(APIPermission(
             path="/api/patients",
             method="GET",
             required_permissions={Permission.PATIENT_VIEW},
             description="获取患者列表"
+        ))
+
+        self.register(APIPermission(
+            path="/api/patients/paginated",
+            method="GET",
+            required_permissions={Permission.PATIENT_VIEW},
+            description="分页获取患者列表（legacy）"
+        ))
+
+        self.register(APIPermission(
+            path="/api/v2/patients",
+            method="GET",
+            required_permissions={Permission.PATIENT_VIEW},
+            description="分页获取患者列表（v2）"
+        ))
+
+        self.register(APIPermission(
+            path="/api/v2/patients/{id}",
+            method="GET",
+            required_permissions={Permission.PATIENT_VIEW},
+            description="获取患者详情（v2）"
+        ))
+
+        self.register(APIPermission(
+            path="/api/v2/patients/stats/overview",
+            method="GET",
+            required_permissions={Permission.PATIENT_VIEW},
+            description="患者统计概览"
         ))
 
         self.register(APIPermission(
@@ -146,6 +192,48 @@ class PermissionRegistry:
             description="获取患者时间线"
         ))
 
+        self.register(APIPermission(
+            path="/api/patient/{id}/quadruples",
+            method="GET",
+            required_permissions={Permission.EVENT_VIEW},
+            description="获取患者四元组明细"
+        ))
+
+        self.register(APIPermission(
+            path="/api/patient/{id}/contact-log",
+            method="POST",
+            required_permissions={Permission.FOLLOWUP_CREATE},
+            description="新增患者联系记录"
+        ))
+
+        self.register(APIPermission(
+            path="/api/patient/{id}/encounter-status",
+            method="PATCH",
+            required_permissions={Permission.TASK_UPDATE},
+            description="更新接诊流转状态"
+        ))
+
+        self.register(APIPermission(
+            path="/api/patient/{id}/outpatient-task",
+            method="POST",
+            required_permissions={Permission.TASK_CREATE},
+            description="创建门诊任务"
+        ))
+
+        self.register(APIPermission(
+            path="/api/patient/{id}/outpatient-task/{task_id}",
+            method="PATCH",
+            required_permissions={Permission.TASK_UPDATE},
+            description="更新门诊任务状态"
+        ))
+
+        self.register(APIPermission(
+            path="/api/patient/{id}/medication-plan/generate",
+            method="POST",
+            required_permissions={Permission.ADVICE_GENERATE},
+            description="生成用药计划"
+        ))
+
         # 预测API
         self.register(APIPermission(
             path="/api/predict",
@@ -175,6 +263,48 @@ class PermissionRegistry:
             method="GET",
             required_permissions={Permission.TASK_VIEW},
             description="获取流程看板"
+        ))
+
+        # 治理/运维
+        self.register(APIPermission(
+            path="/api/maintenance/overview",
+            method="GET",
+            required_permissions={Permission.SYSTEM_MONITOR},
+            allowed_roles={Role.ADMIN, Role.DOCTOR, Role.ARCHIVIST},
+            description="运维概览"
+        ))
+
+        self.register(APIPermission(
+            path="/api/governance/modules",
+            method="GET",
+            required_permissions={Permission.SYSTEM_MONITOR},
+            allowed_roles={Role.ADMIN, Role.DOCTOR, Role.ARCHIVIST},
+            description="治理模块状态"
+        ))
+
+        self.register(APIPermission(
+            path="/api/model/metrics",
+            method="GET",
+            required_permissions={Permission.PREDICTION_VIEW},
+            allowed_roles={Role.ADMIN, Role.DOCTOR},
+            description="模型指标"
+        ))
+
+        # 审计
+        self.register(APIPermission(
+            path="/api/audit/system",
+            method="GET",
+            required_permissions={Permission.SYSTEM_MONITOR},
+            allowed_roles={Role.ADMIN, Role.DOCTOR, Role.ARCHIVIST},
+            description="系统审计日志"
+        ))
+
+        self.register(APIPermission(
+            path="/api/audit/patient/{id}",
+            method="GET",
+            required_permissions={Permission.PATIENT_VIEW},
+            allowed_roles={Role.ADMIN, Role.DOCTOR, Role.NURSE, Role.ARCHIVIST},
+            description="患者审计日志"
         ))
 
     def register(self, api_permission: APIPermission):

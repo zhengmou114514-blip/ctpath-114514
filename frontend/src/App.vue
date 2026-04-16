@@ -9,12 +9,30 @@ import GovernancePage from './pages/GovernancePage.vue'
 import ModelDashboardPage from './pages/ModelDashboardPage.vue'
 import ModelInsightPage from './pages/ModelInsightPage.vue'
 import PatientArchivePage from './pages/PatientArchivePage.vue'
+import SystemCenterPage from './pages/SystemCenterPage.vue'
 
 const workspace = useWorkspaceController()
 
 onMounted(async () => {
   await workspace.initialize()
 })
+
+function handleOpenArchive(payload: { patientId: string; focus?: 'overview' | 'events' }) {
+  const focus = payload.focus === 'events' ? 'events' : 'overview'
+  void workspace.openArchiveInNewTab(payload.patientId, focus)
+}
+
+function handleOpenFollowup(payload: { patientId: string; section?: 'tasks' | 'contacts' | 'flow' }) {
+  void workspace.openFollowupModule(payload.patientId, payload.section ?? 'tasks')
+}
+
+function handleBackToList() {
+  if (workspace.currentWorkspace === 'archive') {
+    workspace.backToArchiveList()
+    return
+  }
+  workspace.backToDoctorList()
+}
 </script>
 
 <template>
@@ -43,11 +61,15 @@ onMounted(async () => {
     :health="workspace.health"
     :patient-count="workspace.allPatients.length"
     :followup-count="workspace.followupItems.length"
+    :selected-patient="workspace.selectedPatient"
     :error-message="workspace.permissionHint || workspace.screenError"
     :success-message="workspace.archiveSuccess"
     :loading="workspace.globalLoading"
     @select="workspace.selectSection"
     @logout="workspace.logout"
+    @open-archive="handleOpenArchive"
+    @open-followup="handleOpenFollowup"
+    @back-to-list="handleBackToList"
   >
     <template #workspace>
       <DoctorDashboardPage
@@ -166,6 +188,12 @@ onMounted(async () => {
         @complete-task="workspace.changeOutpatientTaskStatus($event.patientId, $event.taskId, workspace.taskStatusCompleted)"
         @close-task="workspace.changeOutpatientTaskStatus($event.patientId, $event.taskId, workspace.taskStatusClosed)"
         @submit-contact-log="workspace.submitContactLog"
+      />
+
+      <SystemCenterPage
+        v-else-if="workspace.currentWorkspace === 'system'"
+        :doctor="workspace.currentDoctor"
+        :health="workspace.health"
       />
 
       <section v-else class="empty-state-card">

@@ -15,6 +15,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from .role_definitions import Role, get_role_by_name, validate_role
 from .permission_registry import PERMISSION_REGISTRY
+from ..audit.system_audit import record_system_audit
 
 
 logger = logging.getLogger(__name__)
@@ -39,7 +40,8 @@ class RBACMiddleware(BaseHTTPMiddleware):
         self.excluded_paths = excluded_paths or {
             "/api/login",
             "/api/register",
-            "/health",
+            "/api/health",
+            "/",
             "/metrics",
             "/docs",
             "/openapi.json",
@@ -197,6 +199,17 @@ class RBACMiddleware(BaseHTTPMiddleware):
             f"Access granted: role={role.value}, method={method}, path={path}, "
             f"client={request.client.host if request.client else 'unknown'}"
         )
+        user = getattr(request.state, "user", None)
+        record_system_audit(
+            action="api_access",
+            result="granted",
+            role=role.value,
+            username=getattr(user, "username", None),
+            path=path,
+            method=method,
+            detail="RBAC allowed",
+            client_ip=request.client.host if request.client else None,
+        )
 
     def _log_access_denied(
         self,
@@ -217,6 +230,17 @@ class RBACMiddleware(BaseHTTPMiddleware):
         logger.warning(
             f"Access denied: role={role.value}, method={method}, path={path}, "
             f"client={request.client.host if request.client else 'unknown'}"
+        )
+        user = getattr(request.state, "user", None)
+        record_system_audit(
+            action="api_access",
+            result="denied",
+            role=role.value,
+            username=getattr(user, "username", None),
+            path=path,
+            method=method,
+            detail="RBAC denied",
+            client_ip=request.client.host if request.client else None,
         )
 
 

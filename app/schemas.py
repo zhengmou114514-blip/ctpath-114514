@@ -470,3 +470,26 @@ class FlowBoardRow(BaseModel):
 class FlowBoardResponse(BaseModel):
     mode: str
     items: List[FlowBoardRow]
+
+
+class SystemAuditLog(BaseModel):
+    logId: str
+    action: str
+    result: str
+    role: Optional[str] = None
+    username: Optional[str] = None
+    path: str
+    method: str
+    detail: str = ""
+    clientIp: Optional[str] = None
+    createdAt: str
+
+
+class SystemAuditResponse(BaseModel):
+    items: List[SystemAuditLog]
+
+
+class AuthzCapabilityResponse(BaseModel):
+    role: str
+    allowedSections: List[str]
+    allowedApis: List[str]

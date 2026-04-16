@@ -25,7 +25,6 @@ const emit = defineEmits<{
 
 const showAutocomplete = ref(false)
 const savedAccounts = ref<SavedAccount[]>([])
-const usernameInputRef = ref<HTMLInputElement | null>(null)
 const selectedIndex = ref(-1)
 
 // 加载已保存的账号
@@ -96,7 +95,10 @@ function handleKeydown(event: KeyboardEvent) {
     selectedIndex.value = Math.max(selectedIndex.value - 1, -1)
   } else if (event.key === 'Enter' && selectedIndex.value >= 0) {
     event.preventDefault()
-    selectSuggestion(suggestions[selectedIndex.value])
+    const selected = suggestions[selectedIndex.value]
+    if (selected) {
+      selectSuggestion(selected)
+    }
   } else if (event.key === 'Escape') {
     showAutocomplete.value = false
   }
@@ -141,7 +143,6 @@ function getRoleLabel(role: string): string {
           <span>账号</span>
           <div class="autocomplete-wrapper">
             <input 
-              ref="usernameInputRef"
               :value="props.username" 
               type="text" 
               placeholder="demo_clinic" 

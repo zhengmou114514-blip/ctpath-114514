@@ -7,7 +7,10 @@ import {
   getFlowBoard,
   getFollowupWorklist,
   getGovernanceModules,
+  getAuthzCapabilities,
+  getSystemAudit,
   getMaintenanceOverview,
+  getMe,
   getModelMetrics,
   getPatientCase,
   getPatientQuadruples,
@@ -24,6 +27,7 @@ import {
   updatePatientOutpatientTaskStatus,
 } from '../services/api'
 import type {
+  AuthzCapabilityResponse,
   ContactLogCreatePayload,
   DoctorUser,
   FlowBoardRow,
@@ -43,6 +47,7 @@ import type {
   PatientUpsertPayload,
   PredictResponse,
   RegisterPayload,
+  SystemAuditLog,
 } from '../services/types'
 import { useAuditTrailStore } from '../stores/auditTrailStore'
 import { allowedSectionsForRole, sectionLabel } from '../config/workspaceMenu'
@@ -61,6 +66,7 @@ const APP_SECTIONS: AppSection[] = [
   'contacts',
   'flow',
   'data-quality',
+  'system',
 ]
 
 export function useWorkspaceController() {
@@ -95,6 +101,10 @@ export function useWorkspaceController() {
   const maintenanceOverview = ref<MaintenanceOverview | null>(null)
   const governanceModules = ref<GovernanceModulesResponse | null>(null)
   const modelMetrics = ref<ModelMetricsResponse | null>(null)
+  const me = ref<{ username: string; name: string; title: string; department: string; role: string } | null>(null)
+  const authz = ref<AuthzCapabilityResponse | null>(null)
+  const systemAudit = ref<SystemAuditLog[]>([])
+  const loadingSystemCenter = ref(false)
   const followupFocusPatientId = ref('')
   const archiveFocusSection = ref<ArchiveFocusSection>('overview')
   const viewedPatientIds = ref<string[]>([])
@@ -327,7 +337,8 @@ export function useWorkspaceController() {
       loadingBoards.value ||
       loadingGovernance.value ||
       loadingMaintenance.value ||
-      loadingModelMetrics.value
+      loadingModelMetrics.value ||
+      loadingSystemCenter.value
   )
 
   const modelUnavailable = computed(() => Boolean(health.value && health.value.model_available === false))
@@ -335,7 +346,7 @@ export function useWorkspaceController() {
   const archiveNoPermission = computed(() => Boolean(currentDoctor.value) && !canManageArchive())
   const followupNoPermission = computed(() => Boolean(currentDoctor.value) && !canUseFollowupWorkspace())
   const currentWorkspace = computed<
-    'doctor' | 'archive' | 'governance' | 'model-dashboard' | 'model-insight' | 'followup' | 'unknown'
+    'doctor' | 'archive' | 'governance' | 'model-dashboard' | 'model-insight' | 'followup' | 'system' | 'unknown'
   >(() => {
     if (section.value === 'doctor') return 'doctor'
     if (section.value === 'archive' || section.value === 'data-quality') return 'archive'
@@ -343,8 +354,24 @@ export function useWorkspaceController() {
     if (section.value === 'model-dashboard') return 'model-dashboard'
     if (section.value === 'insights') return 'model-insight'
     if (section.value === 'tasks' || section.value === 'contacts' || section.value === 'flow') return 'followup'
+    if (section.value === 'system') return 'system'
     return 'unknown'
   })
+
+  async function loadSystemCenter() {
+    loadingSystemCenter.value = true
+    screenError.value = ''
+    try {
+      const [meResp, capsResp, auditResp] = await Promise.all([getMe(), getAuthzCapabilities(), getSystemAudit(80)])
+      me.value = meResp
+      authz.value = capsResp
+      systemAudit.value = auditResp.items
+    } catch (error) {
+      screenError.value = error instanceof Error ? error.message : 'Failed to load system center.'
+    } finally {
+      loadingSystemCenter.value = false
+    }
+  }
 
   function sortPatients(items: PatientSummary[]) {
     return [...items].sort((left, right) => {
@@ -788,6 +815,14 @@ export function useWorkspaceController() {
       return
     }
 
+    if (nextSection === 'system') {
+      section.value = nextSection
+      updateWindowQuery(nextSection)
+      await refreshHealthStatus()
+      await loadSystemCenter()
+      return
+    }
+
     if (isFollowupSection(nextSection)) {
       await openFollowupModule(followupFocusPatientId.value || selectedPatientId.value, nextSection)
       return
@@ -816,6 +851,11 @@ export function useWorkspaceController() {
 
     // 清理随访相关状态
     followupFocusPatientId.value = ''
+
+    // 清理系统中心状态
+    systemAudit.value = []
+    authz.value = null
+    me.value = null
 
     // 清理表单数据
     patientForm.value = defaultPatientForm()
@@ -1397,6 +1437,10 @@ export function useWorkspaceController() {
     maintenanceOverview,
     governanceModules,
     modelMetrics,
+    me,
+    authz,
+    systemAudit,
+    loadingSystemCenter,
     followupFocusPatientId,
     archiveFocusSection,
     selectedPatientId,
@@ -1472,6 +1516,7 @@ export function useWorkspaceController() {
     nextArchivePage,
     refreshGovernanceWorkspace,
     refreshModelMetrics,
+    loadSystemCenter,
     taskStatusCompleted: TASK_STATUS_COMPLETED,
     taskStatusClosed: TASK_STATUS_CLOSED,
   })

@@ -54,3 +54,14 @@ def register(payload: RegisterRequest) -> LoginResponse:
 
     token = issue_token(doctor.username)
     return LoginResponse(token=token, doctor=doctor)
+
+
+@router.get("/api/me")
+def me(doctor=Depends(require_doctor)) -> dict:
+    return {
+        "username": doctor.username,
+        "name": doctor.name,
+        "title": doctor.title,
+        "department": doctor.department,
+        "role": doctor.role,
+    }
