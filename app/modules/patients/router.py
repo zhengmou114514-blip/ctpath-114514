@@ -2,7 +2,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from ...api.auth import require_doctor, require_roles
+from ...auth.dependencies import require_doctor, require_roles
 from ...schemas import (
     ContactLogCreateRequest,
     EncounterStatusUpdateRequest,

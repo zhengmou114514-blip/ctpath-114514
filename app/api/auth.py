@@ -1,32 +1,12 @@
-from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException
 
-from fastapi import APIRouter, Depends, Header, HTTPException
-
-from ..middleware.jwt_auth import create_access_token, extract_bearer_token, resolve_doctor_from_token
+from ..auth.dependencies import get_current_doctor, require_doctor, require_roles
+from ..middleware.jwt_auth import create_access_token
 from ..schemas import LoginRequest, LoginResponse, RegisterRequest
 from ..store import TOKENS, authenticate, register_doctor
-from .deps import get_current_doctor, require_roles as deps_require_roles
 
 
 router = APIRouter(tags=["auth"])
-
-
-def require_token(authorization: Optional[str] = Header(default=None)) -> str:
-    try:
-        return extract_bearer_token(authorization)
-    except Exception as exc:
-        raise HTTPException(status_code=401, detail="Missing bearer token") from exc
-
-
-def require_doctor(token: str = Depends(require_token)):
-    doctor = resolve_doctor_from_token(token)
-    if doctor is None:
-        raise HTTPException(status_code=401, detail="Invalid session")
-    return doctor
-
-
-def require_roles(*allowed_roles: str):
-    return deps_require_roles(*allowed_roles)
 
 
 @router.post("/api/login", response_model=LoginResponse)
@@ -60,3 +40,13 @@ def me(doctor=Depends(get_current_doctor)) -> dict:
         "department": doctor.department,
         "role": doctor.role,
     }
+
+
+# Backward-compatible exports for existing API modules.
+# The actual dependency implementations live in app.auth.dependencies.
+__all__ = [
+    "router",
+    "require_doctor",
+    "require_roles",
+    "get_current_doctor",
+]
