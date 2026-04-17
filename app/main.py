@@ -9,8 +9,10 @@ from .api.governance import router as governance_router
 from .api.patients import router as patients_router
 from .api.predictions import router as predictions_router
 from .api.worklists import router as worklists_router
-from .auth.auth_state_middleware import AuthStateMiddleware
-from .auth.rbac_middleware import RBACMiddleware
+from .middleware.exception import GlobalExceptionMiddleware
+from .middleware.jwt_auth import JWTAuthMiddleware
+from .middleware.rate_limit import RateLimitMiddleware
+from .middleware.trace_id import TraceIdMiddleware
 
 
 app = FastAPI(
@@ -19,19 +21,24 @@ app = FastAPI(
     description="Backend service for the chronic disease assistant system.",
 )
 
+# Keep CORS outermost so even middleware-generated error responses carry headers.
+app.add_middleware(RateLimitMiddleware)
+app.add_middleware(JWTAuthMiddleware)
+app.add_middleware(TraceIdMiddleware)
+app.add_middleware(GlobalExceptionMiddleware)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://127.0.0.1:5173", "http://localhost:5173"],
+    allow_origins=[
+        "http://127.0.0.1:5173",
+        "http://localhost:5173",
+        "http://127.0.0.1:4173",
+        "http://localhost:4173",
+    ],
     allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Populate request.state.user_role for RBAC enforcement.
-app.add_middleware(AuthStateMiddleware)
-# Enforce API access control centrally (defense-in-depth).
-app.add_middleware(RBACMiddleware)
 
 
 @app.on_event("startup")
