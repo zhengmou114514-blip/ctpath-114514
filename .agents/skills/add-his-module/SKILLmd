@@ -1,0 +1,127 @@
+---
+name: add-his-module
+description: Add one hospital-style business module at a time, such as drug management, drug permission management, patient attachments, electronic archives, audit logs, or task workbenches.
+---
+
+# Goal
+
+Add one realistic HIS-style business module into the chronic disease diagnostic system while preserving clear module boundaries.
+
+This skill is for one module at a time only.
+
+# Valid module examples
+
+- 药品管理
+- 药品权限管理（包括管制药）
+- 电子档案
+- 患者附件
+- 审计日志
+- 随访任务工作台
+- 档案治理辅助模块
+
+# Read first
+
+Before editing code, read:
+1. `AGENTS.md`
+2. `docs/PROJECT_LOGIC_MANIFEST.md`
+3. related frontend pages
+4. related frontend services/types
+5. related backend routes/services if backend change is requested
+
+# Input requirements
+
+For each run, identify:
+1. Module name
+2. Target users:
+   - doctor
+   - nurse
+   - archivist
+   - pharmacist
+   - admin
+3. Correct location in system
+4. What the module must NOT include
+
+# Module placement rules
+
+## Drug Management
+Place under:
+- medication pages
+- admin / medication route group
+
+Should include:
+- drug catalog
+- generic name / trade name
+- dosage form
+- specification
+- prescription flag
+- controlled substance flag
+- status
+
+Should not be embedded into doctor dashboard summary.
+
+## Drug Permission Management
+Place under:
+- admin or medication permission route group
+
+Should include:
+- role-based permission mapping
+- controlled drug authorization
+- pharmacist review permission
+- doctor prescribing permission
+- nurse viewing/execution scope
+
+## Electronic Archive / Patient Attachments
+Place under:
+- patient archive
+- patient detail
+- attachment page
+
+Should include:
+- patient photo
+- ID card photo
+- insurance card photo
+- referral / exam attachments
+- upload time
+- uploaded by
+- preview
+
+Should not be reduced to a single avatar URL field.
+
+## Audit Log
+Place under:
+- governance or admin
+
+Should include:
+- operator
+- role
+- action
+- target object
+- timestamp
+- result
+
+# Implementation rules
+
+1. Reuse existing types and services if possible.
+2. If backend support is missing, create clearly marked mock adapter or TODO stubs.
+3. Do not invent production-ready APIs without marking TODO.
+4. Do not place admin/governance modules into doctor home.
+5. Do not modify unrelated modules.
+
+# Required outputs
+
+For every module:
+1. Module Goal
+2. Why It Belongs Here
+3. Files To Add Or Modify
+4. Frontend Code
+5. Backend / API Notes
+6. Database Notes
+7. Acceptance Checklist
+
+# Acceptance checklist must include
+
+- where the module appears
+- where it does not appear
+- who can access it
+- what data is visible
+- what interaction proves it works

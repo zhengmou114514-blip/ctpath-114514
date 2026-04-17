@@ -1,5 +1,18 @@
 # AGENTS.md
+## Run Commands
 
+### Frontend
+- `cd frontend`
+- `npm install`
+- `npm run dev`
+
+### Backend
+- `conda activate ctpath`
+- `uvicorn app.main:app --reload`
+
+### Notes
+- Python dependencies are managed in conda environment
+- Frontend dependencies are managed with npm
 ## 0. 角色定位
 本项目是“慢病辅助诊疗业务系统”，不是综合 HIS，不做收费、住院、药房全流程，不照搬大型医院系统全部模块。
 本项目目标是：在“慢病辅助诊疗”场景下，提供接近真实医疗业务的前端工作台、后端业务服务、模型服务与治理能力。
