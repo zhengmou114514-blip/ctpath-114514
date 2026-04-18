@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .api.analytics import router as analytics_router
+from .api.attachments import router as attachments_router
 from .api.audit import router as audit_router
 from .api.auth import router as auth_router
 from .api.authz import router as authz_router
@@ -105,6 +106,7 @@ async def load_dataset_on_startup() -> None:
 
 
 app.include_router(analytics_router)
+app.include_router(attachments_router)
 app.include_router(auth_router)
 app.include_router(authz_router)
 app.include_router(audit_router)

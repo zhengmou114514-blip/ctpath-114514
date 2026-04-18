@@ -173,6 +173,30 @@ class PatientCase(PatientSummary):
     similarCases: List[SimilarCase]
 
 
+PatientAttachmentType = Literal[
+    "patient_photo",
+    "id_card",
+    "insurance_card",
+    "referral_note",
+    "exam_report",
+    "informed_consent",
+]
+
+
+class PatientAttachmentRecord(BaseModel):
+    attachmentId: str
+    patientId: str
+    type: PatientAttachmentType
+    typeLabel: str
+    fileName: str
+    mimeType: str
+    fileSize: int
+    previewUrl: str
+    uploadedAt: str
+    uploadedBy: str
+    source: Literal["local-file", "mock-local"] = "local-file"
+
+
 class PredictRequest(BaseModel):
     patientId: str
     topk: int = Field(default=3, ge=1, le=10)

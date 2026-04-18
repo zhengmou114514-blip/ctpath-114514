@@ -1,4 +1,9 @@
-﻿import type { PatientAttachmentRecord, PatientAttachmentType } from './types'
+import {
+  fetchPatientAttachmentBlob,
+  getPatientAttachments,
+  uploadPatientAttachment as uploadPatientAttachmentApi,
+} from './api'
+import type { PatientAttachmentRecord, PatientAttachmentType } from './types'
 
 const ATTACHMENTS_STORAGE_KEY = 'ctpath.patient.attachments'
 const AUTH_STORAGE_KEY = 'ctpath.auth.session'
@@ -7,9 +12,9 @@ const TYPE_LABELS: Record<PatientAttachmentType, string> = {
   patient_photo: '患者照片',
   id_card: '身份证照片',
   insurance_card: '医保卡照片',
-  referral_form: '转诊单',
-  exam_report: '检查单',
-  other_document: '其他附件',
+  referral_note: '转诊单',
+  exam_report: '检查报告',
+  informed_consent: '知情同意书',
 }
 
 function readAll(): PatientAttachmentRecord[] {
@@ -51,11 +56,26 @@ function resolveUploaderName(explicit?: string): string {
   }
 }
 
-export function listPatientAttachments(patientId: string): PatientAttachmentRecord[] {
+function isBackendUnavailableError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error)
+  return /Cannot connect to backend API|Demo fallback does not support|Failed to fetch|NetworkError|Load failed|ECONNREFUSED|ERR_CONNECTION_REFUSED/i.test(
+    message
+  )
+}
+
+export async function listPatientAttachments(patientId: string): Promise<PatientAttachmentRecord[]> {
   if (!patientId) return []
-  return readAll()
-    .filter((item) => item.patientId === patientId)
-    .sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt))
+
+  try {
+    return await getPatientAttachments(patientId)
+  } catch (error) {
+    if (!isBackendUnavailableError(error)) {
+      throw error
+    }
+    return readAll()
+      .filter((item) => item.patientId === patientId)
+      .sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt))
+  }
 }
 
 export async function uploadPatientAttachment(params: {
@@ -69,6 +89,14 @@ export async function uploadPatientAttachment(params: {
     throw new Error('Patient ID is required before uploading attachments.')
   }
 
+  try {
+    return await uploadPatientAttachmentApi(patientId, { type, file })
+  } catch (error) {
+    if (!isBackendUnavailableError(error)) {
+      throw error
+    }
+  }
+
   const previewUrl = await fileToDataUrl(file)
 
   const record: PatientAttachmentRecord = {
@@ -78,6 +106,7 @@ export async function uploadPatientAttachment(params: {
     typeLabel: TYPE_LABELS[type],
     fileName: file.name,
     mimeType: file.type || 'application/octet-stream',
+    fileSize: file.size,
     previewUrl,
     uploadedAt: new Date().toISOString(),
     uploadedBy: resolveUploaderName(uploadedBy),
@@ -87,7 +116,23 @@ export async function uploadPatientAttachment(params: {
   const current = readAll()
   current.unshift(record)
   writeAll(current)
-
-  // TODO: replace localStorage persistence with backend object storage + metadata API.
   return record
+}
+
+export async function resolvePatientAttachmentPreview(record: PatientAttachmentRecord): Promise<{
+  url: string
+  mimeType: string
+}> {
+  if (record.previewUrl.startsWith('data:') || record.previewUrl.startsWith('blob:')) {
+    return {
+      url: record.previewUrl,
+      mimeType: record.mimeType,
+    }
+  }
+
+  const result = await fetchPatientAttachmentBlob(record.patientId, record.attachmentId)
+  return {
+    url: URL.createObjectURL(result.blob),
+    mimeType: result.mimeType || record.mimeType,
+  }
 }

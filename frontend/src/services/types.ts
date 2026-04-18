@@ -654,9 +654,9 @@ export type PatientAttachmentType =
   | 'patient_photo'
   | 'id_card'
   | 'insurance_card'
-  | 'referral_form'
+  | 'referral_note'
   | 'exam_report'
-  | 'other_document'
+  | 'informed_consent'
 
 export interface PatientAttachmentRecord {
   attachmentId: string
@@ -665,10 +665,11 @@ export interface PatientAttachmentRecord {
   typeLabel: string
   fileName: string
   mimeType: string
+  fileSize: number
   previewUrl: string
   uploadedAt: string
   uploadedBy: string
-  source: 'mock-local'
+  source: 'local-file' | 'mock-local'
 }
 
 export interface ModelDatasetImportRecord {

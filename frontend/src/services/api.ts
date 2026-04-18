@@ -1,4 +1,5 @@
-import type { AdviceGeneratePayload, AdviceGenerateResponse, AuthSession, AuthzCapabilityResponse, ContactLogCreatePayload, EncounterStatusPayload, FlowBoardResponse, GovernanceModulesResponse, FollowupWorklistResponse, HealthResponse, MaintenanceOverview, MeResponse, MedicationPlanGeneratePayload, MedicationPlanResponse, ModelMetricsResponse, OutpatientTaskCreatePayload, OutpatientTaskStatusUpdatePayload, PatientCase, PatientEventPayload, PatientQuadruple, PatientSummary, PatientUpsertPayload, PredictResponse, RegisterPayload, SystemAuditResponse, TimelineEvent } from './types'
+import { requestClient } from './request'
+import type { AdviceGeneratePayload, AdviceGenerateResponse, AuthSession, AuthzCapabilityResponse, ContactLogCreatePayload, EncounterStatusPayload, FlowBoardResponse, GovernanceModulesResponse, FollowupWorklistResponse, HealthResponse, MaintenanceOverview, MeResponse, MedicationPlanGeneratePayload, MedicationPlanResponse, ModelMetricsResponse, OutpatientTaskCreatePayload, OutpatientTaskStatusUpdatePayload, PatientAttachmentRecord, PatientAttachmentType, PatientCase, PatientEventPayload, PatientQuadruple, PatientSummary, PatientUpsertPayload, PredictResponse, RegisterPayload, SystemAuditResponse, TimelineEvent } from './types'
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? '/api'
 const ENABLE_DEMO_FALLBACK = String(import.meta.env.VITE_ENABLE_DEMO_FALLBACK ?? '').toLowerCase() === 'true'
@@ -264,8 +265,12 @@ async function demoRequest<T>(path: string, options: RequestInit = {}): Promise<
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const normalizedPath = normalizeApiPath(path)
+  const shouldSetContentType =
+    options.body !== undefined &&
+    !(options.body instanceof FormData) &&
+    !(options.body instanceof URLSearchParams)
   try {
-    const r = await fetch(`${API_BASE}${normalizedPath}`, { ...options, headers: { ...buildHeaders(options.body !== undefined), ...(options.headers ?? {}) } })
+    const r = await fetch(`${API_BASE}${normalizedPath}`, { ...options, headers: { ...buildHeaders(shouldSetContentType), ...(options.headers ?? {}) } })
     if (!r.ok) {
       if (ENABLE_DEMO_FALLBACK && r.status >= 500) return demoRequest<T>(normalizedPath, options)
       if (r.status === 401) {
@@ -300,6 +305,31 @@ export async function getPatientsPaginated(params: { page: number; pageSize: num
 export async function getPatientCase(patientId: string): Promise<PatientCase> { return request(`/patient/${patientId}`, { method: 'GET' }) }
 export async function getTimeline(patientId: string): Promise<TimelineEvent[]> { return (await request<{ patientId: string; items: TimelineEvent[] }>(`/timeline/${patientId}`, { method: 'GET' })).items }
 export async function getPatientQuadruples(patientId: string): Promise<PatientQuadruple[]> { return (await request<{ patientId: string; items: PatientQuadruple[] }>(`/patient/${patientId}/quadruples`, { method: 'GET' })).items }
+export async function getPatientAttachments(patientId: string): Promise<PatientAttachmentRecord[]> { return request(`/patient/${patientId}/attachments`, { method: 'GET' }) }
+export async function uploadPatientAttachment(patientId: string, payload: { type: PatientAttachmentType; file: File }): Promise<PatientAttachmentRecord> {
+  const formData = new FormData()
+  formData.append('type', payload.type)
+  formData.append('file', payload.file)
+  return request(`/patient/${patientId}/attachments`, { method: 'POST', body: formData })
+}
+export async function fetchPatientAttachmentBlob(patientId: string, attachmentId: string): Promise<{ blob: Blob; mimeType: string }> {
+  const response = await requestClient.request({
+    url: `/patient/${patientId}/attachments/${attachmentId}/file`,
+    method: 'GET',
+    responseType: 'blob',
+    validateStatus: () => true,
+  })
+
+  if (response.status !== 200) {
+    throw new Error(`[${response.status}] Failed to load attachment preview`)
+  }
+
+  const mimeType =
+    String(response.headers?.['content-type'] ?? response.headers?.['Content-Type'] ?? (response.data as Blob | undefined)?.type ?? 'application/octet-stream') ||
+    'application/octet-stream'
+
+  return { blob: response.data as Blob, mimeType }
+}
 export async function predictPatient(payload: { patientId: string; asOfTime?: string; topk: number }): Promise<PredictResponse> { return request('/predict', { method: 'POST', body: JSON.stringify(payload) }) }
 export async function generateAdvice(payload: AdviceGeneratePayload): Promise<AdviceGenerateResponse> { return request('/advice/generate', { method: 'POST', body: JSON.stringify(payload) }) }
 export async function generateMedicationPlan(patientId: string, payload: MedicationPlanGeneratePayload): Promise<MedicationPlanResponse> { return request(`/patient/${patientId}/medication-plan/generate`, { method: 'POST', body: JSON.stringify(payload) }) }

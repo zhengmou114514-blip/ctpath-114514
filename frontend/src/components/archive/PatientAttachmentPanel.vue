@@ -1,6 +1,6 @@
-﻿<script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { listPatientAttachments, uploadPatientAttachment } from '../../services/patientAttachmentAdapter'
+<script setup lang="ts">
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { listPatientAttachments, resolvePatientAttachmentPreview, uploadPatientAttachment } from '../../services/patientAttachmentAdapter'
 import type { PatientAttachmentRecord, PatientAttachmentType } from '../../services/types'
 
 const props = defineProps<{
@@ -9,39 +9,47 @@ const props = defineProps<{
 }>()
 
 const loading = ref(false)
+const uploading = ref(false)
 const uploadError = ref('')
-const allAttachments = ref<PatientAttachmentRecord[]>([])
+const attachments = ref<PatientAttachmentRecord[]>([])
 const previewRecord = ref<PatientAttachmentRecord | null>(null)
+const previewUrl = ref('')
+const previewMimeType = ref('')
+const selectedType = ref<PatientAttachmentType>('patient_photo')
 
-const docUploadType = ref<PatientAttachmentType>('id_card')
-
-const docTypeOptions: Array<{ value: PatientAttachmentType; label: string }> = [
+const typeOptions: Array<{ value: PatientAttachmentType; label: string }> = [
+  { value: 'patient_photo', label: '患者照片' },
   { value: 'id_card', label: '身份证照片' },
   { value: 'insurance_card', label: '医保卡照片' },
-  { value: 'referral_form', label: '转诊单' },
-  { value: 'exam_report', label: '检查单' },
-  { value: 'other_document', label: '其他附件' },
+  { value: 'referral_note', label: '转诊单' },
+  { value: 'exam_report', label: '检查报告' },
+  { value: 'informed_consent', label: '知情同意书' },
 ]
 
-const patientPhotos = computed(() => allAttachments.value.filter((item) => item.type === 'patient_photo'))
-const documentAttachments = computed(() => allAttachments.value.filter((item) => item.type !== 'patient_photo'))
-const attachmentRegistry = computed(() => allAttachments.value)
-
-const latestPatientPhoto = computed(() => patientPhotos.value[0] ?? null)
-
-function isImage(record: PatientAttachmentRecord): boolean {
-  return record.mimeType.startsWith('image/')
-}
+const attachmentCount = computed(() => attachments.value.length)
 
 function formatDateTime(iso: string): string {
+  if (!iso) return '--'
   return iso.replace('T', ' ').slice(0, 16)
 }
 
-function reload() {
-  allAttachments.value = listPatientAttachments(props.patientId)
+async function reload() {
+  if (!props.patientId) {
+    attachments.value = []
+    return
+  }
+
+  loading.value = true
+  try {
+    attachments.value = await listPatientAttachments(props.patientId)
+  } catch (error) {
+    uploadError.value = error instanceof Error ? error.message : '附件列表加载失败'
+  } finally {
+    loading.value = false
+  }
 }
 
-async function handleUpload(type: PatientAttachmentType, event: Event) {
+async function handleUpload(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
   if (!file || !props.patientId) {
@@ -50,42 +58,66 @@ async function handleUpload(type: PatientAttachmentType, event: Event) {
   }
 
   uploadError.value = ''
-  loading.value = true
+  uploading.value = true
 
   try {
-    await uploadPatientAttachment({ patientId: props.patientId, type, file })
-    reload()
+    await uploadPatientAttachment({ patientId: props.patientId, type: selectedType.value, file })
+    await reload()
   } catch (error) {
     uploadError.value = error instanceof Error ? error.message : '附件上传失败'
   } finally {
-    loading.value = false
+    uploading.value = false
     input.value = ''
   }
 }
 
-function openPreview(record: PatientAttachmentRecord) {
-  if (!isImage(record)) {
-    window.open(record.previewUrl, '_blank', 'noopener,noreferrer')
-    return
+async function openPreview(record: PatientAttachmentRecord) {
+  closePreview()
+  try {
+    const result = await resolvePatientAttachmentPreview(record)
+    previewRecord.value = record
+    previewUrl.value = result.url
+    previewMimeType.value = result.mimeType
+  } catch (error) {
+    uploadError.value = error instanceof Error ? error.message : '附件预览失败'
   }
-  previewRecord.value = record
+}
+
+function closePreview() {
+  if (previewUrl.value.startsWith('blob:')) {
+    URL.revokeObjectURL(previewUrl.value)
+  }
+  previewRecord.value = null
+  previewUrl.value = ''
+  previewMimeType.value = ''
+}
+
+function openInNewTab() {
+  if (!previewUrl.value) return
+  window.open(previewUrl.value, '_blank', 'noopener,noreferrer')
 }
 
 watch(
   () => props.patientId,
   () => {
-    reload()
-    previewRecord.value = null
+    closePreview()
+    void reload()
   },
   { immediate: true }
 )
+
+onBeforeUnmount(() => {
+  closePreview()
+})
 </script>
 
 <template>
   <section class="attachment-panel">
     <header class="panel-head">
-      <h3>{{ title || '患者照片与证件附件' }}</h3>
-      <span class="meta" v-if="patientId">档案号：{{ patientId }}</span>
+      <div>
+        <h3>{{ title || '患者附件摘要' }}</h3>
+        <p class="meta" v-if="patientId">档案号：{{ patientId }} · 共 {{ attachmentCount }} 项</p>
+      </div>
     </header>
 
     <p v-if="!patientId" class="empty-block">请先保存患者档案后再上传附件。</p>
@@ -93,109 +125,68 @@ watch(
     <template v-else>
       <p v-if="uploadError" class="error-tip">{{ uploadError }}</p>
 
-      <article class="block patient-photo-block">
-        <div class="block-head">
-          <h4>患者照片</h4>
-          <label class="upload-btn" :class="{ disabled: loading }">
-            <input type="file" accept="image/*" :disabled="loading" @change="handleUpload('patient_photo', $event)" />
-            上传患者照片
-          </label>
+      <section class="upload-card">
+        <label>
+          <span>附件类型</span>
+          <select v-model="selectedType" :disabled="loading || uploading">
+            <option v-for="opt in typeOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+          </select>
+        </label>
+
+        <label class="upload-btn" :class="{ disabled: loading || uploading }">
+          <input
+            type="file"
+            accept="image/*,.pdf,.doc,.docx"
+            :disabled="loading || uploading"
+            @change="handleUpload"
+          />
+          {{ uploading ? '上传中...' : '上传附件' }}
+        </label>
+      </section>
+
+      <section class="summary-card">
+        <div class="summary-head">
+          <h4>附件摘要列表</h4>
+          <span class="meta">上传时间、上传人和预览入口统一展示</span>
         </div>
 
-        <div class="photo-zone" v-if="latestPatientPhoto">
-          <img :src="latestPatientPhoto.previewUrl" alt="患者照片" @click="openPreview(latestPatientPhoto)" />
-          <div class="photo-meta">
-            <strong>{{ latestPatientPhoto.fileName }}</strong>
-            <span>{{ latestPatientPhoto.typeLabel }}</span>
-            <span>上传时间：{{ formatDateTime(latestPatientPhoto.uploadedAt) }}</span>
-            <span>上传人：{{ latestPatientPhoto.uploadedBy }}</span>
-          </div>
-        </div>
-        <p v-else class="empty-inline">暂无患者照片</p>
-      </article>
-
-      <article class="block registry-block" v-if="attachmentRegistry.length">
-        <div class="block-head">
-          <h4>附件登记清单</h4>
-          <span class="meta">用于病案追溯与审计</span>
-        </div>
-        <div class="list-table">
+        <div v-if="loading" class="empty-inline">正在加载附件列表...</div>
+        <div v-else-if="!attachments.length" class="empty-inline">暂无附件</div>
+        <div v-else class="list-table">
           <header>
             <span>附件类型</span>
             <span>文件名</span>
             <span>上传时间</span>
             <span>上传人</span>
+            <span>预览</span>
           </header>
-          <article v-for="item in attachmentRegistry" :key="`registry-${item.attachmentId}`">
-            <span>{{ item.typeLabel }}</span>
-            <span>{{ item.fileName }}</span>
+          <article v-for="item in attachments" :key="item.attachmentId">
+            <span class="type-badge">{{ item.typeLabel }}</span>
+            <span class="file-name">{{ item.fileName }}</span>
             <span>{{ formatDateTime(item.uploadedAt) }}</span>
             <span>{{ item.uploadedBy }}</span>
+            <button class="secondary-button preview-button" type="button" @click="openPreview(item)">预览</button>
           </article>
         </div>
-      </article>
+      </section>
 
-      <article class="block doc-block">
-        <div class="block-head">
-          <h4>证件/单据附件</h4>
-          <div class="doc-upload-tools">
-            <select v-model="docUploadType" :disabled="loading">
-              <option v-for="opt in docTypeOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-            </select>
-            <label class="upload-btn" :class="{ disabled: loading }">
-              <input
-                type="file"
-                accept="image/*,.pdf,.doc,.docx"
-                :disabled="loading"
-                @change="handleUpload(docUploadType, $event)"
-              />
-              上传附件
-            </label>
-          </div>
-        </div>
-
-        <div class="thumb-grid" v-if="documentAttachments.length">
-          <button
-            v-for="item in documentAttachments"
-            :key="item.attachmentId"
-            class="thumb-item"
-            type="button"
-            @click="openPreview(item)"
-          >
-            <img v-if="isImage(item)" :src="item.previewUrl" :alt="item.fileName" />
-            <div v-else class="file-tile">{{ item.fileName.split('.').pop()?.toUpperCase() || 'FILE' }}</div>
-            <div class="thumb-meta">
-              <strong>{{ item.typeLabel }}</strong>
-              <span>{{ item.fileName }}</span>
-            </div>
-          </button>
-        </div>
-        <p v-else class="empty-inline">暂无证件/单据附件</p>
-
-        <div class="list-table" v-if="documentAttachments.length">
-          <header>
-            <span>附件类型</span>
-            <span>文件名</span>
-            <span>上传时间</span>
-            <span>上传人</span>
-          </header>
-          <article v-for="item in documentAttachments" :key="`row-${item.attachmentId}`">
-            <span>{{ item.typeLabel }}</span>
-            <span>{{ item.fileName }}</span>
-            <span>{{ formatDateTime(item.uploadedAt) }}</span>
-            <span>{{ item.uploadedBy }}</span>
-          </article>
-        </div>
-      </article>
-
-      <div v-if="previewRecord" class="preview-mask" @click.self="previewRecord = null">
+      <div v-if="previewRecord" class="preview-mask" @click.self="closePreview">
         <article class="preview-dialog">
           <header>
-            <strong>{{ previewRecord.typeLabel }}</strong>
-            <button type="button" @click="previewRecord = null">关闭</button>
+            <div>
+              <strong>{{ previewRecord.typeLabel }}</strong>
+              <p>{{ previewRecord.fileName }}</p>
+            </div>
+            <button type="button" @click="closePreview">关闭</button>
           </header>
-          <img :src="previewRecord.previewUrl" :alt="previewRecord.fileName" />
-          <p>{{ previewRecord.fileName }}</p>
+
+          <img v-if="previewMimeType.startsWith('image/')" :src="previewUrl" :alt="previewRecord.fileName" />
+          <iframe v-else-if="previewMimeType === 'application/pdf'" :src="previewUrl" title="附件预览"></iframe>
+          <div v-else class="preview-placeholder">
+            <p>当前文件类型暂不支持内嵌预览。</p>
+            <button class="primary-button" type="button" @click="openInNewTab">新窗口打开</button>
+          </div>
+
           <small>上传时间：{{ formatDateTime(previewRecord.uploadedAt) }} / 上传人：{{ previewRecord.uploadedBy }}</small>
         </article>
       </div>
@@ -212,8 +203,8 @@ watch(
 .panel-head {
   display: flex;
   justify-content: space-between;
-  gap: 8px;
-  align-items: center;
+  align-items: flex-start;
+  gap: 10px;
 }
 
 .panel-head h3 {
@@ -237,39 +228,53 @@ watch(
   font-size: 13px;
 }
 
-.block {
+.upload-card,
+.summary-card {
   border: 1px solid var(--border, #cfd9e5);
   border-radius: 10px;
   background: #fbfdff;
-  padding: 10px;
+  padding: 12px;
   display: grid;
   gap: 10px;
 }
 
-.block-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  align-items: center;
+.upload-card {
+  grid-template-columns: minmax(180px, 1fr) auto;
+  align-items: end;
 }
 
-.block-head h4 {
-  margin: 0;
-  font-size: 14px;
-  color: var(--ink, #10263c);
+.upload-card label {
+  display: grid;
+  gap: 6px;
+}
+
+.upload-card span {
+  font-size: 12px;
+  color: var(--ink-muted, #617385);
+  font-weight: 600;
+}
+
+.upload-card select {
+  border: 1px solid var(--border, #cfd9e5);
+  border-radius: 6px;
+  background: #fff;
+  padding: 8px 10px;
+  font-size: 13px;
 }
 
 .upload-btn {
   position: relative;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   border: 1px solid var(--border, #cfd9e5);
   border-radius: 6px;
   background: #fff;
-  padding: 6px 10px;
-  font-size: 12px;
+  padding: 9px 12px;
+  font-size: 13px;
   color: #1f3b5b;
   cursor: pointer;
+  min-width: 120px;
 }
 
 .upload-btn.disabled {
@@ -284,90 +289,16 @@ watch(
   cursor: pointer;
 }
 
-.photo-zone {
-  display: grid;
-  grid-template-columns: 120px 1fr;
+.summary-head {
+  display: flex;
+  justify-content: space-between;
   gap: 10px;
-}
-
-.photo-zone img {
-  width: 120px;
-  height: 140px;
-  object-fit: cover;
-  border-radius: 8px;
-  border: 1px solid var(--border, #cfd9e5);
-  cursor: zoom-in;
-}
-
-.photo-meta {
-  display: grid;
-  gap: 4px;
-  font-size: 12px;
-  color: var(--ink-muted, #617385);
-}
-
-.doc-upload-tools {
-  display: flex;
-  gap: 8px;
-}
-
-.doc-upload-tools select {
-  border: 1px solid var(--border, #cfd9e5);
-  border-radius: 6px;
-  background: #fff;
-  padding: 6px 8px;
-  font-size: 12px;
-}
-
-.thumb-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.thumb-item {
-  border: 1px solid var(--border, #cfd9e5);
-  border-radius: 8px;
-  background: #fff;
-  padding: 6px;
-  display: grid;
-  gap: 6px;
-  text-align: left;
-  cursor: pointer;
-}
-
-.thumb-item img,
-.file-tile {
-  width: 100%;
-  height: 80px;
-  border-radius: 6px;
-  object-fit: cover;
-  border: 1px solid #e2e8f0;
-}
-
-.file-tile {
-  display: flex;
   align-items: center;
-  justify-content: center;
-  background: #f3f7fb;
-  color: #425f80;
-  font-weight: 700;
 }
 
-.thumb-meta {
-  display: grid;
-  gap: 2px;
-}
-
-.thumb-meta strong {
-  font-size: 12px;
-  color: #1f3b5b;
-}
-
-.thumb-meta span {
-  font-size: 11px;
-  color: #6a7f96;
-  word-break: break-all;
+.summary-head h4 {
+  margin: 0;
+  color: var(--ink, #10263c);
 }
 
 .list-table {
@@ -379,10 +310,11 @@ watch(
 .list-table header,
 .list-table article {
   display: grid;
-  grid-template-columns: 1fr 1.4fr 1fr 1fr;
+  grid-template-columns: 0.9fr 1.6fr 1fr 1fr auto;
   gap: 8px;
   padding: 8px 10px;
   font-size: 12px;
+  align-items: center;
 }
 
 .list-table header {
@@ -394,6 +326,26 @@ watch(
 .list-table article {
   border-top: 1px solid #e5edf5;
   color: #2d4a68;
+}
+
+.type-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #edf5ff;
+  color: #20508a;
+  font-weight: 600;
+}
+
+.file-name {
+  word-break: break-all;
+}
+
+.preview-button {
+  justify-self: start;
+  padding: 6px 10px;
 }
 
 .empty-inline,
@@ -432,6 +384,13 @@ watch(
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
+}
+
+.preview-dialog header h4,
+.preview-dialog header strong,
+.preview-dialog header p {
+  margin: 0;
 }
 
 .preview-dialog header button {
@@ -442,13 +401,25 @@ watch(
   cursor: pointer;
 }
 
-.preview-dialog img {
+.preview-dialog img,
+.preview-dialog iframe {
   width: 100%;
+  min-height: 360px;
   max-height: 70vh;
   object-fit: contain;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   background: #f8fafc;
+}
+
+.preview-placeholder {
+  min-height: 240px;
+  display: grid;
+  place-items: center;
+  gap: 10px;
+  border: 1px dashed #bfd0e1;
+  border-radius: 8px;
+  background: #f9fbfd;
 }
 
 .preview-dialog p,
@@ -458,23 +429,13 @@ watch(
 }
 
 @media (max-width: 1100px) {
-  .thumb-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .upload-card {
+    grid-template-columns: 1fr;
   }
 
   .list-table header,
   .list-table article {
     grid-template-columns: 1fr;
-  }
-
-  .photo-zone {
-    grid-template-columns: 1fr;
-  }
-
-  .photo-zone img {
-    width: 100%;
-    max-width: 240px;
-    height: auto;
   }
 }
 </style>

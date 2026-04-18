@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import PatientAttachmentPanel from '../components/archive/PatientAttachmentPanel.vue'
 import { useWorkspaceContext } from '../composables/workspaceContext'
 
 const workspace = useWorkspaceContext()
@@ -57,12 +58,6 @@ async function loadPatientDetail(patientId: string) {
 
 function handleBack() {
   void router.push({ name: 'home' })
-}
-
-function handleOpenArchive() {
-  const patientId = selectedPatient.value?.patientId || routePatientId.value
-  if (!patientId) return
-  void workspace.openArchiveInNewTab(patientId, 'overview')
 }
 
 function handleOpenFollowup() {
@@ -151,10 +146,8 @@ watch(
           <p v-else class="empty-inline">暂无建议摘要。</p>
         </article>
 
-        <article class="card panel">
-          <h3>附件摘要入口</h3>
-          <p class="placeholder-text">这里作为附件摘要入口，后续可进入患者档案/附件页查看照片与单据。</p>
-          <button class="secondary-button" @click="handleOpenArchive">进入附件摘要</button>
+        <article class="card panel attachment-module">
+          <PatientAttachmentPanel :patient-id="selectedPatient.patientId" title="附件摘要入口" />
         </article>
 
         <article class="card panel">
@@ -221,6 +214,10 @@ watch(
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+}
+
+.attachment-module {
+  grid-column: 1 / -1;
 }
 
 .info-card,
