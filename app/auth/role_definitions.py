@@ -54,6 +54,10 @@ class Permission(str, Enum):
     DRUG_CREATE = "drug:create"
     DRUG_UPDATE = "drug:update"
 
+    DRUG_PERMISSION_VIEW = "drug_permission:view"
+    DRUG_PERMISSION_CREATE = "drug_permission:create"
+    DRUG_PERMISSION_UPDATE = "drug_permission:update"
+
     # 系统管理权限
     SYSTEM_CONFIG = "system:config"
     SYSTEM_MONITOR = "system:monitor"
@@ -87,6 +91,9 @@ ROLE_PERMISSIONS: Dict[Role, Set[Permission]] = {
         Permission.DRUG_VIEW,
         Permission.DRUG_CREATE,
         Permission.DRUG_UPDATE,
+        Permission.DRUG_PERMISSION_VIEW,
+        Permission.DRUG_PERMISSION_CREATE,
+        Permission.DRUG_PERMISSION_UPDATE,
         Permission.SYSTEM_CONFIG,
         Permission.SYSTEM_MONITOR,
         Permission.USER_MANAGE,
@@ -113,6 +120,9 @@ ROLE_PERMISSIONS: Dict[Role, Set[Permission]] = {
         Permission.DRUG_VIEW,
         Permission.DRUG_CREATE,
         Permission.DRUG_UPDATE,
+        Permission.DRUG_PERMISSION_VIEW,
+        Permission.DRUG_PERMISSION_CREATE,
+        Permission.DRUG_PERMISSION_UPDATE,
     },
 
     Role.NURSE: {
@@ -141,6 +151,7 @@ ROLE_PERMISSIONS: Dict[Role, Set[Permission]] = {
         Permission.FOLLOWUP_VIEW,
         Permission.TASK_VIEW,
         Permission.DRUG_VIEW,
+        Permission.DRUG_PERMISSION_VIEW,
     },
 }
 

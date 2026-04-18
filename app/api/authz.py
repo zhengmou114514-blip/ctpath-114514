@@ -11,10 +11,36 @@ router = APIRouter(tags=["authz"])
 
 
 _ROLE_SECTIONS = {
-    "doctor": ["doctor", "archive", "drug-management", "model-dashboard", "insights", "governance"],
+    "doctor": [
+        "doctor",
+        "archive",
+        "drug-management",
+        "drug-permission-management",
+        "model-dashboard",
+        "insights",
+        "governance",
+    ],
     "nurse": ["tasks", "contacts", "flow"],
-    "archivist": ["archive", "drug-management", "data-quality", "governance"],
-    "admin": ["doctor", "archive", "drug-management", "model-dashboard", "insights", "governance", "tasks", "contacts", "flow", "data-quality"],
+    "archivist": [
+        "archive",
+        "drug-management",
+        "drug-permission-management",
+        "data-quality",
+        "governance",
+    ],
+    "admin": [
+        "doctor",
+        "archive",
+        "drug-management",
+        "drug-permission-management",
+        "model-dashboard",
+        "insights",
+        "governance",
+        "tasks",
+        "contacts",
+        "flow",
+        "data-quality",
+    ],
 }
 
 

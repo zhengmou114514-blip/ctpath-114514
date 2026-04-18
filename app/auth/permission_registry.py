@@ -440,3 +440,35 @@ PERMISSION_REGISTRY.register(APIPermission(
     allowed_roles={Role.ADMIN, Role.DOCTOR, Role.ARCHIVIST},
     description="????",
 ))
+
+PERMISSION_REGISTRY.register(APIPermission(
+    path="/api/drug-permissions",
+    method="GET",
+    required_permissions={Permission.DRUG_PERMISSION_VIEW},
+    allowed_roles={Role.ADMIN, Role.DOCTOR, Role.ARCHIVIST},
+    description="药品权限列表",
+))
+
+PERMISSION_REGISTRY.register(APIPermission(
+    path="/api/drug-permissions/{role}",
+    method="GET",
+    required_permissions={Permission.DRUG_PERMISSION_VIEW},
+    allowed_roles={Role.ADMIN, Role.DOCTOR, Role.ARCHIVIST},
+    description="药品权限详情",
+))
+
+PERMISSION_REGISTRY.register(APIPermission(
+    path="/api/drug-permissions",
+    method="POST",
+    required_permissions={Permission.DRUG_PERMISSION_CREATE},
+    allowed_roles={Role.ADMIN, Role.DOCTOR, Role.ARCHIVIST},
+    description="创建药品权限",
+))
+
+PERMISSION_REGISTRY.register(APIPermission(
+    path="/api/drug-permissions/{role}",
+    method="PUT",
+    required_permissions={Permission.DRUG_PERMISSION_UPDATE},
+    allowed_roles={Role.ADMIN, Role.DOCTOR, Role.ARCHIVIST},
+    description="更新药品权限",
+))

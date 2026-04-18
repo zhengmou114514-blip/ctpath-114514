@@ -229,6 +229,27 @@ class DrugCatalogUpsertRequest(BaseModel):
     indication: str = Field(min_length=1)
 
 
+DrugPermissionRole = Literal["doctor", "nurse", "pharmacist", "archivist", "admin"]
+
+
+class DrugPermissionRecord(BaseModel):
+    role: DrugPermissionRole
+    allow_view: bool = False
+    allow_prescribe: bool = False
+    allow_review: bool = False
+    allow_execute: bool = False
+    allow_controlled_drug: bool = False
+
+
+class DrugPermissionUpsertRequest(BaseModel):
+    role: DrugPermissionRole
+    allow_view: bool = False
+    allow_prescribe: bool = False
+    allow_review: bool = False
+    allow_execute: bool = False
+    allow_controlled_drug: bool = False
+
+
 class PredictRequest(BaseModel):
     patientId: str
     topk: int = Field(default=3, ge=1, le=10)

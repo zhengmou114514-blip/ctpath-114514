@@ -703,6 +703,19 @@ export interface DrugCatalogUpsertRequest {
   indication: string
 }
 
+export type DrugPermissionRole = 'doctor' | 'nurse' | 'pharmacist' | 'archivist' | 'admin'
+
+export interface DrugPermissionRecord {
+  role: DrugPermissionRole
+  allow_view: boolean
+  allow_prescribe: boolean
+  allow_review: boolean
+  allow_execute: boolean
+  allow_controlled_drug: boolean
+}
+
+export interface DrugPermissionUpsertRequest extends DrugPermissionRecord {}
+
 export interface ModelDatasetImportRecord {
   datasetId: string
   datasetName: string

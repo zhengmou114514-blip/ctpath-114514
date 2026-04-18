@@ -1,5 +1,5 @@
 import { requestClient } from './request'
-import type { AdviceGeneratePayload, AdviceGenerateResponse, AuthSession, AuthzCapabilityResponse, ContactLogCreatePayload, DrugCatalogRecord, DrugCatalogStatus, DrugCatalogUpsertRequest, EncounterStatusPayload, FlowBoardResponse, GovernanceModulesResponse, FollowupWorklistResponse, HealthResponse, MaintenanceOverview, MeResponse, MedicationPlanGeneratePayload, MedicationPlanResponse, ModelMetricsResponse, OutpatientTaskCreatePayload, OutpatientTaskStatusUpdatePayload, PatientAttachmentRecord, PatientAttachmentType, PatientCase, PatientEventPayload, PatientQuadruple, PatientSummary, PatientUpsertPayload, PredictResponse, RegisterPayload, SystemAuditResponse, TimelineEvent } from './types'
+import type { AdviceGeneratePayload, AdviceGenerateResponse, AuthSession, AuthzCapabilityResponse, ContactLogCreatePayload, DrugCatalogRecord, DrugCatalogStatus, DrugCatalogUpsertRequest, DrugPermissionRecord, DrugPermissionRole, DrugPermissionUpsertRequest, EncounterStatusPayload, FlowBoardResponse, GovernanceModulesResponse, FollowupWorklistResponse, HealthResponse, MaintenanceOverview, MeResponse, MedicationPlanGeneratePayload, MedicationPlanResponse, ModelMetricsResponse, OutpatientTaskCreatePayload, OutpatientTaskStatusUpdatePayload, PatientAttachmentRecord, PatientAttachmentType, PatientCase, PatientEventPayload, PatientQuadruple, PatientSummary, PatientUpsertPayload, PredictResponse, RegisterPayload, SystemAuditResponse, TimelineEvent } from './types'
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? '/api'
 const ENABLE_DEMO_FALLBACK = String(import.meta.env.VITE_ENABLE_DEMO_FALLBACK ?? '').toLowerCase() === 'true'
@@ -57,6 +57,7 @@ const token = (u: string) => `demo-${u}-${Date.now()}`
 const sum = (p: PatientCase): PatientSummary => ({ patientId: p.patientId, name: p.name, age: p.age, gender: p.gender, avatarUrl: p.avatarUrl, phone: p.phone, emergencyContactName: p.emergencyContactName, emergencyContactRelation: p.emergencyContactRelation, emergencyContactPhone: p.emergencyContactPhone, identityMasked: p.identityMasked, insuranceType: p.insuranceType, department: p.department, primaryDoctor: p.primaryDoctor, caseManager: p.caseManager, medicalRecordNumber: p.medicalRecordNumber, archiveSource: p.archiveSource, archiveStatus: p.archiveStatus, consentStatus: p.consentStatus, allergyHistory: p.allergyHistory, familyHistory: p.familyHistory, primaryDisease: p.primaryDisease, currentStage: p.currentStage, riskLevel: p.riskLevel, lastVisit: p.lastVisit, summary: p.summary, dataSupport: p.dataSupport })
 const findPatient = (id: string) => demoPatients.find((p) => p.patientId === id)
 const findDrug = (drugId: string) => demoDrugs.find((drug) => drug.drug_id === drugId)
+const findDrugPermission = (role: string) => demoDrugPermissions.find((item) => item.role === role)
 const normalizeDrugStatus = (status: string | undefined | null): DrugCatalogStatus => (status === 'inactive' ? 'inactive' : 'active')
 
 function mk(id: string, name: string, age: number, disease: string, stage: string, risk: string, lastVisit: string, summary: string, dataSupport: 'high' | 'medium' | 'low', encounterStatus: 'waiting' | 'in_progress' | 'pending_review' | 'completed' = 'waiting'): PatientCase {
@@ -115,6 +116,49 @@ let demoDrugs: DrugCatalogRecord[] = [
     created_at: '2026-04-18T00:00:00+00:00',
     updated_at: '2026-04-18T00:00:00+00:00',
     updated_by: 'system',
+  },
+]
+
+let demoDrugPermissions: DrugPermissionRecord[] = [
+  {
+    role: 'doctor',
+    allow_view: true,
+    allow_prescribe: true,
+    allow_review: false,
+    allow_execute: false,
+    allow_controlled_drug: true,
+  },
+  {
+    role: 'nurse',
+    allow_view: true,
+    allow_prescribe: false,
+    allow_review: false,
+    allow_execute: true,
+    allow_controlled_drug: false,
+  },
+  {
+    role: 'pharmacist',
+    allow_view: true,
+    allow_prescribe: false,
+    allow_review: true,
+    allow_execute: true,
+    allow_controlled_drug: true,
+  },
+  {
+    role: 'archivist',
+    allow_view: true,
+    allow_prescribe: false,
+    allow_review: false,
+    allow_execute: false,
+    allow_controlled_drug: false,
+  },
+  {
+    role: 'admin',
+    allow_view: true,
+    allow_prescribe: true,
+    allow_review: true,
+    allow_execute: true,
+    allow_controlled_drug: true,
   },
 ]
 
@@ -234,6 +278,49 @@ async function demoRequest<T>(path: string, options: RequestInit = {}): Promise<
       updated_by: 'frontend-demo',
     }
     demoDrugs = demoDrugs.map((drug, i) => (i === index ? updated : drug))
+    return clone(updated) as T
+  }
+  if (u.pathname === '/drug-permissions' && m === 'GET') {
+    const roleFilter = (u.searchParams.get('role') ?? '').trim()
+    const items = roleFilter ? demoDrugPermissions.filter((item) => item.role === roleFilter) : demoDrugPermissions
+    return clone(items.slice().sort((left, right) => left.role.localeCompare(right.role))) as T
+  }
+  if (u.pathname.startsWith('/drug-permissions/') && s[1] && s.length === 2 && m === 'GET') {
+    const item = findDrugPermission(s[1])
+    if (!item) throw new Error('Drug permission not found')
+    return clone(item) as T
+  }
+  if (u.pathname === '/drug-permissions' && m === 'POST') {
+    const payload = body<DrugPermissionUpsertRequest>(options.body)
+    const role = payload.role.trim()
+    if (!role) throw new Error('role is required')
+    if (findDrugPermission(role)) throw new Error('Drug permission already exists')
+    const record: DrugPermissionRecord = {
+      role: role as DrugPermissionRole,
+      allow_view: payload.allow_view,
+      allow_prescribe: payload.allow_prescribe,
+      allow_review: payload.allow_review,
+      allow_execute: payload.allow_execute,
+      allow_controlled_drug: payload.allow_controlled_drug,
+    }
+    demoDrugPermissions = [...demoDrugPermissions, record]
+    return clone(record) as T
+  }
+  if (u.pathname.startsWith('/drug-permissions/') && s[1] && s.length === 2 && m === 'PUT') {
+    const payload = body<DrugPermissionUpsertRequest>(options.body)
+    const targetRole = s[1]
+    if (payload.role.trim() !== targetRole) throw new Error('role does not match path parameter')
+    const index = demoDrugPermissions.findIndex((item) => item.role === targetRole)
+    if (index < 0) throw new Error('Drug permission not found')
+    const updated: DrugPermissionRecord = {
+      role: targetRole as DrugPermissionRole,
+      allow_view: payload.allow_view,
+      allow_prescribe: payload.allow_prescribe,
+      allow_review: payload.allow_review,
+      allow_execute: payload.allow_execute,
+      allow_controlled_drug: payload.allow_controlled_drug,
+    }
+    demoDrugPermissions = demoDrugPermissions.map((item, itemIndex) => (itemIndex === index ? updated : item))
     return clone(updated) as T
   }
   if (u.pathname === '/health') return { status: 'ok', service: 'ctpath-demo-fallback', mode: 'demo', model_available: false, model_error: 'Backend unavailable, using local demo data.' } as T
@@ -485,6 +572,19 @@ export async function getDrugCatalog(params: { keyword?: string; status?: DrugCa
 export async function getDrugCatalogItem(drugId: string): Promise<DrugCatalogRecord> { return request(`/drugs/${drugId}`, { method: 'GET' }) }
 export async function createDrugCatalogItem(payload: DrugCatalogUpsertRequest): Promise<DrugCatalogRecord> { return request('/drugs', { method: 'POST', body: JSON.stringify(payload) }) }
 export async function updateDrugCatalogItem(drugId: string, payload: DrugCatalogUpsertRequest): Promise<DrugCatalogRecord> { return request(`/drugs/${drugId}`, { method: 'PUT', body: JSON.stringify(payload) }) }
+export async function getDrugPermissions(role?: DrugPermissionRole): Promise<DrugPermissionRecord[]> {
+  const suffix = role ? `?role=${encodeURIComponent(role)}` : ''
+  return request(`/drug-permissions${suffix}`, { method: 'GET' })
+}
+export async function getDrugPermissionItem(role: string): Promise<DrugPermissionRecord> {
+  return request(`/drug-permissions/${encodeURIComponent(role)}`, { method: 'GET' })
+}
+export async function createDrugPermissionItem(payload: DrugPermissionUpsertRequest): Promise<DrugPermissionRecord> {
+  return request('/drug-permissions', { method: 'POST', body: JSON.stringify(payload) })
+}
+export async function updateDrugPermissionItem(role: string, payload: DrugPermissionUpsertRequest): Promise<DrugPermissionRecord> {
+  return request(`/drug-permissions/${encodeURIComponent(role)}`, { method: 'PUT', body: JSON.stringify(payload) })
+}
 export async function healthCheck(): Promise<HealthResponse> { return request('/health', { method: 'GET' }) }
 export async function getMe(): Promise<MeResponse> { return request('/me', { method: 'GET' }) }
 export async function getAuthzCapabilities(): Promise<AuthzCapabilityResponse> { return request('/authz/capabilities', { method: 'GET' }) }

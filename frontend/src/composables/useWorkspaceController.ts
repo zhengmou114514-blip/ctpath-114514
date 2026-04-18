@@ -61,6 +61,7 @@ const APP_SECTIONS: AppSection[] = [
   'doctor',
   'archive',
   'drug-management',
+  'drug-permission-management',
   'tasks',
   'governance',
   'insights',
@@ -347,11 +348,12 @@ export function useWorkspaceController() {
   const archiveNoPermission = computed(() => Boolean(currentDoctor.value) && !canManageArchive())
   const followupNoPermission = computed(() => Boolean(currentDoctor.value) && !canUseFollowupWorkspace())
   const currentWorkspace = computed<
-    'doctor' | 'archive' | 'drug-management' | 'governance' | 'model-dashboard' | 'model-insight' | 'followup' | 'system' | 'unknown'
+    'doctor' | 'archive' | 'drug-management' | 'drug-permission-management' | 'governance' | 'model-dashboard' | 'model-insight' | 'followup' | 'system' | 'unknown'
   >(() => {
     if (section.value === 'doctor') return 'doctor'
     if (section.value === 'archive' || section.value === 'data-quality') return 'archive'
     if (section.value === 'drug-management') return 'drug-management'
+    if (section.value === 'drug-permission-management') return 'drug-permission-management'
     if (section.value === 'governance') return 'governance'
     if (section.value === 'model-dashboard') return 'model-dashboard'
     if (section.value === 'insights') return 'model-insight'

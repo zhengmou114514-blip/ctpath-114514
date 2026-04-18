@@ -4,6 +4,7 @@ import GovernancePage from '../pages/GovernancePage.vue'
 import ModelDashboardPage from '../pages/ModelDashboardPage.vue'
 import ModelInsightPage from '../pages/ModelInsightPage.vue'
 import DrugCatalogPage from '../pages/DrugCatalogPage.vue'
+import DrugPermissionManagementPage from '../pages/DrugPermissionManagementPage.vue'
 import { useAuthStore } from '../stores/auth'
 
 const routes: RouteRecordRaw[] = [
@@ -39,6 +40,11 @@ const routes: RouteRecordRaw[] = [
         path: 'drug-management',
         name: 'drug-management',
         component: DrugCatalogPage,
+      },
+      {
+        path: 'drug-permission-management',
+        name: 'drug-permission-management',
+        component: DrugPermissionManagementPage,
       },
     ],
   },
