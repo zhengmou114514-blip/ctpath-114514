@@ -1,8 +1,11 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import AppWorkspacePage from '../pages/AppWorkspacePage.vue'
+import GovernancePage from '../pages/GovernancePage.vue'
+import ModelDashboardPage from '../pages/ModelDashboardPage.vue'
+import ModelInsightPage from '../pages/ModelInsightPage.vue'
 import { useAuthStore } from '../stores/auth'
 
-const routes = [
+const routes: RouteRecordRaw[] = [
   {
     path: '/',
     name: 'home',
@@ -10,6 +13,23 @@ const routes = [
     meta: {
       requiresAuth: true,
     },
+    children: [
+      {
+        path: 'model-insight',
+        name: 'model-insight',
+        component: ModelInsightPage,
+      },
+      {
+        path: 'model-dashboard',
+        name: 'model-dashboard',
+        component: ModelDashboardPage,
+      },
+      {
+        path: 'governance',
+        name: 'governance',
+        component: GovernancePage,
+      },
+    ],
   },
   {
     path: '/login',
@@ -23,7 +43,7 @@ const routes = [
     path: '/:pathMatch(.*)*',
     redirect: '/',
   },
-] as unknown as RouteRecordRaw[]
+]
 
 const router = createRouter({
   history: createWebHistory(),

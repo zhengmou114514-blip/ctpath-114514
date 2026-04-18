@@ -1522,6 +1522,8 @@ export function useWorkspaceController() {
   })
 }
 
+export type WorkspaceController = ReturnType<typeof useWorkspaceController>
+
 
 
 

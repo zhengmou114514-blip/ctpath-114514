@@ -1,21 +1,72 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { computed, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import LoginScreen from '../components/LoginScreen.vue'
 import { useWorkspaceController } from '../composables/useWorkspaceController'
+import { provideWorkspaceContext } from '../composables/workspaceContext'
 import AppShell from '../layouts/AppShell.vue'
 import DoctorDashboardPage from './DoctorDashboardPage.vue'
 import FollowupWorkbenchPage from './FollowupWorkbenchPage.vue'
-import GovernancePage from './GovernancePage.vue'
-import ModelDashboardPage from './ModelDashboardPage.vue'
-import ModelInsightPage from './ModelInsightPage.vue'
 import PatientArchivePage from './PatientArchivePage.vue'
 import SystemCenterPage from './SystemCenterPage.vue'
 
 const workspace = useWorkspaceController()
+provideWorkspaceContext(workspace)
 
-onMounted(async () => {
-  await workspace.initialize()
+const route = useRoute()
+const router = useRouter()
+
+const splitRouteSections: Record<string, 'insights' | 'model-dashboard' | 'governance'> = {
+  'model-insight': 'insights',
+  'model-dashboard': 'model-dashboard',
+  governance: 'governance',
+}
+
+const sectionToRouteName: Partial<Record<string, string>> = {
+  insights: 'model-insight',
+  'model-dashboard': 'model-dashboard',
+  governance: 'governance',
+}
+
+const isSplitWorkspaceRoute = computed(() => {
+  const routeName = typeof route.name === 'string' ? route.name : ''
+  return (
+    Object.prototype.hasOwnProperty.call(splitRouteSections, routeName) ||
+    workspace.currentWorkspace === 'model-insight' ||
+    workspace.currentWorkspace === 'model-dashboard' ||
+    workspace.currentWorkspace === 'governance'
+  )
 })
+
+function syncWorkspaceFromRoute() {
+  if (!workspace.currentDoctor) return
+
+  if (typeof route.name === 'string' && route.name === 'login') {
+    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/'
+    window.setTimeout(() => {
+      void router.replace(redirect)
+    }, 0)
+    return
+  }
+
+  const routeName = typeof route.name === 'string' ? route.name : ''
+  const nextSection = splitRouteSections[routeName] ?? 'doctor'
+
+  if (workspace.section !== nextSection) {
+    workspace.selectSection(nextSection)
+  }
+}
+
+function syncRouteFromWorkspace() {
+  if (!workspace.currentDoctor) return
+
+  const targetRoute = sectionToRouteName[workspace.section] ?? 'home'
+  const currentRoute = typeof route.name === 'string' ? route.name : ''
+
+  if (currentRoute !== targetRoute) {
+    void router.replace({ name: targetRoute })
+  }
+}
 
 function handleOpenArchive(payload: { patientId: string; focus?: 'overview' | 'events' }) {
   const focus = payload.focus === 'events' ? 'events' : 'overview'
@@ -33,6 +84,35 @@ function handleBackToList() {
   }
   workspace.backToDoctorList()
 }
+
+onMounted(async () => {
+  await workspace.initialize()
+})
+
+watch(
+  () => route.name,
+  () => {
+    syncWorkspaceFromRoute()
+  },
+  { immediate: true }
+)
+
+watch(
+  () => workspace.currentDoctor,
+  (doctor) => {
+    if (doctor) {
+      syncWorkspaceFromRoute()
+    }
+  }
+)
+
+watch(
+  () => workspace.section,
+  () => {
+    syncRouteFromWorkspace()
+  },
+  { immediate: true }
+)
 </script>
 
 <template>
@@ -72,8 +152,10 @@ function handleBackToList() {
     @back-to-list="handleBackToList"
   >
     <template #workspace>
+      <RouterView v-if="isSplitWorkspaceRoute" />
+
       <DoctorDashboardPage
-        v-if="workspace.currentWorkspace === 'doctor'"
+        v-else-if="workspace.currentWorkspace === 'doctor'"
         :all-patients="workspace.allPatients"
         :patients="workspace.visiblePendingPatients"
         :selected-patient="workspace.selectedPatient"
@@ -135,41 +217,6 @@ function handleBackToList() {
         @submit-import="workspace.submitImport"
         @prepare-new="workspace.openCreateModule"
         @back="workspace.backToArchiveList"
-      />
-
-      <GovernancePage
-        v-else-if="workspace.currentWorkspace === 'governance'"
-        :doctor-role="workspace.currentDoctor.role"
-        :health="workspace.health"
-        :maintenance="workspace.maintenanceOverview"
-        :governance-modules="workspace.governanceModules"
-        :model-metrics="workspace.modelMetrics"
-        :loading-governance="workspace.loadingGovernance"
-        :loading-maintenance="workspace.loadingMaintenance"
-        :loading-metrics="workspace.loadingModelMetrics"
-        :patient-count="workspace.allPatients.length"
-        @refresh="workspace.refreshGovernanceWorkspace"
-      />
-
-      <ModelDashboardPage
-        v-else-if="workspace.currentWorkspace === 'model-dashboard'"
-        :model-metrics="workspace.modelMetrics"
-        :health="workspace.health"
-        :loading-metrics="workspace.loadingModelMetrics"
-        @refresh="workspace.refreshModelMetrics"
-      />
-
-      <ModelInsightPage
-        v-else-if="workspace.currentWorkspace === 'model-insight'"
-        :selected-patient="workspace.selectedPatient"
-        :prediction-result="workspace.predictionResult"
-        :loading-predict="workspace.loadingPredict"
-        :model-unavailable="workspace.modelUnavailable"
-        :system-mode="workspace.health?.mode ?? 'unknown'"
-        @refresh="workspace.refreshGovernanceWorkspace"
-        @run-predict="workspace.runPrediction"
-        @open-patient-detail="workspace.selectedPatientId && workspace.openPatient(workspace.selectedPatientId, 'doctor')"
-        @open-followup="workspace.selectedPatientId && workspace.openFollowupModule(workspace.selectedPatientId)"
       />
 
       <FollowupWorkbenchPage
