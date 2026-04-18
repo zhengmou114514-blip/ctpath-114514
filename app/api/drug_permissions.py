@@ -20,7 +20,7 @@ router = APIRouter(tags=["drug-permissions"])
 @router.get("/api/drug-permissions", response_model=List[DrugPermissionRecord])
 def get_drug_permissions(
     role: Optional[DrugPermissionRole] = Query(default=None),
-    _: object = Depends(require_roles("doctor", "archivist", "admin")),
+    _: object = Depends(require_roles("doctor", "nurse", "archivist", "admin")),
 ) -> List[DrugPermissionRecord]:
     return list_drug_permissions(role=role)
 
@@ -28,7 +28,7 @@ def get_drug_permissions(
 @router.get("/api/drug-permissions/{role}", response_model=DrugPermissionRecord)
 def get_drug_permission(
     role: str,
-    _: object = Depends(require_roles("doctor", "archivist", "admin")),
+    _: object = Depends(require_roles("doctor", "nurse", "archivist", "admin")),
 ) -> DrugPermissionRecord:
     return get_drug_permission_item(role)
 

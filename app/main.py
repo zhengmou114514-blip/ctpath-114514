@@ -9,6 +9,7 @@ from .api.authz import router as authz_router
 from .api.drug_permissions import router as drug_permissions_router
 from .api.drugs import router as drugs_router
 from .api.governance import router as governance_router
+from .api.patient_medications import router as patient_medications_router
 from .api.patients import router as patients_router
 from .api.predictions import router as predictions_router
 from .api.worklists import router as worklists_router
@@ -114,6 +115,7 @@ app.include_router(authz_router)
 app.include_router(audit_router)
 app.include_router(drug_permissions_router)
 app.include_router(drugs_router)
+app.include_router(patient_medications_router)
 app.include_router(patients_router)
 app.include_router(predictions_router)
 app.include_router(worklists_router)

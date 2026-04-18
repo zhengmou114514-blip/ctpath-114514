@@ -1,387 +1,737 @@
-﻿<script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+<script setup lang="ts">
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
-  addCurrentMedication,
-  evaluateMedicationAdequacy,
-  getCurrentMedications,
-} from '../../services/medicationAssessmentAdapter'
+  createPatientMedication,
+  getDrugCatalog,
+  getDrugPermissions,
+  getPatientMedications,
+  updatePatientMedication,
+} from '../../services/api'
+import { evaluateMedicationAdequacy } from '../../services/medicationAssessmentAdapter'
 import type {
-  CurrentMedicationInput,
-  CurrentMedicationItem,
+  DrugCatalogRecord,
+  DrugPermissionRecord,
+  DrugPermissionRole,
   MedicationAdequacyAssessment,
   PatientCase,
+  PatientMedicationRecord,
+  PatientMedicationReviewStatus,
+  PatientMedicationStatus,
+  PatientMedicationUpsertRequest,
 } from '../../services/types'
 
 const props = defineProps<{
   patient: PatientCase
   modelAdvice: string[]
+  doctorRole: string
 }>()
 
-const medications = ref<CurrentMedicationItem[]>([])
-const assessment = ref<MedicationAdequacyAssessment | null>(null)
+const loading = ref(false)
 const saving = ref(false)
-const localError = ref('')
+const errorMessage = ref('')
+const medications = ref<PatientMedicationRecord[]>([])
+const drugCatalog = ref<DrugCatalogRecord[]>([])
+const permission = ref<DrugPermissionRecord | null>(null)
+const editingMedicationId = ref<string | null>(null)
 
-const form = reactive<CurrentMedicationInput>({
-  drugName: '',
-  genericName: '',
-  dosage: '',
-  frequency: '',
-  route: 'po',
-  startedAt: new Date().toISOString().slice(0, 10),
-  expectedEndAt: '',
-  indication: '',
-})
+const form = reactive<PatientMedicationUpsertRequest>(buildEmptyForm())
 
-const hasMedications = computed(() => medications.value.length > 0)
+const canView = computed(() => Boolean(permission.value?.allow_view))
+const canEdit = computed(() => Boolean(permission.value && (permission.value.allow_prescribe || permission.value.allow_review)))
+const canReview = computed(() => Boolean(permission.value?.allow_review))
+const canUseControlledDrug = computed(() => Boolean(permission.value?.allow_controlled_drug))
 
-function resetForm() {
-  form.drugName = ''
-  form.genericName = ''
-  form.dosage = ''
-  form.frequency = ''
-  form.route = 'po'
-  form.startedAt = new Date().toISOString().slice(0, 10)
-  form.expectedEndAt = ''
-  form.indication = ''
+const availableDrugs = computed(() =>
+  [...drugCatalog.value]
+    .filter((drug) => drug.status === 'active')
+    .sort((left, right) => `${left.generic_name} ${left.drug_id}`.localeCompare(`${right.generic_name} ${right.drug_id}`))
+)
+
+const selectedDrug = computed(() => drugCatalog.value.find((item) => item.drug_id === form.drug_id) ?? null)
+const assessment = computed<MedicationAdequacyAssessment>(() =>
+  evaluateMedicationAdequacy(props.patient, medications.value, props.modelAdvice, drugCatalog.value)
+)
+
+const activeMedicationCount = computed(() => medications.value.filter((item) => item.status === 'active').length)
+const pendingReviewCount = computed(() => medications.value.filter((item) => item.review_status === 'pending').length)
+const duplicateHint = computed(() => assessment.value.hasDuplicateMedication)
+const baselineHint = computed(() => assessment.value.coversBaselineTherapy)
+const pharmacistReviewHint = computed(() => assessment.value.needsPharmacistReview)
+const controlledDrugBlocked = computed(() => Boolean(selectedDrug.value?.is_controlled && !canUseControlledDrug.value))
+
+function buildEmptyForm(): PatientMedicationUpsertRequest {
+  const now = new Date().toISOString().slice(0, 10)
+  return {
+    medication_id: `med-${props?.patient?.patientId ?? 'patient'}-${Date.now().toString(36)}`,
+    patient_id: props?.patient?.patientId ?? '',
+    drug_id: '',
+    drug_name_snapshot: '',
+    dosage: '',
+    frequency: '',
+    route: 'po',
+    start_date: now,
+    end_date: '',
+    status: 'active' as PatientMedicationStatus,
+    review_status: 'pending' as PatientMedicationReviewStatus,
+    note: '',
+  }
 }
 
-function refreshWorkspace() {
-  medications.value = getCurrentMedications(props.patient)
-  assessment.value = evaluateMedicationAdequacy(props.patient, medications.value, props.modelAdvice)
+function applyDrugSnapshot(drugId: string) {
+  const item = drugCatalog.value.find((drug) => drug.drug_id === drugId)
+  form.drug_name_snapshot = item ? medicationLabel(item) : ''
 }
 
-function yesNo(value: boolean): string {
-  return value ? '是' : '否'
+function medicationLabel(drug: DrugCatalogRecord): string {
+  return [drug.generic_name, drug.brand_name ? `(${drug.brand_name})` : ''].filter(Boolean).join(' ').trim() || drug.drug_id
 }
 
-function toneClass(value: boolean, reverse = false): string {
-  const ok = reverse ? !value : value
-  return ok ? 'tone-ok' : 'tone-alert'
+function formatDate(value: string): string {
+  return value ? value.slice(0, 10) : '--'
+}
+
+function reviewBadgeText(status: PatientMedicationReviewStatus): string {
+  switch (status) {
+    case 'approved':
+      return '已通过'
+    case 'rejected':
+      return '已拒绝'
+    case 'not_required':
+      return '无需复核'
+    default:
+      return '待复核'
+  }
+}
+
+function reviewBadgeClass(status: PatientMedicationReviewStatus): string {
+  switch (status) {
+    case 'approved':
+      return 'badge-good'
+    case 'rejected':
+      return 'badge-bad'
+    case 'not_required':
+      return 'badge-neutral'
+    default:
+      return 'badge-warn'
+  }
+}
+
+function statusText(status: PatientMedicationStatus): string {
+  switch (status) {
+    case 'paused':
+      return '暂停'
+    case 'stopped':
+      return '停用'
+    default:
+      return '使用中'
+  }
+}
+
+function statusClass(status: PatientMedicationStatus): string {
+  switch (status) {
+    case 'paused':
+      return 'badge-warn'
+    case 'stopped':
+      return 'badge-bad'
+    default:
+      return 'badge-good'
+  }
+}
+
+function resetForm(nextMedication?: PatientMedicationRecord | null) {
+  const next = nextMedication ?? null
+  form.medication_id = next?.medication_id ?? `med-${props.patient.patientId}-${Date.now().toString(36)}`
+  form.patient_id = props.patient.patientId
+  form.drug_id = next?.drug_id ?? availableDrugs.value[0]?.drug_id ?? ''
+  form.drug_name_snapshot = next?.drug_name_snapshot ?? ''
+  form.dosage = next?.dosage ?? ''
+  form.frequency = next?.frequency ?? ''
+  form.route = next?.route ?? 'po'
+  form.start_date = next?.start_date ?? new Date().toISOString().slice(0, 10)
+  form.end_date = next?.end_date ?? ''
+  form.status = next?.status ?? 'active'
+  form.review_status = next?.review_status ?? 'pending'
+  form.note = next?.note ?? ''
+  editingMedicationId.value = next?.medication_id ?? null
+  if (form.drug_id) {
+    applyDrugSnapshot(form.drug_id)
+  }
+}
+
+function beginCreate() {
+  resetForm()
+}
+
+function beginEdit(item: PatientMedicationRecord) {
+  resetForm(item)
+}
+
+function buildPayload(): PatientMedicationUpsertRequest {
+  const snapshot = form.drug_name_snapshot || (selectedDrug.value ? medicationLabel(selectedDrug.value) : '')
+  return {
+    ...form,
+    patient_id: props.patient.patientId,
+    drug_name_snapshot: snapshot,
+    note: form.note.trim(),
+    dosage: form.dosage.trim(),
+    frequency: form.frequency.trim(),
+    route: form.route.trim(),
+    start_date: form.start_date.trim(),
+    end_date: form.end_date.trim(),
+  }
+}
+
+async function reloadWorkspace() {
+  loading.value = true
+  errorMessage.value = ''
+
+  try {
+    const [medicationItems, catalogItems, permissionItems] = await Promise.all([
+      getPatientMedications(props.patient.patientId),
+      getDrugCatalog({ status: 'active' }),
+      getDrugPermissions(props.doctorRole as DrugPermissionRole),
+    ])
+
+    medications.value = medicationItems
+    drugCatalog.value = catalogItems
+    permission.value = permissionItems[0] ?? null
+
+    const currentMedication = editingMedicationId.value
+      ? medicationItems.find((item) => item.medication_id === editingMedicationId.value) ?? null
+      : null
+
+    if (currentMedication) {
+      resetForm(currentMedication)
+    } else {
+      resetForm(null)
+    }
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : '加载当前用药失败。'
+  } finally {
+    loading.value = false
+  }
 }
 
 async function submitMedication() {
-  if (!props.patient.patientId) return
-  if (!form.drugName.trim() || !form.genericName.trim() || !form.dosage.trim()) {
-    localError.value = '请至少填写药品名称、通用名、剂量。'
+  if (!canEdit.value) {
+    errorMessage.value = '当前角色没有编辑当前用药的权限。'
+    return
+  }
+  if (!form.drug_id) {
+    errorMessage.value = '请选择一个药品。'
+    return
+  }
+  if (controlledDrugBlocked.value) {
+    errorMessage.value = '当前角色没有管制药开立权限。'
     return
   }
 
-  localError.value = ''
   saving.value = true
+  errorMessage.value = ''
+
   try {
-    medications.value = addCurrentMedication(props.patient.patientId, {
-      drugName: form.drugName.trim(),
-      genericName: form.genericName.trim(),
-      dosage: form.dosage.trim(),
-      frequency: form.frequency.trim() || '--',
-      route: form.route.trim() || '--',
-      startedAt: form.startedAt,
-      expectedEndAt: form.expectedEndAt || '--',
-      indication: form.indication.trim() || '--',
-    })
-    assessment.value = evaluateMedicationAdequacy(props.patient, medications.value, props.modelAdvice)
-    resetForm()
+    const payload = buildPayload()
+    if (editingMedicationId.value) {
+      await updatePatientMedication(props.patient.patientId, editingMedicationId.value, payload)
+    } else {
+      await createPatientMedication(props.patient.patientId, payload)
+    }
+    await reloadWorkspace()
+    beginCreate()
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : '保存当前用药失败。'
   } finally {
     saving.value = false
   }
 }
 
 watch(
-  () => [props.patient.patientId, props.patient.primaryDisease, props.modelAdvice.join('|')],
+  () => props.patient.patientId,
   () => {
-    refreshWorkspace()
+    editingMedicationId.value = null
+    beginCreate()
+    void reloadWorkspace()
   },
   { immediate: true }
 )
+
+watch(
+  () => props.doctorRole,
+  () => {
+    void reloadWorkspace()
+  }
+)
+
+watch(
+  () => form.drug_id,
+  (drugId) => {
+    if (!drugId) {
+      form.drug_name_snapshot = ''
+      return
+    }
+    applyDrugSnapshot(drugId)
+  },
+  { immediate: true }
+)
+
+watch(
+  () => props.modelAdvice.join('|'),
+  () => {
+    if (medications.value.length) {
+      // Re-run computed assessment by touching the list in a controlled way.
+      medications.value = [...medications.value]
+    }
+  }
+)
+
+onMounted(() => {
+  void reloadWorkspace()
+})
 </script>
 
 <template>
-  <section class="card medication-workspace">
+  <section class="medication-workspace">
     <header class="workspace-head">
       <div>
-        <h3>当前用药与用药充分性评估</h3>
-        <p>用于医生核对模型建议后的临床用药覆盖情况</p>
+        <h3>当前用药与用药充分性</h3>
+        <p>只承接患者当前用药，不进入完整处方流。</p>
       </div>
-      <button class="secondary-button" @click="refreshWorkspace">刷新评估</button>
+
+      <div class="header-actions">
+        <button class="secondary-button" type="button" @click="reloadWorkspace">刷新</button>
+        <button class="primary-button" type="button" :disabled="!canEdit" @click="beginCreate">新增用药</button>
+      </div>
     </header>
 
-    <article class="medication-block">
-      <h4>当前用药</h4>
-      <div v-if="!hasMedications" class="empty-state">暂无当前用药记录，请补录后进行评估。</div>
-      <div v-else class="med-table">
-        <header>
-          <span>药品名称</span>
-          <span>通用名</span>
-          <span>剂量</span>
-          <span>频率</span>
-          <span>给药方式</span>
-          <span>开始时间</span>
-          <span>预计结束时间</span>
-          <span>适应症</span>
-        </header>
-        <article v-for="item in medications" :key="item.medicationId">
-          <span>{{ item.drugName }}</span>
-          <span>{{ item.genericName }}</span>
-          <span>{{ item.dosage }}</span>
-          <span>{{ item.frequency }}</span>
-          <span>{{ item.route }}</span>
-          <span>{{ item.startedAt }}</span>
-          <span>{{ item.expectedEndAt }}</span>
-          <span>{{ item.indication }}</span>
-        </article>
-      </div>
-    </article>
+    <div v-if="errorMessage" class="banner error-banner">{{ errorMessage }}</div>
 
-    <article class="add-block">
-      <h4>补录当前用药</h4>
-      <p v-if="localError" class="error-tip">{{ localError }}</p>
-      <div class="form-grid">
-        <label><span>药品名称</span><input v-model="form.drugName" type="text" /></label>
-        <label><span>通用名</span><input v-model="form.genericName" type="text" /></label>
-        <label><span>剂量</span><input v-model="form.dosage" type="text" placeholder="如 500 mg" /></label>
-        <label><span>频率</span><input v-model="form.frequency" type="text" placeholder="如 bid" /></label>
-        <label><span>给药方式</span><input v-model="form.route" type="text" placeholder="如 po" /></label>
-        <label><span>开始时间</span><input v-model="form.startedAt" type="date" /></label>
-        <label><span>预计结束时间</span><input v-model="form.expectedEndAt" type="date" /></label>
-        <label class="full"><span>适应症</span><input v-model="form.indication" type="text" /></label>
+    <section class="status-strip">
+      <article class="status-card">
+        <span>当前用药</span>
+        <strong>{{ activeMedicationCount }}</strong>
+      </article>
+      <article class="status-card">
+        <span>待复核</span>
+        <strong>{{ pendingReviewCount }}</strong>
+      </article>
+      <article class="status-card" :class="{ 'status-good': baselineHint }">
+        <span>基础治疗覆盖</span>
+        <strong>{{ baselineHint ? '已覆盖' : '未覆盖' }}</strong>
+      </article>
+      <article class="status-card" :class="{ 'status-bad': duplicateHint }">
+        <span>重复用药</span>
+        <strong>{{ duplicateHint ? '已提示' : '未发现' }}</strong>
+      </article>
+      <article class="status-card" :class="{ 'status-warn': pharmacistReviewHint }">
+        <span>复核需求</span>
+        <strong>{{ pharmacistReviewHint ? '需要复核' : '暂不需要' }}</strong>
+      </article>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <h4>当前用药列表</h4>
+          <p>展示药品、剂量、频次、状态和药师复核状态。</p>
+        </div>
+        <span class="meta">{{ medications.length }} 条记录</span>
       </div>
+
+      <div v-if="loading" class="empty-state">正在加载当前用药...</div>
+      <div v-else-if="!canView" class="empty-state">当前角色没有查看当前用药的权限。</div>
+      <div v-else-if="!medications.length" class="empty-state">当前没有用药记录。</div>
+      <div v-else class="medication-table">
+        <table>
+          <thead>
+            <tr>
+              <th>药品</th>
+              <th>剂量 / 频次</th>
+              <th>区间</th>
+              <th>状态</th>
+              <th>复核</th>
+              <th>开立人</th>
+              <th>备注</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in medications" :key="item.medication_id">
+              <td>
+                <strong>{{ item.drug_name_snapshot }}</strong>
+                <p class="meta">ID: {{ item.drug_id }}</p>
+              </td>
+              <td>
+                <div>{{ item.dosage }}</div>
+                <div class="meta">{{ item.frequency }} · {{ item.route }}</div>
+              </td>
+              <td>
+                <div>{{ formatDate(item.start_date) }}</div>
+                <div class="meta">至 {{ formatDate(item.end_date) }}</div>
+              </td>
+              <td><span class="badge" :class="statusClass(item.status)">{{ statusText(item.status) }}</span></td>
+              <td><span class="badge" :class="reviewBadgeClass(item.review_status)">{{ reviewBadgeText(item.review_status) }}</span></td>
+              <td>{{ item.prescribed_by || '--' }}</td>
+              <td class="note-cell">{{ item.note || '--' }}</td>
+              <td>
+                <button class="secondary-button" type="button" :disabled="!canEdit" @click="beginEdit(item)">编辑</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <h4>{{ editingMedicationId ? '编辑当前用药' : '新增当前用药' }}</h4>
+          <p>药品目录来自后端目录，保存前会检查当前角色是否可操作管制药。</p>
+        </div>
+        <span v-if="selectedDrug" class="meta">
+          当前药品：{{ selectedDrug.generic_name }}{{ selectedDrug.brand_name ? ` / ${selectedDrug.brand_name}` : '' }}
+          <span v-if="selectedDrug.is_controlled"> · 管制药</span>
+        </span>
+      </div>
+
+      <div v-if="controlledDrugBlocked" class="banner warn-banner">当前选择的是管制药，但当前角色没有管制药权限。</div>
+
+      <div class="form-grid">
+        <label class="field">
+          <span>药品目录</span>
+          <select v-model="form.drug_id" :disabled="saving || !canEdit">
+            <option value="">请选择药品</option>
+            <option v-for="drug in availableDrugs" :key="drug.drug_id" :value="drug.drug_id">
+              {{ drug.generic_name }}{{ drug.brand_name ? ` / ${drug.brand_name}` : '' }}
+            </option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span>药名快照</span>
+          <input :value="form.drug_name_snapshot" type="text" readonly />
+        </label>
+
+        <label class="field">
+          <span>剂量</span>
+          <input v-model="form.dosage" type="text" :disabled="saving || !canEdit" placeholder="例如 500 mg" />
+        </label>
+
+        <label class="field">
+          <span>频次</span>
+          <input v-model="form.frequency" type="text" :disabled="saving || !canEdit" placeholder="例如 bid" />
+        </label>
+
+        <label class="field">
+          <span>给药途径</span>
+          <input v-model="form.route" type="text" :disabled="saving || !canEdit" placeholder="例如 po" />
+        </label>
+
+        <label class="field">
+          <span>开始日期</span>
+          <input v-model="form.start_date" type="date" :disabled="saving || !canEdit" />
+        </label>
+
+        <label class="field">
+          <span>结束日期</span>
+          <input v-model="form.end_date" type="date" :disabled="saving || !canEdit" />
+        </label>
+
+        <label class="field">
+          <span>状态</span>
+          <select v-model="form.status" :disabled="saving || !canEdit">
+            <option value="active">使用中</option>
+            <option value="paused">暂停</option>
+            <option value="stopped">停用</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span>药师复核状态</span>
+          <select v-model="form.review_status" :disabled="saving || !canReview">
+            <option value="pending">待复核</option>
+            <option value="approved">已通过</option>
+            <option value="rejected">已拒绝</option>
+            <option value="not_required">无需复核</option>
+          </select>
+        </label>
+
+        <label class="field full">
+          <span>备注</span>
+          <textarea v-model="form.note" rows="3" :disabled="saving || !canEdit" placeholder="补充当前用药说明"></textarea>
+        </label>
+      </div>
+
       <div class="actions">
-        <button class="primary-button" :disabled="saving" @click="submitMedication">
-          {{ saving ? '保存中...' : '新增当前用药' }}
+        <button class="secondary-button" type="button" :disabled="saving" @click="beginCreate">清空新建</button>
+        <button class="primary-button" type="button" :disabled="saving || !canEdit || controlledDrugBlocked || !form.drug_id" @click="submitMedication">
+          {{ saving ? '保存中...' : editingMedicationId ? '保存修改' : '保存当前用药' }}
         </button>
       </div>
-    </article>
+    </section>
 
-    <article class="assessment-block" v-if="assessment">
-      <h4>用药充分性评估</h4>
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <h4>用药充分性评估</h4>
+          <p>基于当前患者、现用药、药品目录和模型建议生成。</p>
+        </div>
+        <span class="meta">{{ assessment.evaluatedAt.replace('T', ' ').slice(0, 16) }}</span>
+      </div>
+
       <div class="assessment-grid">
-        <div class="assessment-item" :class="toneClass(assessment.coversBaselineTherapy)">
-          <span>是否覆盖基础治疗</span>
-          <strong>{{ yesNo(assessment.coversBaselineTherapy) }}</strong>
-        </div>
-        <div class="assessment-item" :class="toneClass(assessment.hasDuplicateMedication, true)">
-          <span>是否存在重复用药</span>
-          <strong>{{ yesNo(assessment.hasDuplicateMedication) }}</strong>
-        </div>
-        <div class="assessment-item" :class="toneClass(assessment.hasContraindicationConflictPlaceholder, true)">
-          <span>是否存在禁忌/冲突占位</span>
-          <strong>{{ yesNo(assessment.hasContraindicationConflictPlaceholder) }}</strong>
-        </div>
-        <div class="assessment-item" :class="toneClass(assessment.alignsWithModelAdvice)">
-          <span>是否与模型建议一致</span>
-          <strong>{{ yesNo(assessment.alignsWithModelAdvice) }}</strong>
-        </div>
-        <div class="assessment-item" :class="toneClass(assessment.needsPharmacistReview, true)">
-          <span>是否需要药师复核</span>
-          <strong>{{ yesNo(assessment.needsPharmacistReview) }}</strong>
-        </div>
+        <article class="assessment-card" :class="{ 'status-good': assessment.coversBaselineTherapy }">
+          <span>基础治疗覆盖</span>
+          <strong>{{ assessment.coversBaselineTherapy ? '已覆盖' : '未覆盖' }}</strong>
+        </article>
+        <article class="assessment-card" :class="{ 'status-bad': assessment.hasDuplicateMedication }">
+          <span>重复用药提示</span>
+          <strong>{{ assessment.hasDuplicateMedication ? '存在重复' : '未发现重复' }}</strong>
+        </article>
+        <article class="assessment-card" :class="{ 'status-bad': assessment.hasContraindicationConflictPlaceholder }">
+          <span>禁忌 / 冲突</span>
+          <strong>{{ assessment.hasContraindicationConflictPlaceholder ? '需要复核' : '暂无冲突' }}</strong>
+        </article>
+        <article class="assessment-card" :class="{ 'status-warn': assessment.needsPharmacistReview }">
+          <span>药师复核</span>
+          <strong>{{ assessment.needsPharmacistReview ? '建议复核' : '暂不需要' }}</strong>
+        </article>
       </div>
 
-      <div class="assessment-sub" v-if="assessment.suggestSupplementClasses.length">
-        <h5>建议补充药物类别</h5>
-        <ul>
-          <li v-for="item in assessment.suggestSupplementClasses" :key="item">{{ item }}</li>
-        </ul>
-      </div>
-
-      <div class="assessment-sub">
+      <div class="assessment-note">
         <h5>评估说明</h5>
         <ul>
           <li v-for="item in assessment.notes" :key="item">{{ item }}</li>
         </ul>
-        <p class="meta">
-          评估时间：{{ assessment.evaluatedAt.replace('T', ' ').slice(0, 16) }}
-          / 评估人：{{ assessment.evaluator }}
-        </p>
       </div>
-    </article>
+
+      <div v-if="assessment.suggestSupplementClasses.length" class="assessment-note">
+        <h5>建议补充药物线索</h5>
+        <ul>
+          <li v-for="item in assessment.suggestSupplementClasses" :key="item">{{ item }}</li>
+        </ul>
+      </div>
+    </section>
   </section>
 </template>
 
 <style scoped>
 .medication-workspace {
-  padding: 14px;
   display: grid;
   gap: 14px;
 }
 
-.workspace-head {
+.workspace-head,
+.panel-head,
+.actions {
   display: flex;
   justify-content: space-between;
+  gap: 12px;
   align-items: center;
-  gap: 10px;
 }
 
-.workspace-head h3 {
+.workspace-head h3,
+.panel h4,
+.assessment-note h5 {
   margin: 0;
-  color: #10263c;
-  font-size: 17px;
 }
 
-.workspace-head p {
+.workspace-head p,
+.panel-head p,
+.assessment-note ul,
+.meta {
   margin: 4px 0 0;
-  color: #617385;
+  color: #64748b;
   font-size: 12px;
 }
 
-.medication-block,
-.add-block,
-.assessment-block {
-  border: 1px solid #cfd9e5;
+.header-actions,
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.banner {
   border-radius: 10px;
-  background: #fbfdff;
-  padding: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+.error-banner {
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+  color: #9f1239;
+}
+
+.warn-banner {
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  color: #92400e;
+}
+
+.status-strip {
   display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px;
 }
 
-.medication-block h4,
-.add-block h4,
-.assessment-block h4,
-.assessment-sub h5 {
-  margin: 0;
-  color: #1b3856;
+.status-card,
+.assessment-card,
+.panel {
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 12px;
+}
+
+.status-card span,
+.assessment-card span {
+  display: block;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.status-card strong,
+.assessment-card strong {
+  display: block;
+  margin-top: 4px;
+  color: #0f172a;
+}
+
+.status-good {
+  border-color: rgba(34, 197, 94, 0.3);
+  background: rgba(34, 197, 94, 0.06);
+}
+
+.status-warn {
+  border-color: rgba(245, 158, 11, 0.3);
+  background: rgba(245, 158, 11, 0.06);
+}
+
+.status-bad {
+  border-color: rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.06);
 }
 
 .empty-state {
-  border: 1px dashed #b8c7d8;
-  border-radius: 8px;
-  padding: 10px;
-  color: #617385;
-  font-size: 12px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  padding: 14px;
+  color: #64748b;
   text-align: center;
 }
 
-.med-table {
-  border: 1px solid #d8e2ee;
-  border-radius: 8px;
-  overflow: hidden;
+.medication-table {
   overflow-x: auto;
 }
 
-.med-table header,
-.med-table article {
-  display: grid;
-  grid-template-columns: 1.1fr 1.1fr .7fr .7fr .7fr .8fr .9fr 1.3fr;
-  gap: 8px;
-  padding: 8px;
+.medication-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.medication-table th,
+.medication-table td {
+  text-align: left;
+  padding: 10px 8px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+  vertical-align: top;
+}
+
+.medication-table td p,
+.note-cell {
+  margin: 4px 0 0;
+  color: #64748b;
   font-size: 12px;
 }
 
-.med-table header {
-  background: #eef4fa;
-  color: #46627f;
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 12px;
   font-weight: 600;
 }
 
-.med-table article {
-  border-top: 1px solid #e5edf5;
-  color: #243f5c;
+.badge-good {
+  background: rgba(34, 197, 94, 0.12);
+  color: #166534;
+}
+
+.badge-warn {
+  background: rgba(245, 158, 11, 0.12);
+  color: #92400e;
+}
+
+.badge-bad {
+  background: rgba(239, 68, 68, 0.12);
+  color: #991b1b;
+}
+
+.badge-neutral {
+  background: rgba(100, 116, 139, 0.12);
+  color: #334155;
 }
 
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
 }
 
-.form-grid label {
+.field {
   display: grid;
-  gap: 4px;
+  gap: 6px;
 }
 
-.form-grid label.full {
-  grid-column: span 2;
-}
-
-.form-grid span {
+.field span {
   font-size: 12px;
-  color: #5f7894;
+  color: #64748b;
 }
 
-.form-grid input {
-  border: 1px solid #c7d5e5;
-  border-radius: 6px;
-  padding: 6px 8px;
-  background: #fff;
-  font-size: 12px;
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
 }
 
-.actions {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.error-tip {
-  margin: 0;
-  color: #a4383f;
-  background: #fff0f2;
-  border: 1px solid #efc2c5;
-  border-radius: 8px;
-  padding: 8px;
-  font-size: 12px;
+.field.full {
+  grid-column: 1 / -1;
 }
 
 .assessment-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
 }
 
-.assessment-item {
-  border: 1px solid;
-  border-radius: 8px;
-  padding: 8px;
-  display: grid;
-  gap: 4px;
+.assessment-note {
+  margin-top: 12px;
 }
 
-.assessment-item span {
-  font-size: 12px;
-}
-
-.assessment-item strong {
-  font-size: 16px;
-}
-
-.tone-ok {
-  background: #eaf8f0;
-  border-color: #bde7d1;
-  color: #1d7b5c;
-}
-
-.tone-alert {
-  background: #fff4e9;
-  border-color: #efdbb2;
-  color: #9b6518;
-}
-
-.assessment-sub ul {
-  margin: 0;
+.assessment-note ul {
   padding-left: 18px;
-  display: grid;
-  gap: 5px;
-  color: #314f6d;
-  font-size: 12px;
 }
 
-.meta {
-  margin: 8px 0 0;
-  font-size: 12px;
-  color: #617385;
-}
-
-@media (max-width: 1360px) {
-  .med-table header,
-  .med-table article,
-  .form-grid,
+@media (max-width: 1100px) {
+  .status-strip,
   .assessment-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .workspace-head,
+  .panel-head,
+  .actions {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
-  .form-grid label.full {
-    grid-column: span 1;
+  .status-strip,
+  .assessment-grid,
+  .form-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

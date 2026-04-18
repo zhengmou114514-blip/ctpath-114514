@@ -273,6 +273,42 @@ export interface MedicationPlanResponse {
   adviceMeta: AdviceMeta
 }
 
+export type PatientMedicationStatus = 'active' | 'paused' | 'stopped'
+export type PatientMedicationReviewStatus = 'pending' | 'approved' | 'rejected' | 'not_required'
+
+export interface PatientMedicationRecord {
+  medication_id: string
+  patient_id: string
+  drug_id: string
+  drug_name_snapshot: string
+  dosage: string
+  frequency: string
+  route: string
+  start_date: string
+  end_date: string
+  status: PatientMedicationStatus
+  prescribed_by: string
+  review_status: PatientMedicationReviewStatus
+  note: string
+  created_at: string
+  updated_at: string
+}
+
+export interface PatientMedicationUpsertRequest {
+  medication_id: string
+  patient_id: string
+  drug_id: string
+  drug_name_snapshot: string
+  dosage: string
+  frequency: string
+  route: string
+  start_date: string
+  end_date: string
+  status: PatientMedicationStatus
+  review_status: PatientMedicationReviewStatus
+  note: string
+}
+
 export interface CurrentMedicationItem {
   medicationId: string
   patientId: string

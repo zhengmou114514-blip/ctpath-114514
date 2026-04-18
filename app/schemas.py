@@ -250,6 +250,43 @@ class DrugPermissionUpsertRequest(BaseModel):
     allow_controlled_drug: bool = False
 
 
+PatientMedicationStatus = Literal["active", "paused", "stopped"]
+PatientMedicationReviewStatus = Literal["pending", "approved", "rejected", "not_required"]
+
+
+class PatientMedicationRecord(BaseModel):
+    medication_id: str
+    patient_id: str
+    drug_id: str
+    drug_name_snapshot: str
+    dosage: str
+    frequency: str
+    route: str
+    start_date: str
+    end_date: str
+    status: PatientMedicationStatus
+    prescribed_by: str
+    review_status: PatientMedicationReviewStatus
+    note: str = ""
+    created_at: str
+    updated_at: str
+
+
+class PatientMedicationUpsertRequest(BaseModel):
+    medication_id: str = Field(min_length=1)
+    patient_id: str = Field(min_length=1)
+    drug_id: str = Field(min_length=1)
+    drug_name_snapshot: str = Field(min_length=1)
+    dosage: str = Field(min_length=1)
+    frequency: str = Field(min_length=1)
+    route: str = Field(min_length=1)
+    start_date: str = Field(min_length=1)
+    end_date: str = Field(min_length=1)
+    status: PatientMedicationStatus = "active"
+    review_status: PatientMedicationReviewStatus = "pending"
+    note: str = ""
+
+
 class PredictRequest(BaseModel):
     patientId: str
     topk: int = Field(default=3, ge=1, le=10)

@@ -1,5 +1,42 @@
 import { requestClient } from './request'
-import type { AdviceGeneratePayload, AdviceGenerateResponse, AuthSession, AuthzCapabilityResponse, ContactLogCreatePayload, DrugCatalogRecord, DrugCatalogStatus, DrugCatalogUpsertRequest, DrugPermissionRecord, DrugPermissionRole, DrugPermissionUpsertRequest, EncounterStatusPayload, FlowBoardResponse, GovernanceModulesResponse, FollowupWorklistResponse, HealthResponse, MaintenanceOverview, MeResponse, MedicationPlanGeneratePayload, MedicationPlanResponse, ModelMetricsResponse, OutpatientTaskCreatePayload, OutpatientTaskStatusUpdatePayload, PatientAttachmentRecord, PatientAttachmentType, PatientCase, PatientEventPayload, PatientQuadruple, PatientSummary, PatientUpsertPayload, PredictResponse, RegisterPayload, SystemAuditResponse, TimelineEvent } from './types'
+import type {
+  AdviceGeneratePayload,
+  AdviceGenerateResponse,
+  AuthSession,
+  AuthzCapabilityResponse,
+  ContactLogCreatePayload,
+  DrugCatalogRecord,
+  DrugCatalogStatus,
+  DrugCatalogUpsertRequest,
+  DrugPermissionRecord,
+  DrugPermissionRole,
+  DrugPermissionUpsertRequest,
+  EncounterStatusPayload,
+  FlowBoardResponse,
+  GovernanceModulesResponse,
+  FollowupWorklistResponse,
+  HealthResponse,
+  MaintenanceOverview,
+  MeResponse,
+  MedicationPlanGeneratePayload,
+  MedicationPlanResponse,
+  ModelMetricsResponse,
+  OutpatientTaskCreatePayload,
+  OutpatientTaskStatusUpdatePayload,
+  PatientAttachmentRecord,
+  PatientAttachmentType,
+  PatientCase,
+  PatientEventPayload,
+  PatientMedicationRecord,
+  PatientMedicationUpsertRequest,
+  PatientQuadruple,
+  PatientSummary,
+  PatientUpsertPayload,
+  PredictResponse,
+  RegisterPayload,
+  SystemAuditResponse,
+  TimelineEvent,
+} from './types'
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? '/api'
 const ENABLE_DEMO_FALLBACK = String(import.meta.env.VITE_ENABLE_DEMO_FALLBACK ?? '').toLowerCase() === 'true'
@@ -162,6 +199,91 @@ let demoDrugPermissions: DrugPermissionRecord[] = [
   },
 ]
 
+let demoPatientMedications: PatientMedicationRecord[] = []
+
+const medicationLabel = (drug: DrugCatalogRecord) =>
+  [drug.generic_name, drug.brand_name ? `(${drug.brand_name})` : ''].filter(Boolean).join(' ').trim() || drug.drug_id
+
+function resolveSessionRole(): Role {
+  try {
+    const raw = window?.localStorage?.getItem(AUTH_STORAGE_KEY)
+    if (!raw) return 'doctor'
+    const session = JSON.parse(raw) as AuthSession
+    const role = session?.doctor?.role
+    return role === 'doctor' || role === 'nurse' || role === 'archivist' ? role : 'doctor'
+  } catch {
+    return 'doctor'
+  }
+}
+
+function resolveSessionDoctorName(): string {
+  try {
+    const raw = window?.localStorage?.getItem(AUTH_STORAGE_KEY)
+    if (!raw) return 'current-user'
+    const session = JSON.parse(raw) as AuthSession
+    return session?.doctor?.name || session?.doctor?.username || 'current-user'
+  } catch {
+    return 'current-user'
+  }
+}
+
+function medicationSeedSpec(patient: PatientCase): Array<{ drugId: string; dosage: string; frequency: string; route: string }> {
+  const disease = patient.primaryDisease.toLowerCase()
+  if (disease.includes('diabetes')) return [{ drugId: 'drug-metformin', dosage: '500 mg', frequency: 'bid', route: 'po' }]
+  if (disease.includes('hypertension') || disease.includes('blood pressure') || disease.includes('bp')) {
+    return [{ drugId: 'drug-amlodipine', dosage: '5 mg', frequency: 'qd', route: 'po' }]
+  }
+  if (disease.includes('lipid') || disease.includes('hyperlip')) {
+    return [{ drugId: 'drug-atorvastatin', dosage: '10 mg', frequency: 'qd', route: 'po' }]
+  }
+  return []
+}
+
+function ensureDemoPatientMedications(patientId: string): PatientMedicationRecord[] {
+  const existing = demoPatientMedications.filter((item) => item.patient_id === patientId)
+  if (existing.length) return existing
+
+  const patient = findPatient(patientId)
+  if (!patient) return []
+
+  const now = new Date().toISOString()
+  const seeds = medicationSeedSpec(patient)
+  if (!seeds.length) return []
+
+  const records = seeds
+    .map<PatientMedicationRecord | null>((seed, index) => {
+      const drug = findDrug(seed.drugId)
+      if (!drug) return null
+      return {
+        medication_id: `med-${patientId}-${index + 1}`,
+        patient_id: patientId,
+        drug_id: drug.drug_id,
+        drug_name_snapshot: medicationLabel(drug),
+        dosage: seed.dosage,
+        frequency: seed.frequency,
+        route: seed.route,
+        start_date: patient.lastVisit,
+        end_date: '2026-12-31',
+        status: 'active' as const,
+        prescribed_by: patient.primaryDoctor || patient.caseManager || 'current-user',
+        review_status: 'approved' as const,
+        note: `Seeded current medication for ${patient.primaryDisease}.`,
+        created_at: now,
+        updated_at: now,
+      }
+    })
+    .filter((item): item is PatientMedicationRecord => item !== null)
+
+  demoPatientMedications = [...demoPatientMedications, ...records]
+  return records
+}
+
+function resolveMedicationPermission(role: string): DrugPermissionRecord | null {
+  const record = findDrugPermission(role)
+  if (record) return record
+  return findDrugPermission('doctor') ?? null
+}
+
 function persistAuthSession(session: AuthSession | null) {
   try { if (!window?.localStorage) return; if (session) window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session)); else window.localStorage.removeItem(AUTH_STORAGE_KEY) } catch {}
 }
@@ -321,6 +443,97 @@ async function demoRequest<T>(path: string, options: RequestInit = {}): Promise<
       allow_controlled_drug: payload.allow_controlled_drug,
     }
     demoDrugPermissions = demoDrugPermissions.map((item, itemIndex) => (itemIndex === index ? updated : item))
+    return clone(updated) as T
+  }
+  if (s[0] === 'patient' && s[1] && s[2] === 'medications' && !s[3] && m === 'GET') {
+    const role = resolveSessionRole()
+    const permission = resolveMedicationPermission(role)
+    if (!permission?.allow_view) throw new Error('Role not allowed to view patient medications')
+    const patient = findPatient(s[1])
+    if (!patient) throw new Error('Patient not found')
+    const seeded = ensureDemoPatientMedications(s[1])
+    return clone(
+      seeded
+        .filter((item) => item.patient_id === s[1])
+        .sort((left, right) => {
+          if (left.status !== right.status) return left.status === 'active' ? -1 : 1
+          return `${left.start_date} ${left.medication_id}`.localeCompare(`${right.start_date} ${right.medication_id}`)
+        })
+    ) as T
+  }
+  if (s[0] === 'patient' && s[1] && s[2] === 'medications' && !s[3] && m === 'POST') {
+    const role = resolveSessionRole()
+    const permission = resolveMedicationPermission(role)
+    if (!permission || (!permission.allow_prescribe && !permission.allow_review)) {
+      throw new Error('Role not allowed to modify patient medications')
+    }
+    const payload = body<PatientMedicationUpsertRequest>(options.body)
+    const patient = findPatient(s[1])
+    if (!patient) throw new Error('Patient not found')
+    const drug = findDrug(payload.drug_id)
+    if (!drug) throw new Error('Drug not found')
+    if (drug.is_controlled && !permission.allow_controlled_drug) throw new Error('Controlled drug not allowed for this role')
+    if (payload.patient_id.trim() !== s[1]) throw new Error('patient_id does not match path parameter')
+    if (demoPatientMedications.some((item) => item.patient_id === s[1] && item.medication_id === payload.medication_id.trim())) {
+      throw new Error('Patient medication already exists')
+    }
+    const now = new Date().toISOString()
+    const record: PatientMedicationRecord = {
+      medication_id: payload.medication_id.trim(),
+      patient_id: s[1],
+      drug_id: payload.drug_id.trim(),
+      drug_name_snapshot: medicationLabel(drug),
+      dosage: payload.dosage.trim(),
+      frequency: payload.frequency.trim(),
+      route: payload.route.trim(),
+      start_date: payload.start_date.trim(),
+      end_date: payload.end_date.trim(),
+      status: payload.status,
+      prescribed_by: resolveSessionDoctorName(),
+      review_status: payload.review_status,
+      note: payload.note.trim(),
+      created_at: now,
+      updated_at: now,
+    }
+    demoPatientMedications = [...demoPatientMedications, record]
+    return clone(record) as T
+  }
+  if (s[0] === 'patient' && s[1] && s[2] === 'medications' && s[3] && m === 'PUT') {
+    const role = resolveSessionRole()
+    const permission = resolveMedicationPermission(role)
+    if (!permission || (!permission.allow_prescribe && !permission.allow_review)) {
+      throw new Error('Role not allowed to modify patient medications')
+    }
+    const payload = body<PatientMedicationUpsertRequest>(options.body)
+    const patient = findPatient(s[1])
+    if (!patient) throw new Error('Patient not found')
+    const drug = findDrug(payload.drug_id)
+    if (!drug) throw new Error('Drug not found')
+    if (drug.is_controlled && !permission.allow_controlled_drug) throw new Error('Controlled drug not allowed for this role')
+    if (payload.patient_id.trim() !== s[1]) throw new Error('patient_id does not match path parameter')
+    if (payload.medication_id.trim() !== s[3]) throw new Error('medication_id does not match path parameter')
+    const index = demoPatientMedications.findIndex((item) => item.patient_id === s[1] && item.medication_id === s[3])
+    if (index < 0) throw new Error('Patient medication not found')
+    const current = demoPatientMedications[index]
+    if (!current) throw new Error('Patient medication not found')
+    const updated: PatientMedicationRecord = {
+      medication_id: s[3],
+      patient_id: s[1],
+      drug_id: payload.drug_id.trim(),
+      drug_name_snapshot: medicationLabel(drug),
+      dosage: payload.dosage.trim(),
+      frequency: payload.frequency.trim(),
+      route: payload.route.trim(),
+      start_date: payload.start_date.trim(),
+      end_date: payload.end_date.trim(),
+      status: payload.status,
+      prescribed_by: resolveSessionDoctorName(),
+      review_status: payload.review_status,
+      note: payload.note.trim(),
+      created_at: current.created_at,
+      updated_at: new Date().toISOString(),
+    }
+    demoPatientMedications = demoPatientMedications.map((item, itemIndex) => (itemIndex === index ? updated : item))
     return clone(updated) as T
   }
   if (u.pathname === '/health') return { status: 'ok', service: 'ctpath-demo-fallback', mode: 'demo', model_available: false, model_error: 'Backend unavailable, using local demo data.' } as T
@@ -559,6 +772,15 @@ export async function fetchPatientAttachmentBlob(patientId: string, attachmentId
 export async function predictPatient(payload: { patientId: string; asOfTime?: string; topk: number }): Promise<PredictResponse> { return request('/predict', { method: 'POST', body: JSON.stringify(payload) }) }
 export async function generateAdvice(payload: AdviceGeneratePayload): Promise<AdviceGenerateResponse> { return request('/advice/generate', { method: 'POST', body: JSON.stringify(payload) }) }
 export async function generateMedicationPlan(patientId: string, payload: MedicationPlanGeneratePayload): Promise<MedicationPlanResponse> { return request(`/patient/${patientId}/medication-plan/generate`, { method: 'POST', body: JSON.stringify(payload) }) }
+export async function getPatientMedications(patientId: string): Promise<PatientMedicationRecord[]> {
+  return request(`/patient/${patientId}/medications`, { method: 'GET' })
+}
+export async function createPatientMedication(patientId: string, payload: PatientMedicationUpsertRequest): Promise<PatientMedicationRecord> {
+  return request(`/patient/${patientId}/medications`, { method: 'POST', body: JSON.stringify(payload) })
+}
+export async function updatePatientMedication(patientId: string, medicationId: string, payload: PatientMedicationUpsertRequest): Promise<PatientMedicationRecord> {
+  return request(`/patient/${patientId}/medications/${medicationId}`, { method: 'PUT', body: JSON.stringify(payload) })
+}
 export async function getDrugCatalog(params: { keyword?: string; status?: DrugCatalogStatus; dosageForm?: string; isPrescription?: boolean; isControlled?: boolean } = {}): Promise<DrugCatalogRecord[]> {
   const query = new URLSearchParams()
   if (params.keyword) query.set('keyword', params.keyword)

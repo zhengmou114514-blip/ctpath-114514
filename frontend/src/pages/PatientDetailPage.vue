@@ -2,6 +2,7 @@
 import { computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PatientAttachmentPanel from '../components/archive/PatientAttachmentPanel.vue'
+import MedicationAdequacyPanel from '../components/patient-workstation/MedicationAdequacyPanel.vue'
 import { useWorkspaceContext } from '../composables/workspaceContext'
 
 const workspace = useWorkspaceContext()
@@ -14,6 +15,7 @@ const routePatientId = computed(() => {
 })
 
 const selectedPatient = computed(() => workspace.selectedPatient)
+const doctorRole = computed(() => workspace.currentDoctor?.role ?? 'doctor')
 const topPrediction = computed(() => workspace.predictionResult?.topk?.[0] ?? selectedPatient.value?.predictions?.[0] ?? null)
 const adviceList = computed(() => workspace.predictionResult?.advice ?? selectedPatient.value?.careAdvice ?? [])
 const evidence = computed(() => {
@@ -23,7 +25,7 @@ const evidence = computed(() => {
       eventCount: prediction.evidence.eventCount,
       relationCount: prediction.evidence.relationCount,
       supportLevel: prediction.evidence.supportLevel,
-      summary: prediction.supportSummary || '已生成当前患者预测证据。',
+      summary: prediction.supportSummary || '当前患者预测证据已生成。',
     }
   }
 
@@ -80,7 +82,7 @@ watch(
     <header class="card page-header">
       <div>
         <h2>患者详情</h2>
-        <p>独立承接患者主信息、时间线、预测摘要、建议摘要和附件入口。</p>
+        <p>独立承接患者主信息、时间线、当前用药、预测摘要、建议摘要和附件入口。</p>
       </div>
       <div class="header-actions">
         <button class="secondary-button" @click="handleBack">返回医生首页</button>
@@ -133,9 +135,8 @@ watch(
           <p v-else class="empty-inline">暂无时间线数据。</p>
         </article>
 
-        <article class="card panel">
-          <h3>当前用药区域</h3>
-          <p class="placeholder-text">当前用药区域暂占位，后续接入药品模块后再展开。</p>
+        <article class="card panel medication-module">
+          <MedicationAdequacyPanel :patient="selectedPatient" :model-advice="adviceList" :doctor-role="doctorRole" />
         </article>
 
         <article class="card panel">
@@ -216,6 +217,7 @@ watch(
   gap: 12px;
 }
 
+.medication-module,
 .attachment-module {
   grid-column: 1 / -1;
 }
@@ -259,86 +261,66 @@ watch(
   border-radius: 8px;
   background: #f9fbfd;
   padding: 10px;
-  display: grid;
-  gap: 4px;
 }
 
-.meta-grid span {
-  color: #7a8ea3;
-  font-size: 12px;
+.meta-grid span,
+.prediction-box p {
+  display: block;
+  color: #6b7f92;
+  font-size: 11px;
+  margin-bottom: 2px;
 }
 
-.meta-grid strong,
 .prediction-box strong {
   color: #17324d;
 }
 
-.prediction-box span {
-  color: #4a7ab7;
-  font-weight: 700;
-}
-
-.prediction-box p {
-  margin: 0;
-  color: #5f758b;
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.timeline-list,
-.simple-list,
-.kv-list {
+.timeline-list {
   display: grid;
-  gap: 8px;
+  gap: 10px;
 }
 
 .timeline-item {
   display: grid;
-  grid-template-columns: 96px 1fr;
+  grid-template-columns: 120px 1fr;
   gap: 10px;
-  border: 1px solid #d7e2ee;
-  border-radius: 8px;
-  padding: 10px;
-  background: #fbfdff;
+  align-items: start;
+  border-bottom: 1px solid #e4ebf2;
+  padding-bottom: 10px;
 }
 
 .timeline-date {
-  color: #60778e;
   font-size: 12px;
-  font-weight: 600;
-}
-
-.timeline-item strong {
-  color: #17324d;
+  color: #60778e;
 }
 
 .timeline-item p,
-.simple-list li {
+.empty-inline {
   margin: 4px 0 0;
   color: #5f758b;
   font-size: 13px;
-  line-height: 1.5;
 }
 
-.simple-list {
+.simple-list,
+.kv-list {
   margin: 0;
   padding-left: 18px;
 }
 
 .kv-list {
-  margin: 0;
-  padding: 0;
+  list-style: none;
+  padding-left: 0;
+  display: grid;
+  gap: 8px;
 }
 
 .kv-list li {
-  list-style: none;
   display: flex;
   justify-content: space-between;
-  gap: 10px;
+  gap: 12px;
   border: 1px solid #d7e2ee;
   border-radius: 8px;
   padding: 8px 10px;
-  background: #f9fbfd;
 }
 
 .kv-list span {
@@ -350,32 +332,21 @@ watch(
   color: #17324d;
 }
 
-.empty-inline,
 .empty-state {
-  border: 1px dashed #bfd0e1;
-  border-radius: 8px;
-  padding: 12px;
-  color: #60778e;
+  padding: 16px;
   text-align: center;
+  color: #5f758b;
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 900px) {
   .overview-grid,
-  .detail-grid,
-  .meta-grid {
+  .detail-grid {
     grid-template-columns: 1fr;
   }
-}
 
-@media (max-width: 820px) {
-  .page-header,
-  .header-actions,
-  .action-row {
-    flex-direction: column;
-  }
-
-  .timeline-item {
-    grid-template-columns: 1fr;
+  .medication-module,
+  .attachment-module {
+    grid-column: auto;
   }
 }
 </style>

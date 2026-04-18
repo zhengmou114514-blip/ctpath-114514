@@ -1,99 +1,43 @@
-﻿import type {
-  CurrentMedicationInput,
-  CurrentMedicationItem,
-  MedicationAdequacyAssessment,
-  PatientCase,
-} from './types'
+import type { DrugCatalogRecord, MedicationAdequacyAssessment, PatientCase, PatientMedicationRecord } from './types'
 
-const MEDICATIONS_STORAGE_KEY = 'ctpath.patient.current_medications'
-const AUTH_STORAGE_KEY = 'ctpath.auth.session'
-
-function readAll(): Record<string, CurrentMedicationItem[]> {
-  try {
-    if (!window?.localStorage) return {}
-    return JSON.parse(window.localStorage.getItem(MEDICATIONS_STORAGE_KEY) || '{}') as Record<string, CurrentMedicationItem[]>
-  } catch {
-    return {}
-  }
-}
-
-function writeAll(value: Record<string, CurrentMedicationItem[]>) {
-  try {
-    if (!window?.localStorage) return
-    window.localStorage.setItem(MEDICATIONS_STORAGE_KEY, JSON.stringify(value))
-  } catch {
-    // ignore write errors in local mock mode
-  }
-}
-
-function getEvaluatorName(): string {
-  try {
-    const raw = window?.localStorage?.getItem(AUTH_STORAGE_KEY)
-    if (!raw) return '当前用户'
-    const session = JSON.parse(raw) as { doctor?: { name?: string; username?: string } }
-    return session?.doctor?.name || session?.doctor?.username || '当前用户'
-  } catch {
-    return '当前用户'
-  }
-}
-
-function toDate(daysFromNow: number) {
-  return new Date(Date.now() + daysFromNow * 86400000).toISOString().slice(0, 10)
+function normalize(text: string): string {
+  return text.trim().toLowerCase()
 }
 
 function baselineByDisease(primaryDisease: string): string[] {
-  const text = primaryDisease.toLowerCase()
-  if (text.includes('diabetes')) return ['metformin', 'sglt2']
+  const text = normalize(primaryDisease)
+  if (text.includes('diabetes')) return ['metformin']
+  if (text.includes('hypertension') || text.includes('blood pressure') || text.includes('bp')) {
+    return ['amlodipine', 'lisinopril', 'losartan']
+  }
+  if (text.includes('lipid') || text.includes('hyperlip')) return ['atorvastatin', 'rosuvastatin']
   if (text.includes('parkinson')) return ['levodopa']
-  if (text.includes('alzheimer')) return ['cholinesterase inhibitor']
   return ['core chronic therapy']
 }
 
-function seedMedications(patient: PatientCase): CurrentMedicationItem[] {
-  const disease = patient.primaryDisease.toLowerCase()
-  if (disease.includes('diabetes')) {
-    return [
-      {
-        medicationId: `med-${patient.patientId}-1`,
-        patientId: patient.patientId,
-        drugName: '二甲双胍片',
-        genericName: 'Metformin',
-        dosage: '500 mg',
-        frequency: 'bid',
-        route: 'po',
-        startedAt: toDate(-60),
-        expectedEndAt: toDate(30),
-        indication: '2型糖尿病基础降糖治疗',
-        source: 'mock-local',
-      },
-    ]
-  }
-
-  if (disease.includes('parkinson')) {
-    return [
-      {
-        medicationId: `med-${patient.patientId}-1`,
-        patientId: patient.patientId,
-        drugName: '左旋多巴/苄丝肼',
-        genericName: 'Levodopa/Benserazide',
-        dosage: '0.25 g',
-        frequency: 'tid',
-        route: 'po',
-        startedAt: toDate(-90),
-        expectedEndAt: toDate(30),
-        indication: '帕金森病运动症状控制',
-        source: 'mock-local',
-      },
-    ]
-  }
-
-  return []
+function medicationText(medication: PatientMedicationRecord, drugCatalog?: DrugCatalogRecord[]): string {
+  const drug = drugCatalog?.find((item) => item.drug_id === medication.drug_id)
+  return [
+    medication.drug_name_snapshot,
+    medication.drug_id,
+    medication.dosage,
+    medication.frequency,
+    medication.route,
+    medication.note,
+    drug?.generic_name,
+    drug?.brand_name,
+    drug?.indication,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
 }
 
-function hasDuplicateMedication(medications: CurrentMedicationItem[]): boolean {
+export function hasDuplicateMedication(medications: PatientMedicationRecord[]): boolean {
+  const active = medications.filter((item) => item.status !== 'stopped')
   const seen = new Set<string>()
-  for (const item of medications) {
-    const key = item.genericName.trim().toLowerCase()
+  for (const item of active) {
+    const key = normalize(`${item.drug_id} ${item.drug_name_snapshot}`)
     if (!key) continue
     if (seen.has(key)) return true
     seen.add(key)
@@ -101,88 +45,75 @@ function hasDuplicateMedication(medications: CurrentMedicationItem[]): boolean {
   return false
 }
 
-function hasConflictPlaceholder(medications: CurrentMedicationItem[]): boolean {
-  const names = medications.map((item) => `${item.drugName} ${item.genericName}`.toLowerCase())
-  const hasAcei = names.some((x) => x.includes('pril') || x.includes('acei'))
-  const hasArb = names.some((x) => x.includes('sartan') || x.includes('arb'))
-  return hasAcei && hasArb
+export function hasControlledDrugConflict(
+  medications: PatientMedicationRecord[],
+  drugCatalog: DrugCatalogRecord[] = []
+): boolean {
+  const controlledIds = new Set(drugCatalog.filter((item) => item.is_controlled).map((item) => item.drug_id))
+  return medications.some((item) => item.status !== 'stopped' && controlledIds.has(item.drug_id))
 }
 
-function includesKeywords(medications: CurrentMedicationItem[], keywords: string[]): boolean {
-  const hay = medications.map((item) => `${item.drugName} ${item.genericName} ${item.indication}`.toLowerCase()).join(' | ')
-  return keywords.some((word) => hay.includes(word.toLowerCase()))
+export function coversBaselineTherapy(
+  patient: PatientCase,
+  medications: PatientMedicationRecord[],
+  drugCatalog: DrugCatalogRecord[] = []
+): boolean {
+  const keywords = baselineByDisease(patient.primaryDisease)
+  const haystack = medications.map((item) => medicationText(item, drugCatalog)).join(' | ')
+  return keywords.some((keyword) => haystack.includes(keyword))
 }
 
-export function getCurrentMedications(patient: PatientCase): CurrentMedicationItem[] {
-  const all = readAll()
-  const existing = all[patient.patientId]
-  if (existing && existing.length) {
-    return [...existing].sort((a, b) => b.startedAt.localeCompare(a.startedAt))
+export function alignsWithModelAdvice(
+  medications: PatientMedicationRecord[],
+  modelAdvice: string[]
+): boolean {
+  const adviceText = normalize(modelAdvice.join(' '))
+  if (!adviceText) return true
+  if (adviceText.includes('medication') || adviceText.includes('drug') || adviceText.includes('用药') || adviceText.includes('药')) {
+    return medications.length > 0
   }
-
-  const seeded = seedMedications(patient)
-  all[patient.patientId] = seeded
-  writeAll(all)
-  return [...seeded]
-}
-
-export function addCurrentMedication(patientId: string, input: CurrentMedicationInput): CurrentMedicationItem[] {
-  const all = readAll()
-  const list = all[patientId] ?? []
-  const next: CurrentMedicationItem = {
-    medicationId: `med-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-    patientId,
-    ...input,
-    source: 'mock-local',
-  }
-
-  const updated = [next, ...list]
-  all[patientId] = updated
-  writeAll(all)
-  return [...updated]
+  return true
 }
 
 export function evaluateMedicationAdequacy(
   patient: PatientCase,
-  medications: CurrentMedicationItem[],
-  modelAdvice: string[]
+  medications: PatientMedicationRecord[],
+  modelAdvice: string[],
+  drugCatalog: DrugCatalogRecord[] = []
 ): MedicationAdequacyAssessment {
   const baseline = baselineByDisease(patient.primaryDisease)
-  const coversBaselineTherapy = includesKeywords(medications, baseline)
-  const hasDuplicate = hasDuplicateMedication(medications)
-  const hasConflict = hasConflictPlaceholder(medications)
-
-  const adviceText = modelAdvice.join(' ').toLowerCase()
-  const alignsWithModelAdvice =
-    !adviceText ||
-    (adviceText.includes('药') || adviceText.includes('medication') ? medications.length > 0 : true)
-
-  const suggestSupplementClasses = coversBaselineTherapy
-    ? []
-    : baseline.map((item) => `建议补充：${item}`)
-
-  const needsPharmacistReview =
-    hasDuplicate || hasConflict || !coversBaselineTherapy || !alignsWithModelAdvice
+  const coversBaseline = coversBaselineTherapy(patient, medications, drugCatalog)
+  const duplicate = hasDuplicateMedication(medications)
+  const conflict = hasControlledDrugConflict(medications, drugCatalog)
+  const adviceAligned = alignsWithModelAdvice(medications, modelAdvice)
 
   const notes: string[] = []
-  if (!coversBaselineTherapy) notes.push('基础治疗覆盖不足，请结合指南核对首选药物。')
-  if (hasDuplicate) notes.push('检测到疑似重复用药，请复核通用名与适应症。')
-  if (hasConflict) notes.push('检测到ACEI/ARB并用提示，仅作冲突占位，请人工判读。')
-  if (!alignsWithModelAdvice) notes.push('当前用药与模型建议不一致，建议联合复核。')
-  if (needsPharmacistReview) notes.push('建议发起药师复核，确认用药安全性与充分性。')
-  if (!notes.length) notes.push('当前评估未发现明显不足，建议继续随访监测。')
+  if (!coversBaseline) {
+    notes.push('基础治疗覆盖不足，请结合病种与目录核对首选用药。')
+  }
+  if (duplicate) {
+    notes.push('检测到重复用药提示，请核对通用名和现用状态。')
+  }
+  if (conflict) {
+    notes.push('检测到管制药占位冲突或高风险药物提示，请人工复核。')
+  }
+  if (!adviceAligned) {
+    notes.push('当前用药与模型建议不一致，建议联合复核。')
+  }
+  if (!notes.length) {
+    notes.push('当前评估未发现明显用药不足，建议继续随访监测。')
+  }
 
-  // TODO: replace rule-based mock evaluation with a real medication knowledge-base service.
   return {
-    coversBaselineTherapy,
-    hasDuplicateMedication: hasDuplicate,
-    hasContraindicationConflictPlaceholder: hasConflict,
-    alignsWithModelAdvice,
-    needsPharmacistReview,
-    suggestSupplementClasses,
+    coversBaselineTherapy: coversBaseline,
+    hasDuplicateMedication: duplicate,
+    hasContraindicationConflictPlaceholder: conflict,
+    alignsWithModelAdvice: adviceAligned,
+    needsPharmacistReview: duplicate || conflict || !coversBaseline || !adviceAligned,
+    suggestSupplementClasses: coversBaseline ? [] : baseline.map((item) => `建议补充：${item}`),
     notes,
     evaluatedAt: new Date().toISOString(),
-    evaluator: getEvaluatorName(),
+    evaluator: 'frontend-rule-engine',
     source: 'mock-local',
   }
 }
