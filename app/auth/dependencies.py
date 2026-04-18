@@ -15,6 +15,14 @@ def get_bearer_token(authorization: Optional[str] = Header(default=None)) -> str
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing bearer token") from exc
 
 
+def require_token(authorization: Optional[str] = Header(default=None)) -> str:
+    return get_bearer_token(authorization)
+
+
+def require_token(authorization: Optional[str] = Header(default=None)) -> str:
+    return get_bearer_token(authorization)
+
+
 def get_current_doctor(
     request: Request,
     token: str = Depends(get_bearer_token),
@@ -41,7 +49,7 @@ def get_current_user(doctor: DoctorPublic = Depends(get_current_doctor)):
     }
 
 
-def require_doctor(token: str = Depends(get_bearer_token)):
+def require_doctor(token: str = Depends(require_token)):
     doctor = resolve_doctor_from_token(token)
     if doctor is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session")
@@ -55,4 +63,3 @@ def require_roles(*allowed_roles: str):
         return doctor
 
     return dependency
-
