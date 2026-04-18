@@ -4,10 +4,10 @@ import {
   createPatientMedication,
   getDrugCatalog,
   getDrugPermissions,
+  getPatientMedicationAssessment,
   getPatientMedications,
   updatePatientMedication,
 } from '../../services/api'
-import { evaluateMedicationAdequacy } from '../../services/medicationAssessmentService'
 import type {
   DrugCatalogRecord,
   DrugPermissionRecord,
@@ -33,6 +33,7 @@ const medications = ref<PatientMedicationRecord[]>([])
 const drugCatalog = ref<DrugCatalogRecord[]>([])
 const permission = ref<DrugPermissionRecord | null>(null)
 const editingMedicationId = ref<string | null>(null)
+const assessment = ref<MedicationAdequacyAssessment>(buildEmptyAssessment())
 
 const form = reactive<PatientMedicationUpsertRequest>(buildEmptyForm())
 
@@ -48,9 +49,6 @@ const availableDrugs = computed(() =>
 )
 
 const selectedDrug = computed(() => drugCatalog.value.find((item) => item.drug_id === form.drug_id) ?? null)
-const assessment = computed<MedicationAdequacyAssessment>(() =>
-  evaluateMedicationAdequacy(props.patient, medications.value, props.modelAdvice, drugCatalog.value)
-)
 
 const activeMedicationCount = computed(() => medications.value.filter((item) => item.status === 'active').length)
 const pendingReviewCount = computed(() => medications.value.filter((item) => item.review_status === 'pending').length)
@@ -58,6 +56,21 @@ const duplicateHint = computed(() => assessment.value.hasDuplicateMedication)
 const baselineHint = computed(() => assessment.value.coversBaselineTherapy)
 const pharmacistReviewHint = computed(() => assessment.value.needsPharmacistReview)
 const controlledDrugBlocked = computed(() => Boolean(selectedDrug.value?.is_controlled && !canUseControlledDrug.value))
+
+function buildEmptyAssessment(notes: string[] = []): MedicationAdequacyAssessment {
+  return {
+    coversBaselineTherapy: false,
+    hasDuplicateMedication: false,
+    hasContraindicationConflictPlaceholder: false,
+    alignsWithModelAdvice: true,
+    needsPharmacistReview: true,
+    suggestSupplementClasses: [],
+    notes: notes.length ? notes : ['Medication assessment has not been loaded from the backend rule service.'],
+    evaluatedAt: new Date().toISOString(),
+    evaluator: 'frontend-display-shell',
+    source: 'frontend-fallback',
+  }
+}
 
 function buildEmptyForm(): PatientMedicationUpsertRequest {
   const now = new Date().toISOString().slice(0, 10)
@@ -186,15 +199,17 @@ async function reloadWorkspace() {
   errorMessage.value = ''
 
   try {
-    const [medicationItems, catalogItems, permissionItems] = await Promise.all([
+    const [medicationItems, catalogItems, permissionItems, assessmentResult] = await Promise.all([
       getPatientMedications(props.patient.patientId),
       getDrugCatalog({ status: 'active' }),
       getDrugPermissions(props.doctorRole as DrugPermissionRole),
+      getPatientMedicationAssessment(props.patient.patientId, { modelAdvice: props.modelAdvice }),
     ])
 
     medications.value = medicationItems
     drugCatalog.value = catalogItems
     permission.value = permissionItems[0] ?? null
+    assessment.value = assessmentResult
 
     const currentMedication = editingMedicationId.value
       ? medicationItems.find((item) => item.medication_id === editingMedicationId.value) ?? null
@@ -207,8 +222,17 @@ async function reloadWorkspace() {
     }
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '加载当前用药失败。'
+    assessment.value = buildEmptyAssessment([errorMessage.value])
   } finally {
     loading.value = false
+  }
+}
+
+async function reloadAssessment() {
+  try {
+    assessment.value = await getPatientMedicationAssessment(props.patient.patientId, { modelAdvice: props.modelAdvice })
+  } catch (error) {
+    assessment.value = buildEmptyAssessment([error instanceof Error ? error.message : 'Medication assessment failed.'])
   }
 }
 
@@ -277,10 +301,7 @@ watch(
 watch(
   () => props.modelAdvice.join('|'),
   () => {
-    if (medications.value.length) {
-      // Re-run computed assessment by touching the list in a controlled way.
-      medications.value = [...medications.value]
-    }
+    void reloadAssessment()
   }
 )
 

@@ -344,7 +344,11 @@ export interface MedicationAdequacyAssessment {
   notes: string[]
   evaluatedAt: string
   evaluator: string
-  source: 'mock-local'
+  source: 'backend-rule-engine' | 'frontend-fallback' | 'mock-local'
+}
+
+export interface MedicationAssessmentRequest {
+  modelAdvice: string[]
 }
 
 export interface HealthResponse {

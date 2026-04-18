@@ -53,13 +53,11 @@ def create_drug_catalog(
     updated_by = getattr(current_user, "name", None) or getattr(current_user, "username", None) or "system"
     record = create_drug_catalog_item(payload, updated_by=str(updated_by))
     record_operation_audit(
-        action="drug_catalog_create",
-        result="success",
-        path="/api/drugs",
-        method="POST",
+        operation="create",
+        resource_type="drug_catalog",
+        resource_id=record.drug_id,
+        request=request,
         actor=current_user,
-        detail="drug_id={0}".format(record.drug_id),
-        client_ip=request.client.host if request and request.client else None,
     )
     return record
 
@@ -74,12 +72,10 @@ def update_drug_catalog(
     updated_by = getattr(current_user, "name", None) or getattr(current_user, "username", None) or "system"
     record = update_drug_catalog_item(drug_id, payload, updated_by=str(updated_by))
     record_operation_audit(
-        action="drug_catalog_update",
-        result="success",
-        path="/api/drugs/{0}".format(drug_id),
-        method="PUT",
+        operation="update",
+        resource_type="drug_catalog",
+        resource_id=record.drug_id,
+        request=request,
         actor=current_user,
-        detail="drug_id={0}".format(record.drug_id),
-        client_ip=request.client.host if request and request.client else None,
     )
     return record

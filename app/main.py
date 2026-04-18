@@ -1,5 +1,7 @@
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .api.analytics import router as analytics_router
 from .api.attachments import router as attachments_router
@@ -13,6 +15,7 @@ from .api.patient_medications import router as patient_medications_router
 from .api.patients import router as patients_router
 from .api.predictions import router as predictions_router
 from .api.worklists import router as worklists_router
+from .errors import http_exception_handler, validation_exception_handler
 from .middleware.exception import GlobalExceptionMiddleware
 from .middleware.jwt_auth import JWTAuthMiddleware
 from .middleware.rate_limit import RateLimitMiddleware
@@ -24,6 +27,9 @@ app = FastAPI(
     version="0.5.0",
     description="Backend service for the chronic disease assistant system.",
 )
+
+app.add_exception_handler(StarletteHTTPException, http_exception_handler)
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
 
 # Keep CORS outermost so even middleware-generated error responses carry headers.
 app.add_middleware(RateLimitMiddleware)

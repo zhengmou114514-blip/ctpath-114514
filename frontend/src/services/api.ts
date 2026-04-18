@@ -18,6 +18,8 @@ import type {
   HealthResponse,
   MaintenanceOverview,
   MeResponse,
+  MedicationAdequacyAssessment,
+  MedicationAssessmentRequest,
   MedicationPlanGeneratePayload,
   MedicationPlanResponse,
   ModelMetricsResponse,
@@ -536,6 +538,21 @@ async function demoRequest<T>(path: string, options: RequestInit = {}): Promise<
     demoPatientMedications = demoPatientMedications.map((item, itemIndex) => (itemIndex === index ? updated : item))
     return clone(updated) as T
   }
+  if (s[0] === 'patient' && s[1] && s[2] === 'medication-assessment' && !s[3] && m === 'POST') {
+    const now = new Date().toISOString()
+    return {
+      coversBaselineTherapy: false,
+      hasDuplicateMedication: false,
+      hasContraindicationConflictPlaceholder: false,
+      alignsWithModelAdvice: true,
+      needsPharmacistReview: true,
+      suggestSupplementClasses: [],
+      notes: ['Backend medication assessment is unavailable; this demo fallback only preserves the display contract.'],
+      evaluatedAt: now,
+      evaluator: 'frontend-demo-fallback',
+      source: 'frontend-fallback',
+    } as T
+  }
   if (u.pathname === '/health') return { status: 'ok', service: 'ctpath-demo-fallback', mode: 'demo', model_available: false, model_error: 'Backend unavailable, using local demo data.' } as T
   if (u.pathname === '/patients') return demoPatients.slice().sort((a, b) => b.lastVisit.localeCompare(a.lastVisit)).map(sum) as T
   if (u.pathname === '/patients/paginated') {
@@ -774,6 +791,9 @@ export async function generateAdvice(payload: AdviceGeneratePayload): Promise<Ad
 export async function generateMedicationPlan(patientId: string, payload: MedicationPlanGeneratePayload): Promise<MedicationPlanResponse> { return request(`/patient/${patientId}/medication-plan/generate`, { method: 'POST', body: JSON.stringify(payload) }) }
 export async function getPatientMedications(patientId: string): Promise<PatientMedicationRecord[]> {
   return request(`/patient/${patientId}/medications`, { method: 'GET' })
+}
+export async function getPatientMedicationAssessment(patientId: string, payload: MedicationAssessmentRequest): Promise<MedicationAdequacyAssessment> {
+  return request(`/patient/${patientId}/medication-assessment`, { method: 'POST', body: JSON.stringify(payload) })
 }
 export async function createPatientMedication(patientId: string, payload: PatientMedicationUpsertRequest): Promise<PatientMedicationRecord> {
   return request(`/patient/${patientId}/medications`, { method: 'POST', body: JSON.stringify(payload) })

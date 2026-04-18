@@ -6,9 +6,16 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 from ..audit.operation_audit import record_operation_audit
 from ..auth.dependencies import get_current_doctor
-from ..schemas import PatientMedicationRecord, PatientMedicationUpsertRequest
+from ..schemas import (
+    MedicationAdequacyAssessment,
+    MedicationAssessmentRequest,
+    PatientMedicationRecord,
+    PatientMedicationUpsertRequest,
+)
 from ..services.drug_catalog_service import get_drug_catalog_item
+from ..services.drug_catalog_service import list_drug_catalog
 from ..services.drug_permission_service import get_drug_permission_item
+from ..services.medication_assessment_service import assess_patient_medication_adequacy
 from ..services.patient_medication_service import (
     create_patient_medication,
     list_patient_medications,
@@ -51,6 +58,28 @@ def get_patient_medications(
     return list_patient_medications(patient_id)
 
 
+@router.post("/api/patient/{patient_id}/medication-assessment", response_model=MedicationAdequacyAssessment)
+def assess_patient_medications(
+    patient_id: str,
+    payload: MedicationAssessmentRequest,
+    current_doctor: object = Depends(get_current_doctor),
+) -> MedicationAdequacyAssessment:
+    patient = get_patient(patient_id)
+    if patient is None:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    permission = _resolve_medication_permission(getattr(current_doctor, "role", ""))
+    if not permission.allow_view:
+        raise HTTPException(status_code=403, detail="Role not allowed to view patient medications")
+
+    return assess_patient_medication_adequacy(
+        patient=patient,
+        medications=list_patient_medications(patient_id),
+        model_advice=payload.modelAdvice,
+        drug_catalog=list_drug_catalog(status="active"),
+    )
+
+
 @router.post("/api/patient/{patient_id}/medications", response_model=PatientMedicationRecord, status_code=201)
 def create_patient_medication_record(
     patient_id: str,
@@ -73,13 +102,13 @@ def create_patient_medication_record(
         prescribed_by=_current_actor_name(current_doctor),
     )
     record_operation_audit(
-        action="patient_medication_create",
-        result="success",
-        path="/api/patient/{0}/medications".format(patient_id),
-        method="POST",
+        operation="create",
+        resource_type="patient_medication",
+        resource_id=record.medication_id,
+        request=request,
         actor=current_doctor,
-        detail="patient_id={0}; medication_id={1}; drug_id={2}".format(patient_id, record.medication_id, record.drug_id),
-        client_ip=request.client.host if request and request.client else None,
+        patient_id=patient_id,
+        extra_detail="drug_id={0}".format(record.drug_id),
     )
     return record
 
@@ -108,12 +137,12 @@ def update_patient_medication_record(
         prescribed_by=_current_actor_name(current_doctor),
     )
     record_operation_audit(
-        action="patient_medication_update",
-        result="success",
-        path="/api/patient/{0}/medications/{1}".format(patient_id, medication_id),
-        method="PUT",
+        operation="update",
+        resource_type="patient_medication",
+        resource_id=record.medication_id,
+        request=request,
         actor=current_doctor,
-        detail="patient_id={0}; medication_id={1}; drug_id={2}".format(patient_id, record.medication_id, record.drug_id),
-        client_ip=request.client.host if request and request.client else None,
+        patient_id=patient_id,
+        extra_detail="drug_id={0}".format(record.drug_id),
     )
     return record

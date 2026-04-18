@@ -42,13 +42,11 @@ def create_drug_permission(
 ) -> DrugPermissionRecord:
     record = create_drug_permission_item(payload)
     record_operation_audit(
-        action="drug_permission_create",
-        result="success",
-        path="/api/drug-permissions",
-        method="POST",
+        operation="create",
+        resource_type="drug_permission",
+        resource_id=record.role,
+        request=request,
         actor=current_user,
-        detail="role={0}".format(record.role),
-        client_ip=request.client.host if request and request.client else None,
     )
     return record
 
@@ -62,12 +60,10 @@ def update_drug_permission(
 ) -> DrugPermissionRecord:
     record = update_drug_permission_item(role, payload)
     record_operation_audit(
-        action="drug_permission_update",
-        result="success",
-        path="/api/drug-permissions/{0}".format(role),
-        method="PUT",
+        operation="update",
+        resource_type="drug_permission",
+        resource_id=record.role,
+        request=request,
         actor=current_user,
-        detail="role={0}".format(record.role),
-        client_ip=request.client.host if request and request.client else None,
     )
     return record

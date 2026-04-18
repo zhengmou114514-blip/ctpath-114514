@@ -287,6 +287,23 @@ class PatientMedicationUpsertRequest(BaseModel):
     note: str = ""
 
 
+class MedicationAssessmentRequest(BaseModel):
+    modelAdvice: List[str] = Field(default_factory=list)
+
+
+class MedicationAdequacyAssessment(BaseModel):
+    coversBaselineTherapy: bool
+    hasDuplicateMedication: bool
+    hasContraindicationConflictPlaceholder: bool
+    alignsWithModelAdvice: bool
+    needsPharmacistReview: bool
+    suggestSupplementClasses: List[str] = Field(default_factory=list)
+    notes: List[str] = Field(default_factory=list)
+    evaluatedAt: str
+    evaluator: str
+    source: Literal["backend-rule-engine", "frontend-fallback", "mock-local"] = "backend-rule-engine"
+
+
 class PredictRequest(BaseModel):
     patientId: str
     topk: int = Field(default=3, ge=1, le=10)
