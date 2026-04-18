@@ -7,7 +7,7 @@ import {
   getPatientMedications,
   updatePatientMedication,
 } from '../../services/api'
-import { evaluateMedicationAdequacy } from '../../services/medicationAssessmentAdapter'
+import { evaluateMedicationAdequacy } from '../../services/medicationAssessmentService'
 import type {
   DrugCatalogRecord,
   DrugPermissionRecord,

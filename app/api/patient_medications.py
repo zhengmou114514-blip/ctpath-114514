@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
+from ..audit.operation_audit import record_operation_audit
 from ..auth.dependencies import get_current_doctor
 from ..schemas import PatientMedicationRecord, PatientMedicationUpsertRequest
 from ..services.drug_catalog_service import get_drug_catalog_item
@@ -54,6 +55,7 @@ def get_patient_medications(
 def create_patient_medication_record(
     patient_id: str,
     payload: PatientMedicationUpsertRequest,
+    request: Request,
     current_doctor: object = Depends(get_current_doctor),
 ) -> PatientMedicationRecord:
     _require_patient(patient_id)
@@ -65,11 +67,21 @@ def create_patient_medication_record(
     if drug.is_controlled and not permission.allow_controlled_drug:
         raise HTTPException(status_code=403, detail="Controlled drug not allowed for this role")
 
-    return create_patient_medication(
+    record = create_patient_medication(
         patient_id,
         payload,
         prescribed_by=_current_actor_name(current_doctor),
     )
+    record_operation_audit(
+        action="patient_medication_create",
+        result="success",
+        path="/api/patient/{0}/medications".format(patient_id),
+        method="POST",
+        actor=current_doctor,
+        detail="patient_id={0}; medication_id={1}; drug_id={2}".format(patient_id, record.medication_id, record.drug_id),
+        client_ip=request.client.host if request and request.client else None,
+    )
+    return record
 
 
 @router.put("/api/patient/{patient_id}/medications/{medication_id}", response_model=PatientMedicationRecord)
@@ -77,6 +89,7 @@ def update_patient_medication_record(
     patient_id: str,
     medication_id: str,
     payload: PatientMedicationUpsertRequest,
+    request: Request,
     current_doctor: object = Depends(get_current_doctor),
 ) -> PatientMedicationRecord:
     _require_patient(patient_id)
@@ -88,9 +101,19 @@ def update_patient_medication_record(
     if drug.is_controlled and not permission.allow_controlled_drug:
         raise HTTPException(status_code=403, detail="Controlled drug not allowed for this role")
 
-    return update_patient_medication(
+    record = update_patient_medication(
         patient_id,
         medication_id,
         payload,
         prescribed_by=_current_actor_name(current_doctor),
     )
+    record_operation_audit(
+        action="patient_medication_update",
+        result="success",
+        path="/api/patient/{0}/medications/{1}".format(patient_id, medication_id),
+        method="PUT",
+        actor=current_doctor,
+        detail="patient_id={0}; medication_id={1}; drug_id={2}".format(patient_id, record.medication_id, record.drug_id),
+        client_ip=request.client.host if request and request.client else None,
+    )
+    return record

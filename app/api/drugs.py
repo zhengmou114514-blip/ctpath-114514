@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 
 from ..auth.dependencies import require_roles
+from ..audit.operation_audit import record_operation_audit
 from ..schemas import DrugCatalogRecord, DrugCatalogStatus, DrugCatalogUpsertRequest
 from ..services.drug_catalog_service import (
     create_drug_catalog_item,
@@ -46,17 +47,39 @@ def get_drug_catalog_detail(
 @router.post("/api/drugs", response_model=DrugCatalogRecord, status_code=201)
 def create_drug_catalog(
     payload: DrugCatalogUpsertRequest,
+    request: Request,
     current_user: object = Depends(require_roles("doctor", "archivist")),
 ) -> DrugCatalogRecord:
     updated_by = getattr(current_user, "name", None) or getattr(current_user, "username", None) or "system"
-    return create_drug_catalog_item(payload, updated_by=str(updated_by))
+    record = create_drug_catalog_item(payload, updated_by=str(updated_by))
+    record_operation_audit(
+        action="drug_catalog_create",
+        result="success",
+        path="/api/drugs",
+        method="POST",
+        actor=current_user,
+        detail="drug_id={0}".format(record.drug_id),
+        client_ip=request.client.host if request and request.client else None,
+    )
+    return record
 
 
 @router.put("/api/drugs/{drug_id}", response_model=DrugCatalogRecord)
 def update_drug_catalog(
     drug_id: str,
     payload: DrugCatalogUpsertRequest,
+    request: Request,
     current_user: object = Depends(require_roles("doctor", "archivist")),
 ) -> DrugCatalogRecord:
     updated_by = getattr(current_user, "name", None) or getattr(current_user, "username", None) or "system"
-    return update_drug_catalog_item(drug_id, payload, updated_by=str(updated_by))
+    record = update_drug_catalog_item(drug_id, payload, updated_by=str(updated_by))
+    record_operation_audit(
+        action="drug_catalog_update",
+        result="success",
+        path="/api/drugs/{0}".format(drug_id),
+        method="PUT",
+        actor=current_user,
+        detail="drug_id={0}".format(record.drug_id),
+        client_ip=request.client.host if request and request.client else None,
+    )
+    return record
