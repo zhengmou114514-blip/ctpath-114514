@@ -32,6 +32,7 @@ const isSplitWorkspaceRoute = computed(() => {
   const routeName = typeof route.name === 'string' ? route.name : ''
   return (
     Object.prototype.hasOwnProperty.call(splitRouteSections, routeName) ||
+    routeName === 'patient-detail' ||
     workspace.currentWorkspace === 'model-insight' ||
     workspace.currentWorkspace === 'model-dashboard' ||
     workspace.currentWorkspace === 'governance'
@@ -50,6 +51,10 @@ function syncWorkspaceFromRoute() {
   }
 
   const routeName = typeof route.name === 'string' ? route.name : ''
+  if (routeName === 'patient-detail') {
+    return
+  }
+
   const nextSection = splitRouteSections[routeName] ?? 'doctor'
 
   if (workspace.section !== nextSection) {
@@ -59,6 +64,7 @@ function syncWorkspaceFromRoute() {
 
 function syncRouteFromWorkspace() {
   if (!workspace.currentDoctor) return
+  if (route.name === 'patient-detail') return
 
   const targetRoute = sectionToRouteName[workspace.section] ?? 'home'
   const currentRoute = typeof route.name === 'string' ? route.name : ''
@@ -68,12 +74,43 @@ function syncRouteFromWorkspace() {
   }
 }
 
+function handleSelectSection(nextSection: Parameters<typeof workspace.selectSection>[0]) {
+  const currentRouteName = typeof route.name === 'string' ? route.name : ''
+  workspace.selectSection(nextSection)
+  if (currentRouteName === 'patient-detail') {
+    const targetRoute = sectionToRouteName[nextSection] ?? 'home'
+    if (targetRoute) {
+      void router.push({ name: targetRoute })
+    }
+    return
+  }
+
+  if (nextSection === 'doctor') {
+    void router.push({ name: 'home' })
+  }
+}
+
+async function handleOpenPatientDetail(patientId: string) {
+  const loaded = await workspace.openPatient(patientId, 'doctor')
+  if (loaded) {
+    void router.push({ name: 'patient-detail', params: { patientId } })
+  }
+}
+
 function handleOpenArchive(payload: { patientId: string; focus?: 'overview' | 'events' }) {
   const focus = payload.focus === 'events' ? 'events' : 'overview'
   void workspace.openArchiveInNewTab(payload.patientId, focus)
 }
 
 function handleOpenFollowup(payload: { patientId: string; section?: 'tasks' | 'contacts' | 'flow' }) {
+  void workspace.openFollowupModule(payload.patientId, payload.section ?? 'tasks')
+}
+
+function handleDoctorOpenArchive(payload: { patientId: string; focus?: 'overview' | 'events' }) {
+  void workspace.openArchiveInNewTab(payload.patientId, payload.focus ?? 'overview')
+}
+
+function handleDoctorOpenFollowup(payload: { patientId: string; section?: 'tasks' | 'contacts' | 'flow' }) {
   void workspace.openFollowupModule(payload.patientId, payload.section ?? 'tasks')
 }
 
@@ -145,7 +182,7 @@ watch(
     :error-message="workspace.permissionHint || workspace.screenError"
     :success-message="workspace.archiveSuccess"
     :loading="workspace.globalLoading"
-    @select="workspace.selectSection"
+    @select="handleSelectSection"
     @logout="workspace.logout"
     @open-archive="handleOpenArchive"
     @open-followup="handleOpenFollowup"
@@ -159,16 +196,8 @@ watch(
         :all-patients="workspace.allPatients"
         :patients="workspace.visiblePendingPatients"
         :selected-patient="workspace.selectedPatient"
-        :patient-quadruples="workspace.patientQuadruples"
-        :prediction-result="workspace.predictionResult"
         :loading-patients="workspace.loadingPatients"
         :loading-patient="workspace.loadingPatient"
-        :loading-predict="workspace.loadingPredict"
-        :loading-open-archive="workspace.loadingOpenArchive"
-        :loading-open-followup="workspace.loadingOpenFollowup"
-        :loading-encounter-status="workspace.loadingEncounterStatus"
-        :loading-create-task="workspace.loadingCreateTask"
-        :model-unavailable="workspace.modelUnavailable"
         :no-permission="workspace.doctorNoPermission"
         :search-text="workspace.workspaceSearchText"
         :risk-filter="workspace.workspaceRiskFilter"
@@ -176,11 +205,9 @@ watch(
         @update:search-text="workspace.workspaceSearchText = $event"
         @update:risk-filter="workspace.workspaceRiskFilter = $event"
         @open="workspace.openPatient($event, 'doctor')"
-        @open-archive="workspace.openArchiveInNewTab"
-        @open-followup="workspace.openFollowupModule"
-        @update-encounter-status="workspace.applyEncounterStatus"
-        @create-outpatient-task="workspace.registerOutpatientTask"
-        @predict="workspace.runPrediction"
+        @open-detail="handleOpenPatientDetail"
+        @open-archive="handleDoctorOpenArchive"
+        @open-followup="handleDoctorOpenFollowup"
       />
 
       <PatientArchivePage

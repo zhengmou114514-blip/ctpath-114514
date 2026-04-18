@@ -15,6 +15,11 @@ const routes: RouteRecordRaw[] = [
     },
     children: [
       {
+        path: 'patient-detail/:patientId?',
+        name: 'patient-detail',
+        component: () => import('../pages/PatientDetailPage.vue'),
+      },
+      {
         path: 'model-insight',
         name: 'model-insight',
         component: ModelInsightPage,
