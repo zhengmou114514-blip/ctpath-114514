@@ -7,6 +7,34 @@ const SAVED_ACCOUNTS_KEY = 'ctpath.saved.accounts'
 const MAX_SAVED_ACCOUNTS = 10
 let authToken = ''
 
+function normalizeApiPath(path: string): string {
+  if (!path) return '/'
+
+  let normalized = path
+  try {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost'
+    const parsed = new URL(path, origin)
+    normalized = `${parsed.pathname}${parsed.search}${parsed.hash}`
+  } catch {
+    normalized = path
+  }
+
+  if (normalized === API_BASE) return '/'
+  if (normalized.startsWith(`${API_BASE}/`)) {
+    normalized = normalized.slice(API_BASE.length)
+  } else if (normalized === '/api') {
+    normalized = '/'
+  } else if (normalized.startsWith('/api/')) {
+    normalized = normalized.slice('/api'.length)
+  }
+
+  if (!normalized.startsWith('/')) {
+    normalized = `/${normalized}`
+  }
+
+  return normalized
+}
+
 type Role = 'doctor' | 'nurse' | 'archivist'
 type Paged = { patients: PatientSummary[]; total: number; page: number; page_size: number; total_pages: number }
 
@@ -235,10 +263,11 @@ async function demoRequest<T>(path: string, options: RequestInit = {}): Promise<
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const normalizedPath = normalizeApiPath(path)
   try {
-    const r = await fetch(`${API_BASE}${path}`, { ...options, headers: { ...buildHeaders(options.body !== undefined), ...(options.headers ?? {}) } })
+    const r = await fetch(`${API_BASE}${normalizedPath}`, { ...options, headers: { ...buildHeaders(options.body !== undefined), ...(options.headers ?? {}) } })
     if (!r.ok) {
-      if (ENABLE_DEMO_FALLBACK && r.status >= 500) return demoRequest<T>(path, options)
+      if (ENABLE_DEMO_FALLBACK && r.status >= 500) return demoRequest<T>(normalizedPath, options)
       if (r.status === 401) {
         authToken = ''
         persistAuthSession(null)
@@ -251,7 +280,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   } catch (e) {
     const m = e instanceof Error ? e.message : ''
     const isNetworkError = !m || /Failed to fetch|NetworkError|Load failed|fetch|ECONNREFUSED|ERR_CONNECTION_REFUSED/i.test(m)
-    if (ENABLE_DEMO_FALLBACK && isNetworkError) return demoRequest<T>(path, options)
+    if (ENABLE_DEMO_FALLBACK && isNetworkError) return demoRequest<T>(normalizedPath, options)
     if (isNetworkError) throw new Error(`Cannot connect to backend API (${API_BASE}). Please start backend service.`)
     throw e
   }

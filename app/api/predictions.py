@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from .auth import require_roles
+from ..auth.dependencies import require_roles
 from ..schemas import (
     AdviceGenerateRequest,
     AdviceResponse,

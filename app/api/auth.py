@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from ..auth.dependencies import get_current_doctor, require_doctor, require_roles
+from ..auth.dependencies import get_current_doctor
 from ..middleware.jwt_auth import create_access_token
 from ..schemas import LoginRequest, LoginResponse, RegisterRequest
 from ..store import TOKENS, authenticate, register_doctor
@@ -40,13 +40,3 @@ def me(doctor=Depends(get_current_doctor)) -> dict:
         "department": doctor.department,
         "role": doctor.role,
     }
-
-
-# Backward-compatible exports for existing API modules.
-# The actual dependency implementations live in app.auth.dependencies.
-__all__ = [
-    "router",
-    "require_doctor",
-    "require_roles",
-    "get_current_doctor",
-]

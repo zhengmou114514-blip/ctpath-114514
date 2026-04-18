@@ -1,12 +1,12 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
-import App from '../App.vue'
+import AppWorkspacePage from '../pages/AppWorkspacePage.vue'
 import { useAuthStore } from '../stores/auth'
 
 const routes = [
   {
     path: '/',
     name: 'home',
-    component: App as any,
+    component: AppWorkspacePage,
     meta: {
       requiresAuth: true,
     },
@@ -14,7 +14,7 @@ const routes = [
   {
     path: '/login',
     name: 'login',
-    component: App as any,
+    component: AppWorkspacePage,
     meta: {
       requiresAuth: false,
     },

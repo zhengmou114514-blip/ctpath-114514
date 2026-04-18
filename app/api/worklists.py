@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 
-from .auth import require_roles
+from ..auth.dependencies import require_roles
 from ..schemas import FlowBoardResponse, FollowupWorklistResponse
 from ..store import get_flow_board, get_followup_worklist
 

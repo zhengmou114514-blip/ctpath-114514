@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 
-from .auth import require_doctor
+from ..auth.dependencies import require_doctor
 from ..auth.permission_registry import PERMISSION_REGISTRY
 from ..schemas import AuthzCapabilityResponse
 
@@ -34,4 +34,3 @@ def capabilities(doctor=Depends(require_doctor)) -> AuthzCapabilityResponse:
             allowed_apis.append("{0} {1}".format(perm.method, perm.path))
 
     return AuthzCapabilityResponse(role=role, allowedSections=allowed_sections, allowedApis=sorted(allowed_apis))
-

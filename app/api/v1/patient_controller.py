@@ -4,7 +4,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from ...api.auth import require_doctor
+from ...auth.dependencies import require_doctor
 from ...modules.patients.application import PATIENT_APPLICATION_SERVICE
 
 

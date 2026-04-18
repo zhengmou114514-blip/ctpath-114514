@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 
-from .auth import require_roles
+from ..auth.dependencies import require_roles
 from ..schemas import GovernanceModulesResponse, MaintenanceOverviewResponse
 from ..services.governance_service import get_governance_modules
 from ..store import get_maintenance_overview

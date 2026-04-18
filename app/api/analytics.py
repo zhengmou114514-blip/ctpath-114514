@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 
-from .auth import require_roles
+from ..auth.dependencies import require_roles
 from ..model_service import MODEL_SERVICE
 from ..schemas import ModelMetricsResponse
 from ..store import DB_URL, get_model_metrics

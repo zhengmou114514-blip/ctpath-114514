@@ -3,6 +3,34 @@ import { readStoredAuthSession, persistAuthSession } from '../stores/auth'
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? '/api'
 
+function normalizeApiPath(path: string): string {
+  if (!path) return '/'
+
+  let normalized = path
+  try {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost'
+    const parsed = new URL(path, origin)
+    normalized = `${parsed.pathname}${parsed.search}${parsed.hash}`
+  } catch {
+    normalized = path
+  }
+
+  if (normalized === API_BASE) return '/'
+  if (normalized.startsWith(`${API_BASE}/`)) {
+    normalized = normalized.slice(API_BASE.length)
+  } else if (normalized === '/api') {
+    normalized = '/'
+  } else if (normalized.startsWith('/api/')) {
+    normalized = normalized.slice('/api'.length)
+  }
+
+  if (!normalized.startsWith('/')) {
+    normalized = `/${normalized}`
+  }
+
+  return normalized
+}
+
 function buildTraceId(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
     return crypto.randomUUID()
@@ -67,6 +95,7 @@ const requestClient: AxiosInstance = axios.create({
 })
 
 requestClient.interceptors.request.use((config) => {
+  config.url = normalizeApiPath(String(config.url ?? ''))
   const session = readStoredAuthSession()
   const headers = normalizeHeaders(config.headers as HeadersInit | undefined)
   const traceId = headers['X-Trace-Id'] || headers['x-trace-id'] || buildTraceId()
@@ -152,7 +181,7 @@ async function bridgeFetch(input: RequestInfo | URL, init?: RequestInit): Promis
   headers['X-Trace-Id'] = traceId
 
   const config: AxiosRequestConfig = {
-    url: input instanceof URL ? input.toString() : input instanceof Request ? input.url : input,
+    url: normalizeApiPath(input instanceof URL ? input.toString() : input instanceof Request ? input.url : input),
     method,
     headers,
     data: init?.body ?? (request ? await request.text() : undefined),

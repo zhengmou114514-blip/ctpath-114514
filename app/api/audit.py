@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 from typing import List
 
-from .auth import require_roles
+from ..auth.dependencies import require_roles
 from ..audit.system_audit import list_system_audit_logs
 from ..schemas import PatientAuditLog, SystemAuditLog, SystemAuditResponse
 from ..store import get_patient
@@ -27,4 +27,3 @@ def patient_audit(
     if not patient:
         return []
     return list(patient.auditLogs)
-
