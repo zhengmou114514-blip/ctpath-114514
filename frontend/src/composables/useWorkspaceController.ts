@@ -60,6 +60,7 @@ const TASK_STATUS_CLOSED = 'Closed'
 const APP_SECTIONS: AppSection[] = [
   'doctor',
   'archive',
+  'drug-management',
   'tasks',
   'governance',
   'insights',
@@ -346,10 +347,11 @@ export function useWorkspaceController() {
   const archiveNoPermission = computed(() => Boolean(currentDoctor.value) && !canManageArchive())
   const followupNoPermission = computed(() => Boolean(currentDoctor.value) && !canUseFollowupWorkspace())
   const currentWorkspace = computed<
-    'doctor' | 'archive' | 'governance' | 'model-dashboard' | 'model-insight' | 'followup' | 'system' | 'unknown'
+    'doctor' | 'archive' | 'drug-management' | 'governance' | 'model-dashboard' | 'model-insight' | 'followup' | 'system' | 'unknown'
   >(() => {
     if (section.value === 'doctor') return 'doctor'
     if (section.value === 'archive' || section.value === 'data-quality') return 'archive'
+    if (section.value === 'drug-management') return 'drug-management'
     if (section.value === 'governance') return 'governance'
     if (section.value === 'model-dashboard') return 'model-dashboard'
     if (section.value === 'insights') return 'model-insight'
@@ -763,6 +765,10 @@ export function useWorkspaceController() {
     return value === 'insights'
   }
 
+  function isDrugManagementSection(value: AppSection) {
+    return value === 'drug-management'
+  }
+
   function isArchiveSection(value: AppSection) {
     return value === 'archive' || value === 'data-quality'
   }
@@ -810,6 +816,12 @@ export function useWorkspaceController() {
     }
 
     if (isModelInsightSection(nextSection)) {
+      section.value = nextSection
+      updateWindowQuery(nextSection)
+      return
+    }
+
+    if (isDrugManagementSection(nextSection)) {
       section.value = nextSection
       updateWindowQuery(nextSection)
       return

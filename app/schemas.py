@@ -197,6 +197,38 @@ class PatientAttachmentRecord(BaseModel):
     source: Literal["local-file", "mock-local"] = "local-file"
 
 
+DrugCatalogStatus = Literal["active", "inactive"]
+
+
+class DrugCatalogRecord(BaseModel):
+    drug_id: str
+    generic_name: str
+    brand_name: str = ""
+    dosage_form: str
+    specification: str
+    unit: str
+    is_prescription: bool
+    is_controlled: bool
+    status: DrugCatalogStatus
+    indication: str
+    created_at: str
+    updated_at: str
+    updated_by: str = ""
+
+
+class DrugCatalogUpsertRequest(BaseModel):
+    drug_id: str = Field(min_length=1)
+    generic_name: str = Field(min_length=1)
+    brand_name: str = ""
+    dosage_form: str = Field(min_length=1)
+    specification: str = Field(min_length=1)
+    unit: str = Field(min_length=1)
+    is_prescription: bool = True
+    is_controlled: bool = False
+    status: DrugCatalogStatus = "active"
+    indication: str = Field(min_length=1)
+
+
 class PredictRequest(BaseModel):
     patientId: str
     topk: int = Field(default=3, ge=1, le=10)

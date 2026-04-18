@@ -6,6 +6,7 @@ from .api.attachments import router as attachments_router
 from .api.audit import router as audit_router
 from .api.auth import router as auth_router
 from .api.authz import router as authz_router
+from .api.drugs import router as drugs_router
 from .api.governance import router as governance_router
 from .api.patients import router as patients_router
 from .api.predictions import router as predictions_router
@@ -110,6 +111,7 @@ app.include_router(attachments_router)
 app.include_router(auth_router)
 app.include_router(authz_router)
 app.include_router(audit_router)
+app.include_router(drugs_router)
 app.include_router(patients_router)
 app.include_router(predictions_router)
 app.include_router(worklists_router)

@@ -3,6 +3,7 @@ import AppWorkspacePage from '../pages/AppWorkspacePage.vue'
 import GovernancePage from '../pages/GovernancePage.vue'
 import ModelDashboardPage from '../pages/ModelDashboardPage.vue'
 import ModelInsightPage from '../pages/ModelInsightPage.vue'
+import DrugCatalogPage from '../pages/DrugCatalogPage.vue'
 import { useAuthStore } from '../stores/auth'
 
 const routes: RouteRecordRaw[] = [
@@ -33,6 +34,11 @@ const routes: RouteRecordRaw[] = [
         path: 'governance',
         name: 'governance',
         component: GovernancePage,
+      },
+      {
+        path: 'drug-management',
+        name: 'drug-management',
+        component: DrugCatalogPage,
       },
     ],
   },

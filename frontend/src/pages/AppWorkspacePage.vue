@@ -16,16 +16,18 @@ provideWorkspaceContext(workspace)
 const route = useRoute()
 const router = useRouter()
 
-const splitRouteSections: Record<string, 'insights' | 'model-dashboard' | 'governance'> = {
+const splitRouteSections: Record<string, 'insights' | 'model-dashboard' | 'governance' | 'drug-management'> = {
   'model-insight': 'insights',
   'model-dashboard': 'model-dashboard',
   governance: 'governance',
+  'drug-management': 'drug-management',
 }
 
 const sectionToRouteName: Partial<Record<string, string>> = {
   insights: 'model-insight',
   'model-dashboard': 'model-dashboard',
   governance: 'governance',
+  'drug-management': 'drug-management',
 }
 
 const isSplitWorkspaceRoute = computed(() => {
@@ -35,7 +37,8 @@ const isSplitWorkspaceRoute = computed(() => {
     routeName === 'patient-detail' ||
     workspace.currentWorkspace === 'model-insight' ||
     workspace.currentWorkspace === 'model-dashboard' ||
-    workspace.currentWorkspace === 'governance'
+    workspace.currentWorkspace === 'governance' ||
+    workspace.currentWorkspace === 'drug-management'
   )
 })
 

@@ -9,93 +9,40 @@ export interface WorkspaceMenuItem {
 
 export const ROLE_WORKSPACE_MENUS: Record<DoctorUser['role'], WorkspaceMenuItem[]> = {
   doctor: [
-    {
-      section: 'doctor',
-      label: '诊疗工作台',
-      description: '慢病辅助诊疗、风险识别与处置建议',
-    },
-    {
-      section: 'archive',
-      label: '患者档案',
-      description: '患者档案维护与事件补录',
-    },
-    {
-      section: 'model-dashboard',
-      label: '模型看板',
-      description: '模型版本、训练任务与运行指标管理',
-    },
-    {
-      section: 'insights',
-      label: '模型洞察',
-      description: '模型表现、预测依据与趋势观察',
-    },
-    {
-      section: 'governance',
-      label: '治理看板',
-      description: '数据质量、档案完整性与治理动作',
-    },
-    {
-      section: 'system',
-      label: '系统中心',
-      description: '健康状态、权限能力与系统审计',
-    },
+    { section: 'doctor', label: '医生首页', description: '查看待处理患者、当前患者摘要和快捷入口。' },
+    { section: 'archive', label: '患者档案', description: '查看和维护患者基础档案、病程事件与状态。' },
+    { section: 'drug-management', label: '药品管理', description: '维护药品目录、基础属性和启用状态。' },
+    { section: 'model-dashboard', label: '模型看板', description: '查看模型治理指标、训练时间和健康状态。' },
+    { section: 'insights', label: '模型洞察', description: '查看当前患者的预测结果、证据摘要和建议来源。' },
+    { section: 'governance', label: '治理看板', description: '查看数据质量、缺失字段和治理动作记录。' },
+    { section: 'system', label: '系统中心', description: '查看账户、权限、审计和运行状态。' },
   ],
   nurse: [
-    {
-      section: 'tasks',
-      label: '随访任务',
-      description: '待办随访任务与执行情况',
-    },
-    {
-      section: 'contacts',
-      label: '患者联络记录',
-      description: '电话/微信/家属联络记录管理',
-    },
-    {
-      section: 'flow',
-      label: '流转看板',
-      description: '患者流转状态与下一步动作',
-    },
-    {
-      section: 'system',
-      label: '系统中心',
-      description: '健康状态、权限能力与系统审计',
-    },
+    { section: 'tasks', label: '随访工作台', description: '处理待办随访任务和联系记录。' },
+    { section: 'contacts', label: '联系记录', description: '查看联系日志和外联记录。' },
+    { section: 'flow', label: '流程看板', description: '查看随访与流转状态。' },
+    { section: 'system', label: '系统中心', description: '查看账户、权限、审计和运行状态。' },
   ],
   archivist: [
-    {
-      section: 'archive',
-      label: '档案管理',
-      description: '档案建档、更新与质量维护',
-    },
-    {
-      section: 'data-quality',
-      label: '数据完整性',
-      description: '结构化字段与关键信息完整性检查',
-    },
-    {
-      section: 'governance',
-      label: '治理模块',
-      description: '治理模块与数据维护状态',
-    },
-    {
-      section: 'system',
-      label: '系统中心',
-      description: '健康状态、权限能力与系统审计',
-    },
+    { section: 'archive', label: '患者档案', description: '维护患者档案、事件和电子材料。' },
+    { section: 'drug-management', label: '药品管理', description: '维护药品目录、基础属性和启用状态。' },
+    { section: 'data-quality', label: '数据质量', description: '查看缺失字段、异常记录和补全任务。' },
+    { section: 'governance', label: '治理看板', description: '查看数据质量和治理动作记录。' },
+    { section: 'system', label: '系统中心', description: '查看账户、权限、审计和运行状态。' },
   ],
 }
 
 export const SECTION_LABELS: Record<AppSection, string> = {
-  doctor: '诊疗工作台',
+  doctor: '医生首页',
   archive: '患者档案',
-  tasks: '随访任务',
+  'drug-management': '药品管理',
+  tasks: '随访工作台',
   'model-dashboard': '模型看板',
   governance: '治理看板',
   insights: '模型洞察',
-  contacts: '患者联络记录',
-  flow: '流转看板',
-  'data-quality': '数据完整性',
+  contacts: '联系记录',
+  flow: '流程看板',
+  'data-quality': '数据质量',
   system: '系统中心',
 }
 

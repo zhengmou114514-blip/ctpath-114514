@@ -1,6 +1,7 @@
 export type AppSection =
   | 'doctor'
   | 'archive'
+  | 'drug-management'
   | 'tasks'
   | 'governance'
   | 'model-dashboard'

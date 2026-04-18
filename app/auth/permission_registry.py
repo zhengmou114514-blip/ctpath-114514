@@ -408,3 +408,35 @@ class PermissionRegistry:
 
 # 全局权限注册表实例
 PERMISSION_REGISTRY = PermissionRegistry()
+
+PERMISSION_REGISTRY.register(APIPermission(
+    path="/api/drugs",
+    method="GET",
+    required_permissions={Permission.DRUG_VIEW},
+    allowed_roles={Role.ADMIN, Role.DOCTOR, Role.ARCHIVIST},
+    description="??????",
+))
+
+PERMISSION_REGISTRY.register(APIPermission(
+    path="/api/drugs/{drug_id}",
+    method="GET",
+    required_permissions={Permission.DRUG_VIEW},
+    allowed_roles={Role.ADMIN, Role.DOCTOR, Role.ARCHIVIST},
+    description="??????",
+))
+
+PERMISSION_REGISTRY.register(APIPermission(
+    path="/api/drugs",
+    method="POST",
+    required_permissions={Permission.DRUG_CREATE},
+    allowed_roles={Role.ADMIN, Role.DOCTOR, Role.ARCHIVIST},
+    description="????",
+))
+
+PERMISSION_REGISTRY.register(APIPermission(
+    path="/api/drugs/{drug_id}",
+    method="PUT",
+    required_permissions={Permission.DRUG_UPDATE},
+    allowed_roles={Role.ADMIN, Role.DOCTOR, Role.ARCHIVIST},
+    description="????",
+))

@@ -672,6 +672,37 @@ export interface PatientAttachmentRecord {
   source: 'local-file' | 'mock-local'
 }
 
+export type DrugCatalogStatus = 'active' | 'inactive'
+
+export interface DrugCatalogRecord {
+  drug_id: string
+  generic_name: string
+  brand_name: string
+  dosage_form: string
+  specification: string
+  unit: string
+  is_prescription: boolean
+  is_controlled: boolean
+  status: DrugCatalogStatus
+  indication: string
+  created_at: string
+  updated_at: string
+  updated_by: string
+}
+
+export interface DrugCatalogUpsertRequest {
+  drug_id: string
+  generic_name: string
+  brand_name: string
+  dosage_form: string
+  specification: string
+  unit: string
+  is_prescription: boolean
+  is_controlled: boolean
+  status: DrugCatalogStatus
+  indication: string
+}
+
 export interface ModelDatasetImportRecord {
   datasetId: string
   datasetName: string
