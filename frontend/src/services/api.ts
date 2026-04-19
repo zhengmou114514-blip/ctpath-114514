@@ -4,6 +4,8 @@ import type {
   AdviceGenerateResponse,
   AuthSession,
   AuthzCapabilityResponse,
+  BusinessClosureSummary,
+  BusinessWorkspaceRole,
   ContactLogCreatePayload,
   DrugCatalogRecord,
   DrugCatalogStatus,
@@ -36,6 +38,7 @@ import type {
   PatientUpsertPayload,
   PredictResponse,
   RegisterPayload,
+  RoleWorkspaceDefinition,
   SystemAuditResponse,
   TimelineEvent,
 } from './types'
@@ -82,6 +85,106 @@ export interface PaginatedPatientsResponse extends Paged {}
 export interface PaginationParams { page: number; page_size: number; search?: string; risk_level?: string; sort_by?: string; sort_order?: 'asc' | 'desc' }
 export interface PaginationResponse<T> { items: T[]; total: number; page: number; page_size: number; total_pages: number }
 export interface PatientStats { total: number; by_risk: Record<string, number>; by_age: Record<string, number> }
+
+const ROLE_WORKSPACES: RoleWorkspaceDefinition[] = [
+  {
+    role: 'doctor',
+    title: 'Doctor workstation',
+    description: 'Owns patient review, prediction interpretation, current medication decisions and care advice.',
+    primaryModules: [
+      {
+        key: 'patient-detail',
+        label: 'Patient detail',
+        routeHint: '/patient-detail/:patientId',
+        responsibility: 'Review patient profile, timeline, risk summary, attachments and next actions.',
+        status: 'ready',
+      },
+      {
+        key: 'current-medication',
+        label: 'Current medication / assessment',
+        routeHint: '/patient-business-closure?patientId=...',
+        responsibility: 'Create and edit current medications, then consume backend medication assessment results.',
+        status: 'ready',
+      },
+      {
+        key: 'drug-catalog',
+        label: 'Drug catalog',
+        routeHint: '/drug-management',
+        responsibility: 'Maintain chronic-care drug directory with controlled-drug permission checks.',
+        status: 'ready',
+      },
+      {
+        key: 'model-insight',
+        label: 'Patient model insight',
+        routeHint: '/model-insight',
+        responsibility: 'Use current-patient predictions and evidence summaries only.',
+        status: 'limited',
+      },
+    ],
+    forbiddenModules: ['inventory', 'full prescription flow', 'training center', 'model debug console'],
+    auditFocus: ['patient_attachment_upload', 'patient_medication_create', 'patient_medication_update', 'drug_catalog_create', 'drug_catalog_update'],
+  },
+  {
+    role: 'nurse',
+    title: 'Nurse workstation',
+    description: 'Owns follow-up execution, contact closure, medication execution view and care flow coordination.',
+    primaryModules: [
+      {
+        key: 'followup-worklist',
+        label: 'Follow-up worklist',
+        routeHint: '/nurse-followups',
+        responsibility: 'Track due follow-ups and outpatient tasks without entering model governance pages.',
+        status: 'ready',
+      },
+      {
+        key: 'flow-board',
+        label: 'Care flow board',
+        routeHint: '/nurse-followups',
+        responsibility: 'Coordinate waiting, in-clinic and pending-review patient flows.',
+        status: 'ready',
+      },
+      {
+        key: 'medication-execution-view',
+        label: 'Medication execution view',
+        routeHint: '/patient-business-closure?patientId=...',
+        responsibility: 'View current medications and assessment result; no prescribing by default.',
+        status: 'limited',
+      },
+    ],
+    forbiddenModules: ['controlled drug grant', 'drug catalog administration', 'model dashboard', 'training center'],
+    auditFocus: ['followup contact log', 'outpatient task status', 'patient attachment view'],
+  },
+  {
+    role: 'model_manager',
+    title: 'Model management workstation',
+    description: 'Owns model status and governance visibility, while staying out of patient prescribing flow.',
+    primaryModules: [
+      {
+        key: 'model-dashboard',
+        label: 'Model dashboard',
+        routeHint: '/model-dashboard',
+        responsibility: 'Monitor model version, metrics, call volume, fallback ratio and health status.',
+        status: 'ready',
+      },
+      {
+        key: 'governance',
+        label: 'Governance board',
+        routeHint: '/governance',
+        responsibility: 'Inspect data quality and model-service governance signals.',
+        status: 'ready',
+      },
+      {
+        key: 'audit',
+        label: 'System audit',
+        routeHint: '/role-workspaces',
+        responsibility: 'Review operation traces without editing clinical records.',
+        status: 'limited',
+      },
+    ],
+    forbiddenModules: ['patient medication edit', 'controlled drug operation', 'full prescription flow', 'training center in this round'],
+    auditFocus: ['predict', 'advice_generate', 'model health', 'system audit'],
+  },
+]
 
 const doctors = [
   { username: 'demo_clinic', password: 'demo123456', name: 'Dr. Lin', title: 'Attending Physician', department: 'Chronic Care Clinic', role: 'doctor' as Role },
@@ -805,6 +908,14 @@ export function saveAccount(account: SavedAccount): void { try { if (!window?.lo
 export function removeSavedAccount(username: string): void { try { if (!window?.localStorage) return; window.localStorage.setItem(SAVED_ACCOUNTS_KEY, JSON.stringify(getSavedAccounts().filter((x) => x.username !== username))) } catch {} }
 export function clearSavedAccounts(): void { try { if (!window?.localStorage) return; window.localStorage.removeItem(SAVED_ACCOUNTS_KEY) } catch {} }
 export function restoreAuthSession(): AuthSession | null { try { if (!window?.localStorage) return null; const raw = window.localStorage.getItem(AUTH_STORAGE_KEY); if (!raw) return null; return JSON.parse(raw) as AuthSession } catch { return null } }
+export function getRoleWorkspaces(): RoleWorkspaceDefinition[] { return clone(ROLE_WORKSPACES) }
+export function getRoleWorkspace(role: BusinessWorkspaceRole): RoleWorkspaceDefinition {
+  const fallback = ROLE_WORKSPACES[0]
+  if (!fallback) {
+    throw new Error('Role workspace definitions are not configured')
+  }
+  return clone(ROLE_WORKSPACES.find((item) => item.role === role) ?? fallback)
+}
 
 export async function loginDoctor(username: string, password: string): Promise<AuthSession> { const s = await request<AuthSession>('/login', { method: 'POST', body: JSON.stringify({ username, password }) }); persistAuthSession(s); saveAccount({ username: s.doctor.username, name: s.doctor.name, title: s.doctor.title, department: s.doctor.department, role: s.doctor.role, lastLoginTime: new Date().toISOString() }); return s }
 export async function registerDoctor(payload: RegisterPayload): Promise<AuthSession> { const s = await request<AuthSession>('/register', { method: 'POST', body: JSON.stringify(payload) }); persistAuthSession(s); return s }
@@ -853,6 +964,29 @@ export async function createPatientMedication(patientId: string, payload: Patien
 }
 export async function updatePatientMedication(patientId: string, medicationId: string, payload: PatientMedicationUpsertRequest): Promise<PatientMedicationRecord> {
   return request(`/patient/${patientId}/medications/${medicationId}`, { method: 'PUT', body: JSON.stringify(payload) })
+}
+export async function getBusinessClosureSummary(patientId: string, modelAdvice: string[] = []): Promise<BusinessClosureSummary> {
+  const [attachments, medications, assessment, permissions, drugs] = await Promise.all([
+    getPatientAttachments(patientId),
+    getPatientMedications(patientId),
+    getPatientMedicationAssessment(patientId, { modelAdvice }),
+    getDrugPermissions(),
+    getDrugCatalog(),
+  ])
+  const role = resolveSessionRole()
+  const permission = permissions.find((item) => item.role === role) ?? null
+  const drugById = new Map(drugs.map((drug) => [drug.drug_id, drug]))
+  const controlledMedicationCount = medications.filter((item) => drugById.get(item.drug_id)?.is_controlled).length
+  return {
+    patientId,
+    attachmentCount: attachments.length,
+    currentMedicationCount: medications.length,
+    activeMedicationCount: medications.filter((item) => item.status === 'active').length,
+    controlledMedicationCount,
+    needsPharmacistReview: assessment.needsPharmacistReview,
+    medicationAssessment: assessment,
+    drugPermission: permission,
+  }
 }
 export async function getDrugCatalog(params: { keyword?: string; status?: DrugCatalogStatus; dosageForm?: string; isPrescription?: boolean; isControlled?: boolean } = {}): Promise<DrugCatalogRecord[]> {
   const query = new URLSearchParams()

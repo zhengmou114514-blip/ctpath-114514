@@ -365,6 +365,36 @@ export interface AuthzCapabilityResponse {
   allowedApis: string[]
 }
 
+export type BusinessWorkspaceRole = 'doctor' | 'nurse' | 'model_manager'
+
+export interface RoleWorkspaceModule {
+  key: string
+  label: string
+  routeHint: string
+  responsibility: string
+  status: 'ready' | 'limited' | 'blocked'
+}
+
+export interface RoleWorkspaceDefinition {
+  role: BusinessWorkspaceRole
+  title: string
+  description: string
+  primaryModules: RoleWorkspaceModule[]
+  forbiddenModules: string[]
+  auditFocus: string[]
+}
+
+export interface BusinessClosureSummary {
+  patientId: string
+  attachmentCount: number
+  currentMedicationCount: number
+  activeMedicationCount: number
+  controlledMedicationCount: number
+  needsPharmacistReview: boolean
+  medicationAssessment: MedicationAdequacyAssessment
+  drugPermission: DrugPermissionRecord | null
+}
+
 export interface SystemAuditLog {
   logId: string
   action: string
