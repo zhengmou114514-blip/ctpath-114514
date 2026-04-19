@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Generator
 
-from ..auth.dependencies import get_current_doctor, get_current_user, require_doctor, require_roles
+from ..auth.dependencies import get_current_doctor, get_current_user, require_doctor, require_roles, require_token
 from ..modules.patients.application import PATIENT_APPLICATION_SERVICE, PatientApplicationService
 
 
@@ -18,4 +18,5 @@ __all__ = [
     "get_patient_application_service",
     "require_doctor",
     "require_roles",
+    "require_token",
 ]

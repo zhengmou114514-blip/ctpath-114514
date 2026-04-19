@@ -1,7 +1,8 @@
-import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosRequestHeaders, type AxiosResponse } from 'axios'
+import axios, { AxiosError, type AxiosInstance, type AxiosRequestConfig, type AxiosRequestHeaders, type AxiosResponse } from 'axios'
 import { readStoredAuthSession, persistAuthSession } from '../stores/auth'
 
-const API_BASE = import.meta.env.VITE_API_BASE ?? '/api'
+const API_BASE = '/api'
+const HANDLED_ERROR_STATUSES = new Set([401, 403, 429, 500])
 
 function normalizeApiPath(path: string): string {
   if (!path) return '/'
@@ -91,7 +92,6 @@ const requestClient: AxiosInstance = axios.create({
   timeout: 30000,
   withCredentials: true,
   validateStatus: () => true,
-  transformResponse: [(data) => data],
 })
 
 requestClient.interceptors.request.use((config) => {
@@ -127,13 +127,23 @@ requestClient.interceptors.response.use(
     if (response.status === 401 && !isAuthEndpoint(response.config.url)) {
       persistAuthSession(null)
     }
-    if ([401, 403, 429, 500].includes(response.status)) {
+    if (HANDLED_ERROR_STATUSES.has(response.status)) {
       emitHttpStatus(response.status, traceId, response.config.url)
     }
     return response
   },
   (error) => {
-    emitHttpStatus(500, buildTraceId(), error?.config?.url)
+    const axiosError = error as AxiosError
+    const status = axiosError.response?.status ?? 500
+    const traceId =
+      String(axiosError.response?.headers?.['x-trace-id'] ?? axiosError.response?.headers?.['X-Trace-Id'] ?? (axiosError.config as AxiosRequestConfig & { _traceId?: string } | undefined)?._traceId ?? buildTraceId())
+
+    if (status === 401 && !isAuthEndpoint(axiosError.config?.url)) {
+      persistAuthSession(null)
+    }
+    if (HANDLED_ERROR_STATUSES.has(status)) {
+      emitHttpStatus(status, traceId, axiosError.config?.url)
+    }
     return Promise.reject(error)
   }
 )

@@ -40,12 +40,11 @@ import type {
   TimelineEvent,
 } from './types'
 
-const API_BASE = import.meta.env.VITE_API_BASE ?? '/api'
+const API_BASE = '/api'
 const ENABLE_DEMO_FALLBACK = String(import.meta.env.VITE_ENABLE_DEMO_FALLBACK ?? '').toLowerCase() === 'true'
 const AUTH_STORAGE_KEY = 'ctpath.auth.session'
 const SAVED_ACCOUNTS_KEY = 'ctpath.saved.accounts'
 const MAX_SAVED_ACCOUNTS = 10
-let authToken = ''
 
 function normalizeApiPath(path: string): string {
   if (!path) return '/'
@@ -293,11 +292,51 @@ function persistAuthSession(session: AuthSession | null) {
 function buildHeaders(contentType = true): HeadersInit {
   const headers: Record<string, string> = {}
   if (contentType) headers['Content-Type'] = 'application/json'
-  if (authToken) headers.Authorization = `Bearer ${authToken}`
   return headers
 }
 
 const body = <T>(b?: BodyInit | null) => (b ? JSON.parse(String(b)) as T : {} as T)
+
+function mergeRequestHeaders(contentType: boolean, headers?: HeadersInit): Record<string, string> {
+  const merged: Record<string, string> = buildHeaders(contentType) as Record<string, string>
+  if (!headers) return merged
+  if (headers instanceof Headers) {
+    headers.forEach((value, key) => {
+      merged[key] = value
+    })
+    return merged
+  }
+  if (Array.isArray(headers)) {
+    for (const [key, value] of headers) {
+      merged[String(key)] = String(value)
+    }
+    return merged
+  }
+  return { ...merged, ...headers }
+}
+
+function parseResponseData<T>(data: unknown): T {
+  if (typeof data !== 'string') return data as T
+  if (!data) return undefined as T
+  return JSON.parse(data) as T
+}
+
+function extractErrorDetail(data: unknown, fallback: string): string {
+  if (!data) return fallback
+  if (typeof data === 'string') {
+    try {
+      const parsed = JSON.parse(data) as { detail?: unknown }
+      return typeof parsed.detail === 'string' ? parsed.detail : fallback
+    } catch {
+      return data || fallback
+    }
+  }
+  if (typeof data === 'object' && 'detail' in data) {
+    const detail = (data as { detail?: unknown }).detail
+    return typeof detail === 'string' ? detail : fallback
+  }
+  return fallback
+}
 
 async function demoRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   const m = (options.method ?? 'GET').toUpperCase()
@@ -726,18 +765,21 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     !(options.body instanceof FormData) &&
     !(options.body instanceof URLSearchParams)
   try {
-    const r = await fetch(`${API_BASE}${normalizedPath}`, { ...options, headers: { ...buildHeaders(shouldSetContentType), ...(options.headers ?? {}) } })
-    if (!r.ok) {
-      if (ENABLE_DEMO_FALLBACK && r.status >= 500) return demoRequest<T>(normalizedPath, options)
-      if (r.status === 401) {
-        authToken = ''
+    const response = await requestClient.request({
+      url: normalizedPath,
+      method: options.method ?? 'GET',
+      headers: mergeRequestHeaders(shouldSetContentType, options.headers),
+      data: options.body,
+    })
+    if (response.status < 200 || response.status >= 300) {
+      if (ENABLE_DEMO_FALLBACK && response.status >= 500) return demoRequest<T>(normalizedPath, options)
+      if (response.status === 401) {
         persistAuthSession(null)
       }
-      let detail = 'Request failed'
-      try { detail = (await r.json()).detail ?? detail } catch { detail = r.statusText || detail }
-      throw new Error(`[${r.status}] ${detail}`)
+      const detail = extractErrorDetail(response.data, response.statusText || 'Request failed')
+      throw new Error(`[${response.status}] ${detail}`)
     }
-    return r.json() as Promise<T>
+    return parseResponseData<T>(response.data)
   } catch (e) {
     const m = e instanceof Error ? e.message : ''
     const isNetworkError = !m || /Failed to fetch|NetworkError|Load failed|fetch|ECONNREFUSED|ERR_CONNECTION_REFUSED/i.test(m)
@@ -751,11 +793,11 @@ export function getSavedAccounts(): SavedAccount[] { try { if (!window?.localSto
 export function saveAccount(account: SavedAccount): void { try { if (!window?.localStorage) return; const xs = getSavedAccounts().filter((x) => x.username !== account.username); xs.unshift(account); window.localStorage.setItem(SAVED_ACCOUNTS_KEY, JSON.stringify(xs.slice(0, MAX_SAVED_ACCOUNTS))) } catch {} }
 export function removeSavedAccount(username: string): void { try { if (!window?.localStorage) return; window.localStorage.setItem(SAVED_ACCOUNTS_KEY, JSON.stringify(getSavedAccounts().filter((x) => x.username !== username))) } catch {} }
 export function clearSavedAccounts(): void { try { if (!window?.localStorage) return; window.localStorage.removeItem(SAVED_ACCOUNTS_KEY) } catch {} }
-export function restoreAuthSession(): AuthSession | null { try { if (!window?.localStorage) return null; const raw = window.localStorage.getItem(AUTH_STORAGE_KEY); if (!raw) return null; const s = JSON.parse(raw) as AuthSession; authToken = s.token; return s } catch { authToken = ''; return null } }
+export function restoreAuthSession(): AuthSession | null { try { if (!window?.localStorage) return null; const raw = window.localStorage.getItem(AUTH_STORAGE_KEY); if (!raw) return null; return JSON.parse(raw) as AuthSession } catch { return null } }
 
-export async function loginDoctor(username: string, password: string): Promise<AuthSession> { const s = await request<AuthSession>('/login', { method: 'POST', body: JSON.stringify({ username, password }) }); authToken = s.token; persistAuthSession(s); saveAccount({ username: s.doctor.username, name: s.doctor.name, title: s.doctor.title, department: s.doctor.department, role: s.doctor.role, lastLoginTime: new Date().toISOString() }); return s }
-export async function registerDoctor(payload: RegisterPayload): Promise<AuthSession> { const s = await request<AuthSession>('/register', { method: 'POST', body: JSON.stringify(payload) }); authToken = s.token; persistAuthSession(s); return s }
-export function logoutDoctor() { authToken = ''; persistAuthSession(null) }
+export async function loginDoctor(username: string, password: string): Promise<AuthSession> { const s = await request<AuthSession>('/login', { method: 'POST', body: JSON.stringify({ username, password }) }); persistAuthSession(s); saveAccount({ username: s.doctor.username, name: s.doctor.name, title: s.doctor.title, department: s.doctor.department, role: s.doctor.role, lastLoginTime: new Date().toISOString() }); return s }
+export async function registerDoctor(payload: RegisterPayload): Promise<AuthSession> { const s = await request<AuthSession>('/register', { method: 'POST', body: JSON.stringify(payload) }); persistAuthSession(s); return s }
+export function logoutDoctor() { persistAuthSession(null) }
 export async function getPatients(): Promise<PatientSummary[]> { return request('/patients', { method: 'GET' }) }
 export async function getPatientsPaginated(params: { page: number; pageSize: number; search?: string; riskLevel?: string; disease?: string }): Promise<PaginatedPatientsResponse> { const q = new URLSearchParams({ page: String(params.page), page_size: String(params.pageSize) }); if (params.search) q.set('search', params.search); if (params.riskLevel) q.set('risk_level', params.riskLevel); if (params.disease) q.set('disease', params.disease); return request(`/patients/paginated?${q.toString()}`, { method: 'GET' }) }
 export async function getPatientCase(patientId: string): Promise<PatientCase> { return request(`/patient/${patientId}`, { method: 'GET' }) }

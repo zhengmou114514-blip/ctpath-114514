@@ -67,6 +67,26 @@ const router = createRouter({
   routes,
 })
 
+if (typeof window !== 'undefined') {
+  window.addEventListener('ctpath:http-status', (event) => {
+    const status = (event as CustomEvent<{ status?: number }>).detail?.status
+    if (status !== 401) return
+
+    const authStore = useAuthStore()
+    authStore.clearSession()
+
+    const current = router.currentRoute.value
+    if (current.path !== '/login') {
+      router.push({
+        path: '/login',
+        query: {
+          redirect: current.fullPath,
+        },
+      })
+    }
+  })
+}
+
 router.beforeEach((to) => {
   const authStore = useAuthStore()
   if (!authStore.session) {
