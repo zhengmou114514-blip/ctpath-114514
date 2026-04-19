@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from ..auth.dependencies import require_roles
+from ..middleware.rate_limit import limiter
 from ..schemas import (
     AdviceGenerateRequest,
     AdviceResponse,
@@ -18,7 +19,9 @@ router = APIRouter(tags=["predictions"])
 
 
 @router.post("/api/advice/generate", response_model=AdviceResponse)
+@limiter.limit("20/minute")
 def generate_advice(
+    request: Request,
     payload: AdviceGenerateRequest,
     _: object = Depends(require_roles("doctor")),
 ) -> AdviceResponse:
@@ -32,7 +35,12 @@ def generate_advice(
 
 
 @router.post("/api/predict", response_model=PredictResponse)
-def predict(payload: PredictRequest, _: object = Depends(require_roles("doctor", "nurse"))) -> PredictResponse:
+@limiter.limit("20/minute")
+def predict(
+    request: Request,
+    payload: PredictRequest,
+    _: object = Depends(require_roles("doctor", "nurse")),
+) -> PredictResponse:
     patient = get_patient(payload.patientId)
     if patient is None:
         raise HTTPException(status_code=404, detail="Patient not found")

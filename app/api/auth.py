@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from ..auth.dependencies import get_current_doctor
 from ..middleware.jwt_auth import create_access_token
+from ..middleware.rate_limit import limiter
 from ..schemas import LoginRequest, LoginResponse, RegisterRequest
 from ..store import TOKENS, authenticate, register_doctor
 
@@ -10,7 +11,8 @@ router = APIRouter(tags=["auth"])
 
 
 @router.post("/api/login", response_model=LoginResponse)
-def login(payload: LoginRequest) -> LoginResponse:
+@limiter.limit("8/minute")
+def login(request: Request, payload: LoginRequest) -> LoginResponse:
     doctor = authenticate(payload.username, payload.password)
     if doctor is None:
         raise HTTPException(status_code=401, detail="Invalid username or password")

@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi.errors import RateLimitExceeded
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .api.analytics import router as analytics_router
@@ -18,7 +19,7 @@ from .api.worklists import router as worklists_router
 from .errors import http_exception_handler, validation_exception_handler
 from .middleware.exception import GlobalExceptionMiddleware
 from .middleware.jwt_auth import JWTAuthMiddleware
-from .middleware.rate_limit import RateLimitMiddleware
+from .middleware.rate_limit import limiter, rate_limit_exceeded_handler
 from .middleware.trace_id import TraceIdMiddleware
 
 
@@ -28,11 +29,12 @@ app = FastAPI(
     description="Backend service for the chronic disease assistant system.",
 )
 
+app.state.limiter = limiter
 app.add_exception_handler(StarletteHTTPException, http_exception_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 # Keep CORS outermost so even middleware-generated error responses carry headers.
-app.add_middleware(RateLimitMiddleware)
 app.add_middleware(JWTAuthMiddleware)
 app.add_middleware(TraceIdMiddleware)
 app.add_middleware(GlobalExceptionMiddleware)
