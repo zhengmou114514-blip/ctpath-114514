@@ -20,10 +20,10 @@ function statusText(status: string): string {
     <header class="card page-header">
       <div>
         <p class="eyebrow">Role boundary</p>
-        <h2>Doctor / Nurse / Model Management Workstations</h2>
+        <h2>Doctor / Nurse / Pharmacist / Admin Workstations</h2>
         <p>
           First-round role landing map for chronic-care business modules. It narrows responsibilities without adding
-          inventory, full prescription flow, model debug console or training center work.
+          inventory, billing, inpatient, full prescription flow, model debug console or training center work.
         </p>
       </div>
     </header>

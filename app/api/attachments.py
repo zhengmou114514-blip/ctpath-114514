@@ -27,7 +27,7 @@ def _require_patient(patient_id: str) -> None:
 @router.get("/api/patient/{patient_id}/attachments", response_model=List[PatientAttachmentRecord])
 def get_patient_attachments(
     patient_id: str,
-    _: object = Depends(require_roles("doctor", "archivist")),
+    _: object = Depends(require_roles("doctor", "nurse", "pharmacist", "archivist", "admin")),
 ) -> List[PatientAttachmentRecord]:
     _require_patient(patient_id)
     return list_patient_attachments(patient_id)
@@ -39,7 +39,7 @@ async def upload_patient_attachment(
     request: Request,
     attachment_type: PatientAttachmentType = Form(..., alias="type"),
     file: UploadFile = File(...),
-    current_user: object = Depends(require_roles("doctor", "archivist")),
+    current_user: object = Depends(require_roles("doctor", "nurse", "archivist", "admin")),
 ) -> PatientAttachmentRecord:
     _require_patient(patient_id)
     uploaded_by = getattr(current_user, "name", None) or getattr(current_user, "username", None) or "current-user"
@@ -68,7 +68,7 @@ async def upload_patient_attachment(
 def download_patient_attachment_file(
     patient_id: str,
     attachment_id: str,
-    _: object = Depends(require_roles("doctor", "archivist")),
+    _: object = Depends(require_roles("doctor", "nurse", "pharmacist", "archivist", "admin")),
 ) -> FileResponse:
     _require_patient(patient_id)
     path, record = get_patient_attachment_file(patient_id, attachment_id)

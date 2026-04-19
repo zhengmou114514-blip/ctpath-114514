@@ -16,7 +16,7 @@ OutpatientTaskStatus = Literal["待执行", "已完成", "已关闭"]
 ContactType = Literal["phone", "family", "wechat", "outpatient"]
 ContactTarget = Literal["patient", "emergency_contact"]
 ContactResult = Literal["reached", "missed", "scheduled", "urgent"]
-DoctorRole = Literal["doctor", "nurse", "archivist"]
+DoctorRole = Literal["doctor", "nurse", "pharmacist", "archivist", "admin"]
 
 
 class DoctorPublic(BaseModel):

@@ -365,7 +365,7 @@ export interface AuthzCapabilityResponse {
   allowedApis: string[]
 }
 
-export type BusinessWorkspaceRole = 'doctor' | 'nurse' | 'model_manager'
+export type BusinessWorkspaceRole = 'doctor' | 'nurse' | 'pharmacist' | 'admin'
 
 export interface RoleWorkspaceModule {
   key: string

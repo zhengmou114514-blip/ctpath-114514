@@ -41,7 +41,7 @@ def get_drug_catalog(
     dosage_form: Optional[str] = Query(default=None),
     is_prescription: Optional[bool] = Query(default=None),
     is_controlled: Optional[bool] = Query(default=None),
-    _: object = Depends(require_roles("doctor", "archivist")),
+    _: object = Depends(require_roles("doctor", "nurse", "pharmacist", "archivist", "admin")),
 ) -> List[DrugCatalogRecord]:
     return list_drug_catalog(
         keyword=keyword,
@@ -55,7 +55,7 @@ def get_drug_catalog(
 @router.get("/api/drugs/{drug_id}", response_model=DrugCatalogRecord)
 def get_drug_catalog_detail(
     drug_id: str,
-    _: object = Depends(require_roles("doctor", "archivist")),
+    _: object = Depends(require_roles("doctor", "nurse", "pharmacist", "archivist", "admin")),
 ) -> DrugCatalogRecord:
     return get_drug_catalog_item(drug_id)
 
@@ -64,7 +64,7 @@ def get_drug_catalog_detail(
 def create_drug_catalog(
     payload: DrugCatalogUpsertRequest,
     request: Request,
-    current_user: object = Depends(require_roles("doctor", "archivist")),
+    current_user: object = Depends(require_roles("doctor", "pharmacist", "archivist", "admin")),
 ) -> DrugCatalogRecord:
     _enforce_controlled_drug_permission(current_user, touches_controlled_drug=payload.is_controlled)
     updated_by = _actor_name(current_user)
@@ -85,7 +85,7 @@ def update_drug_catalog(
     drug_id: str,
     payload: DrugCatalogUpsertRequest,
     request: Request,
-    current_user: object = Depends(require_roles("doctor", "archivist")),
+    current_user: object = Depends(require_roles("doctor", "pharmacist", "archivist", "admin")),
 ) -> DrugCatalogRecord:
     current_record = get_drug_catalog_item(drug_id)
     _enforce_controlled_drug_permission(
