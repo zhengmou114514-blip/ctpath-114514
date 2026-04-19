@@ -285,6 +285,13 @@ function resolveMedicationPermission(role: string): DrugPermissionRecord | null 
   return findDrugPermission('doctor') ?? null
 }
 
+function assertControlledDrugPermission(): void {
+  const permission = resolveMedicationPermission(resolveSessionRole())
+  if (!permission?.allow_controlled_drug) {
+    throw new Error('Controlled drug permission is required for this action')
+  }
+}
+
 function persistAuthSession(session: AuthSession | null) {
   try { if (!window?.localStorage) return; if (session) window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session)); else window.localStorage.removeItem(AUTH_STORAGE_KEY) } catch {}
 }
@@ -398,6 +405,7 @@ async function demoRequest<T>(path: string, options: RequestInit = {}): Promise<
     const payload = body<DrugCatalogUpsertRequest>(options.body)
     if (!payload.drug_id.trim()) throw new Error('drug_id is required')
     if (findDrug(payload.drug_id.trim())) throw new Error('Drug already exists')
+    if (payload.is_controlled) assertControlledDrugPermission()
     const now = new Date().toISOString()
     const record: DrugCatalogRecord = {
       drug_id: payload.drug_id.trim(),
@@ -425,6 +433,7 @@ async function demoRequest<T>(path: string, options: RequestInit = {}): Promise<
     if (index < 0) throw new Error('Drug not found')
     const current = demoDrugs[index]
     if (!current) throw new Error('Drug not found')
+    if (payload.is_controlled || current.is_controlled) assertControlledDrugPermission()
     const updated: DrugCatalogRecord = {
       ...current,
       drug_id: targetId,
@@ -458,6 +467,7 @@ async function demoRequest<T>(path: string, options: RequestInit = {}): Promise<
     const role = payload.role.trim()
     if (!role) throw new Error('role is required')
     if (findDrugPermission(role)) throw new Error('Drug permission already exists')
+    if (payload.allow_controlled_drug) assertControlledDrugPermission()
     const record: DrugPermissionRecord = {
       role: role as DrugPermissionRole,
       allow_view: payload.allow_view,
@@ -475,6 +485,7 @@ async function demoRequest<T>(path: string, options: RequestInit = {}): Promise<
     if (payload.role.trim() !== targetRole) throw new Error('role does not match path parameter')
     const index = demoDrugPermissions.findIndex((item) => item.role === targetRole)
     if (index < 0) throw new Error('Drug permission not found')
+    if (payload.allow_controlled_drug) assertControlledDrugPermission()
     const updated: DrugPermissionRecord = {
       role: targetRole as DrugPermissionRole,
       allow_view: payload.allow_view,

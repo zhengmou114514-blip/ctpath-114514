@@ -15,12 +15,12 @@ from ..schemas import PatientAttachmentRecord, PatientAttachmentType
 
 
 ATTACHMENT_TYPE_LABELS: dict[PatientAttachmentType, str] = {
-    "patient_photo": "患者照片",
-    "id_card": "身份证照片",
-    "insurance_card": "医保卡照片",
-    "referral_note": "转诊单",
-    "exam_report": "检查报告",
-    "informed_consent": "知情同意书",
+    "patient_photo": "Patient photo",
+    "id_card": "ID card",
+    "insurance_card": "Insurance card",
+    "referral_note": "Referral note",
+    "exam_report": "Exam report",
+    "informed_consent": "Informed consent",
 }
 
 ALLOWED_MIME_TYPES = {
@@ -42,6 +42,7 @@ ALLOWED_EXTENSIONS = {
     ".docx",
 }
 
+MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024
 _LOCK = Lock()
 
 
@@ -157,6 +158,10 @@ def create_patient_attachment(
         raise HTTPException(status_code=400, detail="Patient ID is required")
     if not file_name:
         raise HTTPException(status_code=400, detail="File name is required")
+    if not file_bytes:
+        raise HTTPException(status_code=400, detail="File is empty")
+    if len(file_bytes) > MAX_ATTACHMENT_BYTES:
+        raise HTTPException(status_code=413, detail="Attachment file is too large")
     if not _is_supported_attachment(file_name, mime_type):
         raise HTTPException(status_code=415, detail="Unsupported file type")
 
@@ -180,7 +185,7 @@ def create_patient_attachment(
         "mimeType": mime_type or "application/octet-stream",
         "fileSize": len(file_bytes),
         "uploadedAt": now,
-        "uploadedBy": uploaded_by.strip() or "当前用户",
+        "uploadedBy": uploaded_by.strip() or "current-user",
         "source": "local-file",
         "storageFileName": stored_file_name,
     }

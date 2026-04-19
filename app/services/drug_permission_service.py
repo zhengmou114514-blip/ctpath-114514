@@ -145,6 +145,13 @@ def get_drug_permission_item(role: str) -> DrugPermissionRecord:
     return _to_public_record(record)
 
 
+def role_allows_controlled_drug(role: str) -> bool:
+    try:
+        return bool(get_drug_permission_item(role).allow_controlled_drug)
+    except HTTPException:
+        return False
+
+
 def create_drug_permission_item(payload: DrugPermissionUpsertRequest) -> DrugPermissionRecord:
     role = payload.role.strip()
     if not role:

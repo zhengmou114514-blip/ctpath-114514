@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from typing import List
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
 
+from ..audit.operation_audit import record_operation_audit
 from ..auth.dependencies import require_roles
 from ..schemas import PatientAttachmentRecord, PatientAttachmentType
 from ..services.patient_attachment_service import (
@@ -35,14 +36,15 @@ def get_patient_attachments(
 @router.post("/api/patient/{patient_id}/attachments", response_model=PatientAttachmentRecord)
 async def upload_patient_attachment(
     patient_id: str,
+    request: Request,
     attachment_type: PatientAttachmentType = Form(..., alias="type"),
     file: UploadFile = File(...),
     current_user: object = Depends(require_roles("doctor", "archivist")),
 ) -> PatientAttachmentRecord:
     _require_patient(patient_id)
-    uploaded_by = getattr(current_user, "name", None) or getattr(current_user, "username", None) or "当前用户"
+    uploaded_by = getattr(current_user, "name", None) or getattr(current_user, "username", None) or "current-user"
     file_bytes = await file.read()
-    return create_patient_attachment(
+    record = create_patient_attachment(
         patient_id=patient_id,
         attachment_type=attachment_type,
         file_name=file.filename or "attachment.bin",
@@ -50,6 +52,16 @@ async def upload_patient_attachment(
         file_bytes=file_bytes,
         uploaded_by=str(uploaded_by),
     )
+    record_operation_audit(
+        operation="upload",
+        resource_type="patient_attachment",
+        resource_id=record.attachmentId,
+        request=request,
+        actor=current_user,
+        patient_id=patient_id,
+        extra_detail="type={0}; file_name={1}; file_size={2}".format(record.type, record.fileName, record.fileSize),
+    )
+    return record
 
 
 @router.get("/api/patient/{patient_id}/attachments/{attachment_id}/file")
