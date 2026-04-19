@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import PatientMedicationClosurePanel from '../../components/medication/PatientMedicationClosurePanel.vue'
-import PatientAttachmentPanel from '../../components/patient/PatientAttachmentPanel.vue'
 import { getBusinessClosureSummary, getPatientCase } from '../../services/api'
 import type { BusinessClosureSummary, PatientCase } from '../../services/types'
 
@@ -15,6 +13,19 @@ const closure = ref<BusinessClosureSummary | null>(null)
 const patientId = computed(() => {
   const value = route.params.patientId ?? route.query.patientId
   return Array.isArray(value) ? value[0] ?? '' : String(value ?? '')
+})
+
+const reviewLabel = computed(() => (closure.value?.needsPharmacistReview ? 'Pharmacist review suggested' : 'No pharmacist review flag'))
+const permissionLabel = computed(() => {
+  const permission = closure.value?.drugPermission
+  if (!permission) return 'No role permission loaded'
+  return [
+    permission.allow_view ? 'view' : '',
+    permission.allow_prescribe ? 'prescribe' : '',
+    permission.allow_review ? 'review' : '',
+    permission.allow_execute ? 'execute' : '',
+    permission.allow_controlled_drug ? 'controlled-drug' : '',
+  ].filter(Boolean).join(' / ') || 'view only'
 })
 
 async function reload() {
@@ -45,20 +56,20 @@ onMounted(() => {
   <section class="workspace-page patient-business-closure-page">
     <header class="card page-header">
       <div>
-        <p class="eyebrow">Patient business closure</p>
-        <h2>Attachments / Medication / Assessment</h2>
+        <p class="eyebrow">Business closure summary</p>
+        <h2>Patient Attachment / Medication Closure</h2>
         <p>
-          Close the first-round chronic-care loop: attachment upload and view, drug permission control,
-          current medication records, and backend adequacy assessment.
+          This page only summarizes the first-round closure status. Full attachment operations stay in
+          Patient Detail / Electronic Archive, while drug catalog and permission configuration stay in Medication Management.
         </p>
       </div>
       <button class="secondary-button" type="button" :disabled="loading || !patientId" @click="reload">
-        {{ loading ? 'Refreshing...' : 'Refresh closure' }}
+        {{ loading ? 'Refreshing...' : 'Refresh summary' }}
       </button>
     </header>
 
     <section v-if="!patientId" class="card empty-card">
-      Open this workspace with a patient ID, for example: <strong>?patientId=PID1001</strong>
+      Open this summary with a patient ID, for example: <strong>?patientId=PID1001</strong>
     </section>
 
     <template v-else>
@@ -74,16 +85,33 @@ onMounted(() => {
           <p><span>Attachments</span><strong>{{ closure?.attachmentCount ?? '--' }}</strong></p>
           <p><span>Current meds</span><strong>{{ closure?.currentMedicationCount ?? '--' }}</strong></p>
           <p><span>Controlled meds</span><strong>{{ closure?.controlledMedicationCount ?? '--' }}</strong></p>
-          <p><span>Review</span><strong>{{ closure?.needsPharmacistReview ? 'Needed' : 'No' }}</strong></p>
+          <p><span>Assessment</span><strong>{{ reviewLabel }}</strong></p>
         </div>
       </section>
 
-      <section class="module-grid">
-        <article class="card">
-          <PatientAttachmentPanel :patient-id="patientId" title="Electronic Archive / Attachments" />
+      <section class="closure-grid">
+        <article class="card closure-card">
+          <p class="eyebrow">Electronic archive</p>
+          <h3>Attachment status</h3>
+          <p>
+            Attachment upload, preview and audit are handled by Patient Detail / Electronic Archive.
+            This summary only reports the current attachment count.
+          </p>
+          <strong>{{ closure?.attachmentCount ?? 0 }} attachment records</strong>
         </article>
-        <article class="card">
-          <PatientMedicationClosurePanel :patient-id="patientId" :model-advice="patient?.careAdvice || []" />
+
+        <article class="card closure-card">
+          <p class="eyebrow">Medication closure</p>
+          <h3>Medication assessment</h3>
+          <p>
+            Duplicate medication, baseline therapy, pharmacist-review and model-advice alignment are
+            returned by the backend assessment service. This page does not reimplement those rules.
+          </p>
+          <ul>
+            <li>Active medications: {{ closure?.activeMedicationCount ?? 0 }}</li>
+            <li>Controlled medications: {{ closure?.controlledMedicationCount ?? 0 }}</li>
+            <li>Permission scope: {{ permissionLabel }}</li>
+          </ul>
         </article>
       </section>
     </template>
@@ -122,14 +150,20 @@ onMounted(() => {
 }
 
 .patient-summary-card h3,
-.patient-summary-card p {
+.patient-summary-card p,
+.closure-card h3,
+.closure-card p {
   margin: 0;
 }
 
-.summary-metrics {
+.summary-metrics,
+.closure-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(100px, 1fr));
   gap: 12px;
+}
+
+.summary-metrics {
+  grid-template-columns: repeat(4, minmax(120px, 1fr));
 }
 
 .summary-metrics p {
@@ -139,24 +173,40 @@ onMounted(() => {
   padding-left: 12px;
 }
 
-.summary-metrics span {
+.summary-metrics span,
+.closure-card p,
+.closure-card li {
   color: #64748b;
   font-size: 12px;
 }
 
 .summary-metrics strong {
   color: #0f172a;
-  font-size: 20px;
+  font-size: 18px;
 }
 
-.module-grid {
+.closure-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.closure-card {
   display: grid;
-  gap: 16px;
+  gap: 10px;
+}
+
+.closure-card strong {
+  color: #0f172a;
+}
+
+.closure-card ul {
+  margin: 0;
+  padding-left: 18px;
 }
 
 @media (max-width: 960px) {
   .patient-summary-card,
-  .summary-metrics {
+  .summary-metrics,
+  .closure-grid {
     grid-template-columns: 1fr;
     display: grid;
   }
