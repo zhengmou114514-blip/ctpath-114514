@@ -57,7 +57,7 @@ def main() -> None:
 
     assessment = assess_patient_medication_adequacy(
         patient=patient,
-        medications=[medication, medication.copy(update={"medication_id": "med-2"})],
+        medications=[medication, medication.model_copy(update={"medication_id": "med-2"})],
         model_advice=["Continue medication review."],
         drug_catalog=[drug],
     )
