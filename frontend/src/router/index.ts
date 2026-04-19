@@ -3,8 +3,8 @@ import AppWorkspacePage from '../pages/AppWorkspacePage.vue'
 import GovernancePage from '../pages/GovernancePage.vue'
 import ModelDashboardPage from '../pages/ModelDashboardPage.vue'
 import ModelInsightPage from '../pages/ModelInsightPage.vue'
-import DrugCatalogPage from '../pages/DrugCatalogPage.vue'
-import DrugPermissionManagementPage from '../pages/DrugPermissionManagementPage.vue'
+import DrugCatalogPage from '../pages/medication/DrugCatalogPage.vue'
+import DrugPermissionManagementPage from '../pages/medication/permissions/DrugPermissionManagementPage.vue'
 import { useAuthStore } from '../stores/auth'
 
 const routes: RouteRecordRaw[] = [
