@@ -293,3 +293,26 @@ Get-Content .\app\mysql_seed_demo.sql | mysql -u root -p ctpath
 5. 看 `frontend/src/pages/AppWorkspacePage.vue` 和 `frontend/src/layouts/AppShell.vue`，确认壳层
 6. 看 `app/main.py`，确认后端路由和中间件
 7. 再按具体任务进入对应页面或 API
+## 2026-04-21 前端界面收口记录
+
+本次前端界面收口只涉及前端工作台结构与视觉状态记录，不修改后端接口语义、不新增数据库结构、不新增训练中心、库存、收费、住院等模块。
+
+关键结论：
+
+- `/login` 已确认使用独立 `frontend/src/pages/LoginPage.vue`，不再复用业务工作台壳层。
+- `/` 保持为业务工作台壳层，入口文件为 `frontend/src/pages/AppWorkspacePage.vue`，壳层布局由 `frontend/src/layouts/AppShell.vue` 承载。
+- 当前业务主路由仍以 `frontend/src/router/index.ts` 为准，包含 `patient-detail`、`nurse-followups`、`model-insight`、`model-dashboard`、`governance`、`drug-management`、`drug-permission-management`。
+- 医生工作台 `frontend/src/pages/DoctorDashboardPage.vue` 只保留待处理患者、当前患者摘要、风险提示和主要动作入口，不承载完整患者详情、完整模型看板或完整治理看板。
+- 患者详情 `frontend/src/pages/PatientDetailPage.vue` 已按三栏工作站结构组织：左侧患者信息/电子档案/附件摘要，中间病程时间线/预测证据，右侧当前用药/用药评估/模型建议。
+- 药品管理 `frontend/src/pages/medication/DrugCatalogPage.vue` 是标准后台表格页，围绕药品目录、剂型规格、处方药/管制药、状态和编辑表单组织。
+- 药品权限管理 `frontend/src/pages/medication/permissions/DrugPermissionManagementPage.vue` 是角色权限矩阵页，围绕 doctor、nurse、pharmacist、archivist、admin 的查看、开立、审核、执行、管制药权限组织。
+- 统一视觉规范集中在 `frontend/src/styles/workstation-theme.css`：页面标题 24px，区块标题 18px，卡片标题 16px，正文 14px，次级说明 12px，区块间距 24px，卡片内边距 16px，圆角不超过 8px。
+- 色彩收敛为蓝灰医疗工作台主色，加 success / warning / danger / info 状态色，不使用大面积渐变或营销式视觉。
+- 最近一次前端验收命令为 `cd frontend && npm run build`，结果通过；Vite 仅提示 chunk size warning，非构建失败。
+
+后续 AI 接手时应注意：
+
+- 判断前端当前有效页面时，以 `frontend/src/router/index.ts`、`frontend/src/pages/AppWorkspacePage.vue` 和各 canonical 页面为准。
+- 不要重新新增 Simple / Center / Legacy / Backup 类重复页面。
+- 不要把模型训练、CSV 导入、库存、收费、住院或完整处方流塞回医生工作台。
+- 如果只做界面调整，不应修改 `app/*`、接口字段名、模型接口语义或数据库结构。

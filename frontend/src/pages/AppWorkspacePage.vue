@@ -264,8 +264,8 @@ watch(
       />
 
       <section v-else class="empty-state-card">
-        <h3>Module unavailable</h3>
-        <p>You do not have permission to access this module. Please choose an available workspace from the left menu.</p>
+        <h3>模块不可用</h3>
+        <p>当前账号没有该模块权限，请从左侧选择可访问的工作区。</p>
       </section>
     </template>
   </AppShell>

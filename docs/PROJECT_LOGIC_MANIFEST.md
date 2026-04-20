@@ -539,3 +539,69 @@ cd E:\CTpath-master
 conda activate ctpath
 python -c "import app.main; print('backend import ok')"
 ```
+# 2026-04-21 Frontend Closure Notes
+
+This section records the current frontend closure state for future AI agents and developers. It is intentionally narrow: it documents the current canonical frontend structure and visual constraints, and does not imply backend API, database, training-center, inventory, billing, inpatient, or prescription-flow changes.
+
+## Current Canonical Frontend Entry Points
+
+- `/login` is an independent login route. It uses `frontend/src/pages/LoginPage.vue` and `frontend/src/components/LoginScreen.vue`.
+- `/` is the authenticated business workspace shell. It uses `frontend/src/pages/AppWorkspacePage.vue`.
+- The shell layout is implemented by `frontend/src/layouts/AppShell.vue`, with sidebar, top status bar, role banner, patient context bar, and one main content region.
+- The canonical route list is defined in `frontend/src/router/index.ts`.
+
+## Current Business Routes
+
+- `/patient-detail/:patientId?`
+- `/nurse-followups`
+- `/model-insight`
+- `/model-dashboard`
+- `/governance`
+- `/drug-management`
+- `/drug-permission-management`
+
+Do not treat old simple, legacy, backup, unused, or center-style pages as canonical unless they are explicitly mounted by `frontend/src/router/index.ts` or by the current workspace shell.
+
+## Current Page Boundaries
+
+- Doctor dashboard: `frontend/src/pages/DoctorDashboardPage.vue`
+  - Entry summary only.
+  - Shows pending patients, current patient summary, risk hints, and two to three primary actions.
+  - Must not host full patient detail, full model dashboard, full governance dashboard, long stacked tables, training import, inventory, billing, or inpatient flows.
+- Patient detail: `frontend/src/pages/PatientDetailPage.vue`
+  - Three-column clinical layout.
+  - Left: patient profile, electronic archive, attachment summary.
+  - Center: disease timeline, prediction summary, evidence summary.
+  - Right: current medication, medication assessment, model advice, next actions.
+- Drug management: `frontend/src/pages/medication/DrugCatalogPage.vue`
+  - Standard admin table page for drug catalog maintenance.
+  - Covers generic name, brand name, dosage form, specification, unit, prescription flag, controlled-drug flag, status, and indication.
+- Drug permission management: `frontend/src/pages/medication/permissions/DrugPermissionManagementPage.vue`
+  - Permission matrix page.
+  - Covers doctor, nurse, pharmacist, archivist, admin role mappings for view, prescribe, review, execute, and controlled-drug permissions.
+- Model insight: `frontend/src/pages/ModelInsightPage.vue`
+  - Current-patient model insight only.
+- Model dashboard: `frontend/src/pages/ModelDashboardPage.vue`
+  - Model-level monitoring and governance metrics only.
+- Governance center: `frontend/src/pages/GovernancePage.vue`
+  - Data quality, conflict, audit, and governance action status only.
+
+## Current Visual Contract
+
+The shared workstation visual contract lives in `frontend/src/styles/workstation-theme.css`.
+
+- Page title: 24px.
+- Section title: 18px.
+- Card title: 16px.
+- Body text: 14px.
+- Secondary text: 12px.
+- Section spacing: 24px.
+- Card padding: 16px.
+- Card and button radius: 8px or less.
+- Main palette: blue-gray medical workstation colors.
+- Status colors: success, warning, danger, info.
+- Avoid large gradients, marketing-style hero layouts, decorative blobs, and generic admin-template visual noise.
+
+## Recent Verification
+
+After the frontend closure pass, `cd frontend && npm run build` completed successfully. Vite reported a chunk size warning only; this is not a build failure.
