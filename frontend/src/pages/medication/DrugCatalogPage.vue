@@ -24,6 +24,7 @@ const form = ref<DrugCatalogUpsertRequest>(createEmptyForm())
 
 const selectedDrug = computed(() => drugs.value.find((item) => item.drug_id === selectedDrugId.value) ?? null)
 const isEditing = computed(() => Boolean(selectedDrugId.value))
+const activeCount = computed(() => drugs.value.filter((item) => item.status === 'active').length)
 const controlledCount = computed(() => drugs.value.filter((item) => item.is_controlled).length)
 
 const filteredDrugs = computed(() => {
@@ -113,11 +114,11 @@ async function saveDrug() {
     const payload = { ...form.value }
     if (selectedDrugId.value) {
       const updated = await updateDrugCatalogItem(selectedDrugId.value, payload)
-      successMessage.value = 'Drug catalog item updated. Audit log recorded by backend.'
+      successMessage.value = 'Drug catalog item updated. Audit log is recorded by backend.'
       await loadDrugs(updated.drug_id)
     } else {
       const created = await createDrugCatalogItem(payload)
-      successMessage.value = 'Drug catalog item created. Audit log recorded by backend.'
+      successMessage.value = 'Drug catalog item created. Audit log is recorded by backend.'
       await loadDrugs(created.drug_id)
     }
   } catch (error) {
@@ -148,6 +149,10 @@ function formatTime(value: string): string {
   return value.replace('T', ' ').slice(0, 16)
 }
 
+function drugRowClass({ row }: { row: DrugCatalogRecord }) {
+  return row.drug_id === selectedDrugId.value ? 'selected-row' : ''
+}
+
 onMounted(() => {
   void loadDrugs()
 })
@@ -155,222 +160,273 @@ onMounted(() => {
 
 <template>
   <section class="workspace-page drug-catalog-page">
-    <header class="card page-header">
-      <div>
-        <p class="eyebrow">Medication management</p>
-        <h2>Drug Catalog</h2>
-        <p>Maintain the minimum chronic-care drug directory: generic name, brand, dosage form, specification, status and controlled-drug flag.</p>
-      </div>
-      <div class="header-actions">
-        <button class="secondary-button" type="button" @click="resetEditor">New drug</button>
-        <button class="primary-button" type="button" :disabled="saving" @click="saveDrug">
-          {{ saving ? 'Saving...' : isEditing ? 'Save changes' : 'Create drug' }}
-        </button>
-      </div>
-    </header>
+    <el-page-header class="module-page-header" title="Medication module" content="Drug Catalog" />
 
-    <section class="summary-strip">
-      <article class="card metric-card">
-        <span>Total drugs</span>
-        <strong>{{ drugs.length }}</strong>
-      </article>
-      <article class="card metric-card">
-        <span>Controlled drugs</span>
-        <strong>{{ controlledCount }}</strong>
-      </article>
-      <article class="card metric-card">
-        <span>Visible rows</span>
-        <strong>{{ filteredDrugs.length }}</strong>
-      </article>
-    </section>
-
-    <section v-if="errorMessage" class="card message-card error">{{ errorMessage }}</section>
-    <section v-else-if="successMessage" class="card message-card success">{{ successMessage }}</section>
-
-    <section class="drug-layout">
-      <article class="card panel list-panel">
-        <div class="panel-head">
+    <el-card shadow="never" class="module-card">
+      <template #header>
+        <div class="module-header">
           <div>
-            <h3>Catalog List</h3>
-            <p>Use filters before editing a drug item.</p>
+            <p class="eyebrow">Medication management</p>
+            <h2>Drug Catalog</h2>
+            <p>维护慢病诊疗常用药品目录、剂型规格、处方标识、管制标识和启用状态。</p>
           </div>
-          <button class="secondary-button" type="button" :disabled="loading" @click="loadDrugs()">
-            {{ loading ? 'Refreshing...' : 'Refresh' }}
-          </button>
-        </div>
-
-        <div class="filter-grid">
-          <label class="field">
-            <span>Keyword</span>
-            <input v-model="keyword" type="text" placeholder="drug id / generic / indication" />
-          </label>
-          <label class="field">
-            <span>Status</span>
-            <select v-model="statusFilter">
-              <option value="all">All</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-          </label>
-          <label class="field">
-            <span>Dosage form</span>
-            <input v-model="dosageFormFilter" type="text" placeholder="tablet / capsule / injection" />
-          </label>
-          <label class="field">
-            <span>Prescription</span>
-            <select v-model="prescriptionFilter">
-              <option value="all">All</option>
-              <option value="yes">Prescription only</option>
-              <option value="no">Non-prescription</option>
-            </select>
-          </label>
-          <label class="field">
-            <span>Controlled drug</span>
-            <select v-model="controlledFilter">
-              <option value="all">All</option>
-              <option value="yes">Controlled only</option>
-              <option value="no">Non-controlled</option>
-            </select>
-          </label>
-          <div class="filter-actions">
-            <button class="secondary-button" type="button" @click="clearFilters">Clear filters</button>
+          <div class="header-actions">
+            <el-button @click="resetEditor">New drug</el-button>
+            <el-button type="primary" :loading="saving" @click="saveDrug">
+              {{ isEditing ? 'Save changes' : 'Create drug' }}
+            </el-button>
           </div>
         </div>
+      </template>
 
-        <div v-if="loading" class="empty-state compact">Loading drug catalog...</div>
-        <div v-else-if="!filteredDrugs.length" class="empty-state compact">No drug matches current filters.</div>
-        <div v-else class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Drug ID</th>
-                <th>Drug</th>
-                <th>Form</th>
-                <th>Flags</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="drug in filteredDrugs"
-                :key="drug.drug_id"
-                :class="{ active: selectedDrugId === drug.drug_id }"
-                @click="openDrug(drug)"
-              >
-                <td>{{ drug.drug_id }}</td>
-                <td>
-                  <strong>{{ drug.generic_name }}</strong>
-                  <p>{{ drug.brand_name || 'No brand name' }} / {{ drug.indication }}</p>
-                </td>
-                <td>{{ drug.dosage_form }} / {{ drug.specification }}</td>
-                <td>
-                  <span v-if="drug.is_prescription" class="tag">Rx</span>
-                  <span v-if="drug.is_controlled" class="tag warning">Controlled</span>
-                </td>
-                <td><span class="status-badge" :class="drug.status">{{ statusText(drug.status) }}</span></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </article>
+      <el-row :gutter="12" class="summary-row">
+        <el-col :xs="24" :sm="8">
+          <el-statistic title="Total drugs" :value="drugs.length" />
+        </el-col>
+        <el-col :xs="24" :sm="8">
+          <el-statistic title="Active drugs" :value="activeCount" />
+        </el-col>
+        <el-col :xs="24" :sm="8">
+          <el-statistic title="Controlled drugs" :value="controlledCount" />
+        </el-col>
+      </el-row>
 
-      <article class="card panel editor-panel">
-        <div class="panel-head">
-          <div>
-            <h3>{{ isEditing ? 'Drug Details' : 'Create Drug' }}</h3>
-            <p>Controlled-drug changes are checked by backend permission rules.</p>
+      <el-alert
+        v-if="errorMessage"
+        :title="errorMessage"
+        type="error"
+        show-icon
+        :closable="false"
+        class="module-alert"
+      />
+      <el-alert
+        v-else-if="successMessage"
+        :title="successMessage"
+        type="success"
+        show-icon
+        :closable="false"
+        class="module-alert"
+      />
+    </el-card>
+
+    <section class="module-grid">
+      <el-card shadow="never" class="module-card">
+        <template #header>
+          <div class="section-header">
+            <div>
+              <h3>Catalog List</h3>
+              <span>{{ filteredDrugs.length }} visible rows</span>
+            </div>
+            <el-button :loading="loading" @click="loadDrugs()">Refresh</el-button>
           </div>
-          <span class="status-badge" :class="selectedDrug?.status ?? form.status">{{ selectedDrug ? statusText(selectedDrug.status) : statusText(form.status) }}</span>
-        </div>
+        </template>
 
-        <div v-if="form.is_controlled" class="controlled-notice">
-          This action involves a controlled drug. The backend will reject it unless the current role has controlled-drug permission.
-        </div>
+        <el-form label-position="top" class="filter-form">
+          <el-row :gutter="12">
+            <el-col :xs="24" :md="8">
+              <el-form-item label="Keyword">
+                <el-input v-model="keyword" clearable placeholder="Drug ID / generic / indication" />
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :md="8">
+              <el-form-item label="Status">
+                <el-select v-model="statusFilter" class="full-width">
+                  <el-option label="All" value="all" />
+                  <el-option label="Active" value="active" />
+                  <el-option label="Inactive" value="inactive" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :md="8">
+              <el-form-item label="Dosage form">
+                <el-input v-model="dosageFormFilter" clearable placeholder="tablet / capsule / injection" />
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :md="8">
+              <el-form-item label="Prescription">
+                <el-select v-model="prescriptionFilter" class="full-width">
+                  <el-option label="All" value="all" />
+                  <el-option label="Prescription only" value="yes" />
+                  <el-option label="Non-prescription" value="no" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :md="8">
+              <el-form-item label="Controlled drug">
+                <el-select v-model="controlledFilter" class="full-width">
+                  <el-option label="All" value="all" />
+                  <el-option label="Controlled only" value="yes" />
+                  <el-option label="Non-controlled" value="no" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :md="8" class="filter-actions">
+              <el-button @click="clearFilters">Clear filters</el-button>
+            </el-col>
+          </el-row>
+        </el-form>
 
-        <div class="detail-summary" v-if="selectedDrug">
-          <p><span>Updated at</span><strong>{{ formatTime(selectedDrug.updated_at) }}</strong></p>
-          <p><span>Updated by</span><strong>{{ selectedDrug.updated_by || '--' }}</strong></p>
-          <p><span>Prescription</span><strong>{{ yesNo(selectedDrug.is_prescription) }}</strong></p>
-          <p><span>Controlled</span><strong>{{ yesNo(selectedDrug.is_controlled) }}</strong></p>
-        </div>
+        <el-table
+          v-loading="loading"
+          :data="filteredDrugs"
+          :row-class-name="drugRowClass"
+          border
+          stripe
+          empty-text="No drug matches current filters."
+          @row-click="openDrug"
+        >
+          <el-table-column prop="drug_id" label="Drug ID" min-width="150" />
+          <el-table-column label="Drug" min-width="240">
+            <template #default="{ row }">
+              <strong>{{ row.generic_name }}</strong>
+              <p class="table-subtitle">{{ row.brand_name || 'No brand name' }} / {{ row.indication }}</p>
+            </template>
+          </el-table-column>
+          <el-table-column label="Form" min-width="170">
+            <template #default="{ row }">{{ row.dosage_form }} / {{ row.specification }}</template>
+          </el-table-column>
+          <el-table-column label="Flags" min-width="170">
+            <template #default="{ row }">
+              <el-tag v-if="row.is_prescription" size="small">Rx</el-tag>
+              <el-tag v-if="row.is_controlled" size="small" type="warning" class="tag-gap">Controlled</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="Status" width="110">
+            <template #default="{ row }">
+              <el-tag :type="row.status === 'active' ? 'success' : 'danger'" effect="light">
+                {{ statusText(row.status) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+        </el-table>
+      </el-card>
 
-        <div class="edit-grid">
-          <label class="field">
-            <span>Drug ID</span>
-            <input v-model="form.drug_id" :disabled="isEditing" type="text" placeholder="drug-metformin" />
-          </label>
-          <label class="field">
-            <span>Generic name</span>
-            <input v-model="form.generic_name" type="text" />
-          </label>
-          <label class="field">
-            <span>Brand name</span>
-            <input v-model="form.brand_name" type="text" />
-          </label>
-          <label class="field">
-            <span>Dosage form</span>
-            <input v-model="form.dosage_form" type="text" />
-          </label>
-          <label class="field">
-            <span>Specification</span>
-            <input v-model="form.specification" type="text" />
-          </label>
-          <label class="field">
-            <span>Unit</span>
-            <input v-model="form.unit" type="text" />
-          </label>
-          <label class="field wide">
-            <span>Indication</span>
-            <input v-model="form.indication" type="text" />
-          </label>
-          <label class="field">
-            <span>Status</span>
-            <select v-model="form.status">
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-          </label>
-          <label class="field">
-            <span>Prescription drug</span>
-            <select v-model="form.is_prescription">
-              <option :value="true">Yes</option>
-              <option :value="false">No</option>
-            </select>
-          </label>
-          <label class="field">
-            <span>Controlled drug</span>
-            <select v-model="form.is_controlled">
-              <option :value="true">Yes</option>
-              <option :value="false">No</option>
-            </select>
-          </label>
-        </div>
+      <el-card shadow="never" class="module-card">
+        <template #header>
+          <div class="section-header">
+            <div>
+              <h3>{{ isEditing ? 'Drug Details' : 'Create Drug' }}</h3>
+              <span>Backend keeps validation, audit and controlled-drug permission checks authoritative.</span>
+            </div>
+            <el-tag :type="form.status === 'active' ? 'success' : 'danger'">{{ statusText(form.status) }}</el-tag>
+          </div>
+        </template>
 
-        <div class="detail-actions">
-          <button class="secondary-button" type="button" @click="resetEditor">Reset</button>
-          <button class="primary-button" type="button" :disabled="saving" @click="saveDrug">
-            {{ saving ? 'Saving...' : isEditing ? 'Save changes' : 'Create drug' }}
-          </button>
+        <el-alert
+          v-if="form.is_controlled"
+          title="This action involves a controlled drug. The backend will reject it unless the current role has controlled-drug permission."
+          type="warning"
+          show-icon
+          :closable="false"
+          class="module-alert"
+        />
+
+        <el-descriptions v-if="selectedDrug" :column="2" border class="detail-descriptions">
+          <el-descriptions-item label="Updated at">{{ formatTime(selectedDrug.updated_at) }}</el-descriptions-item>
+          <el-descriptions-item label="Updated by">{{ selectedDrug.updated_by || '--' }}</el-descriptions-item>
+          <el-descriptions-item label="Prescription">{{ yesNo(selectedDrug.is_prescription) }}</el-descriptions-item>
+          <el-descriptions-item label="Controlled">{{ yesNo(selectedDrug.is_controlled) }}</el-descriptions-item>
+        </el-descriptions>
+
+        <el-form label-position="top" class="editor-form">
+          <el-row :gutter="12">
+            <el-col :xs="24" :md="12">
+              <el-form-item label="Drug ID">
+                <el-input v-model="form.drug_id" :disabled="isEditing" placeholder="drug-metformin" />
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :md="12">
+              <el-form-item label="Generic name">
+                <el-input v-model="form.generic_name" />
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :md="12">
+              <el-form-item label="Brand name">
+                <el-input v-model="form.brand_name" />
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :md="12">
+              <el-form-item label="Dosage form">
+                <el-input v-model="form.dosage_form" />
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :md="12">
+              <el-form-item label="Specification">
+                <el-input v-model="form.specification" />
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :md="12">
+              <el-form-item label="Unit">
+                <el-input v-model="form.unit" />
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24">
+              <el-form-item label="Indication">
+                <el-input v-model="form.indication" />
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :md="8">
+              <el-form-item label="Status">
+                <el-select v-model="form.status" class="full-width">
+                  <el-option label="Active" value="active" />
+                  <el-option label="Inactive" value="inactive" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :md="8">
+              <el-form-item label="Prescription drug">
+                <el-switch v-model="form.is_prescription" active-text="Yes" inactive-text="No" />
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :md="8">
+              <el-form-item label="Controlled drug">
+                <el-switch v-model="form.is_controlled" active-text="Yes" inactive-text="No" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </el-form>
+
+        <div class="editor-actions">
+          <el-button @click="resetEditor">Reset</el-button>
+          <el-button type="primary" :loading="saving" @click="saveDrug">
+            {{ isEditing ? 'Save changes' : 'Create drug' }}
+          </el-button>
         </div>
-      </article>
+      </el-card>
     </section>
   </section>
 </template>
 
 <style scoped>
-.summary-strip,
-.drug-layout {
+.drug-catalog-page {
   display: grid;
-  gap: 16px;
+  gap: 24px;
 }
 
-.summary-strip {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+.module-page-header {
+  padding: 4px 0;
 }
 
-.drug-layout {
-  grid-template-columns: minmax(0, 1.25fr) minmax(360px, 0.75fr);
-  align-items: start;
+.module-card {
+  border-radius: 8px;
+}
+
+.module-header,
+.section-header,
+.header-actions,
+.editor-actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.module-header h2,
+.module-header p,
+.section-header h3,
+.section-header span,
+.table-subtitle {
+  margin: 0;
 }
 
 .eyebrow {
@@ -382,176 +438,61 @@ onMounted(() => {
   text-transform: uppercase;
 }
 
-.metric-card {
-  display: grid;
-  gap: 4px;
-}
-
-.metric-card span,
-.panel-head p,
-.field span,
-.detail-summary span {
+.module-header p,
+.section-header span,
+.table-subtitle {
   color: #64748b;
   font-size: 12px;
 }
 
-.metric-card strong {
-  color: #0f172a;
-  font-size: 24px;
+.summary-row,
+.module-alert,
+.filter-form,
+.editor-form,
+.detail-descriptions {
+  margin-top: 14px;
 }
 
-.message-card {
-  border-left: 4px solid #2563eb;
-}
-
-.message-card.error {
-  border-left-color: #dc2626;
-  color: #991b1b;
-}
-
-.message-card.success {
-  border-left-color: #16a34a;
-  color: #166534;
-}
-
-.panel-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: flex-start;
-  margin-bottom: 16px;
-}
-
-.panel-head h3 {
-  margin: 0;
-}
-
-.filter-grid,
-.edit-grid,
-.detail-summary {
+.module-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: minmax(0, 1.25fr) minmax(360px, 0.75fr);
+  gap: 24px;
+  align-items: start;
 }
 
-.field {
-  display: grid;
-  gap: 6px;
+.full-width {
+  width: 100%;
 }
 
-.field.wide,
-.filter-actions,
-.detail-actions {
-  grid-column: 1 / -1;
-}
-
-.filter-actions,
-.detail-actions {
+.filter-actions {
   display: flex;
+  align-items: flex-end;
+}
+
+.tag-gap {
+  margin-left: 6px;
+}
+
+.editor-actions {
   justify-content: flex-end;
-  gap: 10px;
+  margin-top: 12px;
 }
 
-.field input,
-.field select {
-  width: 100%;
+:deep(.selected-row) {
+  --el-table-tr-bg-color: #eff6ff;
 }
 
-.table-wrap {
-  margin-top: 16px;
-  overflow: auto;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-th,
-td {
-  text-align: left;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
-  padding: 11px 10px;
-  vertical-align: top;
-}
-
-tbody tr {
-  cursor: pointer;
-}
-
-tbody tr.active {
-  background: rgba(37, 99, 235, 0.08);
-}
-
-td p {
-  margin: 4px 0 0;
-  color: #64748b;
-  font-size: 12px;
-}
-
-.tag,
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  width: fit-content;
-  border-radius: 999px;
-  padding: 4px 8px;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.tag {
-  margin-right: 4px;
-  background: #e0f2fe;
-  color: #075985;
-}
-
-.tag.warning,
-.controlled-notice {
-  background: #fff7ed;
-  color: #9a3412;
-}
-
-.status-badge.active {
-  background: rgba(34, 197, 94, 0.14);
-  color: #15803d;
-}
-
-.status-badge.inactive {
-  background: rgba(248, 113, 113, 0.14);
-  color: #b91c1c;
-}
-
-.controlled-notice {
-  border: 1px solid #fed7aa;
-  border-radius: 10px;
-  padding: 10px 12px;
-  margin-bottom: 14px;
-  font-size: 13px;
-}
-
-.detail-summary {
-  margin-bottom: 16px;
-}
-
-.detail-summary p {
-  margin: 0;
-  display: grid;
-  gap: 4px;
-}
-
-@media (max-width: 1120px) {
-  .summary-strip,
-  .drug-layout {
+@media (max-width: 1180px) {
+  .module-grid {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 720px) {
-  .filter-grid,
-  .edit-grid,
-  .detail-summary {
-    grid-template-columns: 1fr;
+  .module-header,
+  .section-header,
+  .header-actions {
+    display: grid;
   }
 }
 </style>

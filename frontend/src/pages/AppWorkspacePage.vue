@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import LoginScreen from '../components/LoginScreen.vue'
 import { useWorkspaceController } from '../composables/useWorkspaceController'
 import { provideWorkspaceContext } from '../composables/workspaceContext'
 import AppShell from '../layouts/AppShell.vue'
@@ -16,7 +15,8 @@ provideWorkspaceContext(workspace)
 const route = useRoute()
 const router = useRouter()
 
-const splitRouteSections: Record<string, 'insights' | 'model-dashboard' | 'governance' | 'drug-management' | 'drug-permission-management'> = {
+const splitRouteSections: Record<string, 'insights' | 'model-dashboard' | 'governance' | 'drug-management' | 'drug-permission-management' | 'tasks'> = {
+  'nurse-followups': 'tasks',
   'model-insight': 'insights',
   'model-dashboard': 'model-dashboard',
   governance: 'governance',
@@ -25,6 +25,9 @@ const splitRouteSections: Record<string, 'insights' | 'model-dashboard' | 'gover
 }
 
 const sectionToRouteName: Partial<Record<string, string>> = {
+  tasks: 'nurse-followups',
+  contacts: 'nurse-followups',
+  flow: 'nurse-followups',
   insights: 'model-insight',
   'model-dashboard': 'model-dashboard',
   governance: 'governance',
@@ -37,9 +40,11 @@ const isSplitWorkspaceRoute = computed(() => {
   return (
     Object.prototype.hasOwnProperty.call(splitRouteSections, routeName) ||
     routeName === 'patient-detail' ||
+    routeName === 'nurse-followups' ||
     workspace.currentWorkspace === 'model-insight' ||
     workspace.currentWorkspace === 'model-dashboard' ||
     workspace.currentWorkspace === 'governance' ||
+    workspace.currentWorkspace === 'followup' ||
     workspace.currentWorkspace === 'drug-management' ||
     workspace.currentWorkspace === 'drug-permission-management'
   )
@@ -159,26 +164,8 @@ watch(
 </script>
 
 <template>
-  <LoginScreen
-    v-if="!workspace.currentDoctor"
-    :username="workspace.username"
-    :password="workspace.password"
-    :login-error="workspace.loginError"
-    :loading-login="workspace.loadingLogin"
-    :health="workspace.health"
-    :register-mode="workspace.registerMode"
-    :register-form="workspace.registerForm"
-    :register-error="workspace.registerError"
-    :loading-register="workspace.loadingRegister"
-    @update:username="workspace.username = $event"
-    @update:password="workspace.password = $event"
-    @submit-login="workspace.submitLogin"
-    @toggle-register="workspace.toggleRegister"
-    @submit-register="workspace.submitRegister"
-  />
-
   <AppShell
-    v-else
+    v-if="workspace.currentDoctor"
     :doctor="workspace.currentDoctor"
     :active-section="workspace.section"
     :health="workspace.health"
@@ -282,4 +269,8 @@ watch(
       </section>
     </template>
   </AppShell>
+
+  <section v-else class="workspace-auth-handoff">
+    <p>正在进入登录页...</p>
+  </section>
 </template>

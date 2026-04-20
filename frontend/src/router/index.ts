@@ -1,8 +1,10 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import AppWorkspacePage from '../pages/AppWorkspacePage.vue'
+import LoginPage from '../pages/LoginPage.vue'
 import GovernancePage from '../pages/GovernancePage.vue'
 import ModelDashboardPage from '../pages/ModelDashboardPage.vue'
 import ModelInsightPage from '../pages/ModelInsightPage.vue'
+import NurseFollowupsPage from '../pages/NurseFollowupsPage.vue'
 import DrugCatalogPage from '../pages/medication/DrugCatalogPage.vue'
 import DrugPermissionManagementPage from '../pages/medication/permissions/DrugPermissionManagementPage.vue'
 import { useAuthStore } from '../stores/auth'
@@ -20,6 +22,11 @@ const routes: RouteRecordRaw[] = [
         path: 'patient-detail/:patientId?',
         name: 'patient-detail',
         component: () => import('../pages/PatientDetailPage.vue'),
+      },
+      {
+        path: 'nurse-followups',
+        name: 'nurse-followups',
+        component: NurseFollowupsPage,
       },
       {
         path: 'model-insight',
@@ -51,7 +58,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/login',
     name: 'login',
-    component: AppWorkspacePage,
+    component: LoginPage,
     meta: {
       requiresAuth: false,
     },

@@ -12,7 +12,7 @@ const evidence = computed(() => {
       eventCount: workspace.predictionResult.evidence.eventCount,
       relationCount: workspace.predictionResult.evidence.relationCount,
       supportLevel: workspace.predictionResult.evidence.supportLevel,
-      summary: workspace.predictionResult.supportSummary || '当前患者的预测证据已生成。',
+      summary: workspace.predictionResult.supportSummary || '已加载当前患者证据摘要。',
     }
   }
 
@@ -20,7 +20,7 @@ const evidence = computed(() => {
     eventCount: selectedPatient.value?.timeline.length ?? 0,
     relationCount: selectedPatient.value?.pathExplanation.length ?? 0,
     supportLevel: selectedPatient.value?.dataSupport ?? 'unknown',
-    summary: selectedPatient.value?.summary || '当前患者尚未生成新的预测结果。',
+    summary: selectedPatient.value?.summary || '暂无当前患者证据摘要。',
   }
 })
 
@@ -40,24 +40,24 @@ const adviceSource = computed(() => {
     provider: selectedPatient.value?.recommendationMode || '--',
     model: workspace.health?.mode || '--',
     source: workspace.modelUnavailable ? 'fallback' : 'history',
-    note: selectedPatient.value?.summary || '当前患者尚未触发新的建议生成。',
+    note: selectedPatient.value?.summary || '暂无建议来源说明。',
   }
 })
 
 const modelStatus = computed(() => {
-  if (workspace.modelUnavailable) return '模型降级'
+  if (workspace.modelUnavailable) return '模型不可用'
   if (workspace.health?.mode === 'demo') return 'Demo 模式'
-  if (workspace.predictionResult?.mode === 'model') return '模型正常'
-  if (workspace.predictionResult?.mode === 'similar-case') return '回退模式'
+  if (workspace.predictionResult?.mode === 'model') return '模型结果'
+  if (workspace.predictionResult?.mode === 'similar-case') return '相似病例回退'
   return '待预测'
 })
 
 const hasPatient = computed(() => Boolean(selectedPatient.value))
 
-function labelForSupportLevel(value: string) {
-  if (value === 'strong') return '强'
-  if (value === 'limited') return '有限'
-  if (value === 'minimal') return '较弱'
+function supportLabel(value: string) {
+  if (value === 'strong' || value === 'high') return '高'
+  if (value === 'limited' || value === 'medium') return '中'
+  if (value === 'minimal' || value === 'low') return '低'
   return value || '--'
 }
 
@@ -89,48 +89,53 @@ onMounted(() => {
 </script>
 
 <template>
-  <section class="workspace-page model-insight-page">
-    <header class="card page-header">
+  <section class="model-insight-page workstation-page">
+    <header class="workstation-page-header">
       <div>
-        <h2>模型洞察</h2>
-        <p>只展示当前患者相关的预测结果、证据和建议来源。</p>
+        <p class="eyebrow">Model insight</p>
+        <h1>模型洞察</h1>
+        <p>当前患者预测结果、Top-K 风险事件、证据摘要、建议来源和下一步动作。</p>
       </div>
       <div class="header-actions">
-        <button class="secondary-button" @click="handleRefresh">刷新</button>
-        <button class="primary-button" :disabled="!hasPatient || workspace.loadingPredict" @click="handleRunPrediction">
-          {{ workspace.loadingPredict ? '预测中...' : '重新预测' }}
-        </button>
+        <el-button @click="handleRefresh">刷新上下文</el-button>
+        <el-button type="primary" :disabled="!hasPatient || workspace.loadingPredict" :loading="workspace.loadingPredict" @click="handleRunPrediction">
+          运行预测
+        </el-button>
       </div>
     </header>
 
-    <section v-if="!hasPatient" class="card empty-state">
-      请先在医生首页选择一位患者，再查看模型洞察。
+    <section v-if="!hasPatient" class="empty-state-card">
+      <h3>未选择患者</h3>
+      <p>请先从医生工作台选择患者，再查看当前患者模型洞察。</p>
     </section>
 
     <template v-else>
-      <section class="overview-grid">
-        <article class="card summary-card">
+      <section class="metric-grid three">
+        <article class="metric-card">
           <span>当前患者</span>
-          <strong>{{ selectedPatient!.name }}</strong>
-          <p>{{ selectedPatient!.patientId }} · {{ selectedPatient!.primaryDisease }}</p>
+          <strong>{{ selectedPatient?.name }}</strong>
+          <p>{{ selectedPatient?.patientId }} / {{ selectedPatient?.primaryDisease }}</p>
         </article>
-
-        <article class="card summary-card">
+        <article class="metric-card">
           <span>模型状态</span>
           <strong>{{ modelStatus }}</strong>
-          <p>当前模式：{{ workspace.health?.mode ?? '--' }}</p>
+          <p>运行模式 {{ workspace.health?.mode ?? '--' }}</p>
         </article>
-
-        <article class="card summary-card">
-          <span>证据强度</span>
-          <strong>{{ labelForSupportLevel(evidence.supportLevel) }}</strong>
-          <p>事件 {{ evidence.eventCount }} · 关系 {{ evidence.relationCount }}</p>
+        <article class="metric-card">
+          <span>证据支持</span>
+          <strong>{{ supportLabel(evidence.supportLevel) }}</strong>
+          <p>事件 {{ evidence.eventCount }} / 关系 {{ evidence.relationCount }}</p>
         </article>
       </section>
 
-      <section class="detail-grid">
-        <article class="card panel">
-          <h3>当前患者预测结果</h3>
+      <section class="insight-grid">
+        <article class="clinical-card">
+          <div class="section-header">
+            <div>
+              <h2>Top-K 风险事件</h2>
+              <p>当前患者相关预测。</p>
+            </div>
+          </div>
           <div v-if="topK.length" class="risk-list">
             <div v-for="(item, index) in topK.slice(0, 3)" :key="`${item.label}-${index}`" class="risk-item">
               <div class="risk-head">
@@ -143,18 +148,28 @@ onMounted(() => {
           <p v-else class="empty-inline">暂无预测结果。</p>
         </article>
 
-        <article class="card panel">
-          <h3>证据摘要</h3>
+        <article class="clinical-card">
+          <div class="section-header">
+            <div>
+              <h2>证据摘要</h2>
+              <p>模型可解释证据和当前数据支持水平。</p>
+            </div>
+          </div>
           <ul class="kv-list">
             <li><span>事件数</span><strong>{{ evidence.eventCount }}</strong></li>
             <li><span>关系数</span><strong>{{ evidence.relationCount }}</strong></li>
-            <li><span>证据强度</span><strong>{{ labelForSupportLevel(evidence.supportLevel) }}</strong></li>
+            <li><span>支持水平</span><strong>{{ supportLabel(evidence.supportLevel) }}</strong></li>
           </ul>
           <p class="panel-note">{{ evidence.summary }}</p>
         </article>
 
-        <article class="card panel">
-          <h3>建议来源</h3>
+        <article class="clinical-card">
+          <div class="section-header">
+            <div>
+              <h2>建议来源</h2>
+              <p>区分模型、相似病例和回退来源。</p>
+            </div>
+          </div>
           <ul class="kv-list">
             <li><span>Provider</span><strong>{{ adviceSource.provider }}</strong></li>
             <li><span>Model</span><strong>{{ adviceSource.model }}</strong></li>
@@ -163,20 +178,30 @@ onMounted(() => {
           <p class="panel-note">{{ adviceSource.note }}</p>
         </article>
 
-        <article class="card panel">
-          <h3>建议清单</h3>
-          <ul v-if="adviceList.length" class="simple-list">
+        <article class="clinical-card">
+          <div class="section-header">
+            <div>
+              <h2>建议摘要</h2>
+              <p>{{ adviceList.length }} 条</p>
+            </div>
+          </div>
+          <ol v-if="adviceList.length" class="advice-list">
             <li v-for="(item, index) in adviceList.slice(0, 5)" :key="`${index}-${item}`">{{ item }}</li>
-          </ul>
+          </ol>
           <p v-else class="empty-inline">暂无建议。</p>
         </article>
       </section>
 
-      <section class="card panel actions-panel">
-        <h3>下一步操作</h3>
+      <section class="clinical-card actions-panel">
+        <div class="section-header">
+          <div>
+            <h2>下一步动作</h2>
+            <p>进入当前患者详情或随访闭环。</p>
+          </div>
+        </div>
         <div class="action-row">
-          <button class="secondary-button" @click="handleOpenDetail">查看患者详情</button>
-          <button class="primary-button" @click="handleOpenFollowup">进入随访工作台</button>
+          <el-button @click="handleOpenDetail">打开患者详情</el-button>
+          <el-button type="primary" @click="handleOpenFollowup">打开随访任务</el-button>
         </div>
       </section>
     </template>
@@ -185,166 +210,93 @@ onMounted(() => {
 
 <style scoped>
 .model-insight-page {
-  padding: 20px;
   display: grid;
-  gap: 14px;
-  align-content: start;
+  gap: 24px;
 }
 
-.page-header {
-  padding: 16px;
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: center;
-}
-
-.page-header h2 {
-  margin: 0;
-  color: #17324d;
-}
-
-.page-header p {
-  margin: 4px 0 0;
-  color: #5f758b;
-  font-size: 13px;
-}
-
-.header-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.overview-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.summary-card,
-.panel {
-  padding: 14px;
-  display: grid;
-  gap: 8px;
-}
-
-.summary-card span {
-  color: #60778e;
-  font-size: 12px;
-}
-
-.summary-card strong {
-  color: #17324d;
-  font-size: 18px;
-}
-
-.summary-card p {
-  margin: 0;
-  color: #60778e;
-  font-size: 12px;
-}
-
-.detail-grid {
+.insight-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.panel h3 {
-  margin: 0;
-  color: #17324d;
-  font-size: 15px;
+  gap: 24px;
 }
 
 .risk-list,
-.simple-list {
+.kv-list,
+.advice-list {
   display: grid;
-  gap: 8px;
-}
-
-.risk-item {
-  border: 1px solid #d7e2ee;
-  border-radius: 8px;
-  padding: 10px;
-  background: #fbfdff;
-}
-
-.risk-head {
-  display: flex;
-  justify-content: space-between;
   gap: 10px;
-}
-
-.risk-head span {
-  color: #4a7ab7;
-  font-weight: 600;
-}
-
-.risk-item p,
-.panel-note {
   margin: 0;
-  color: #5f758b;
-  font-size: 13px;
-  line-height: 1.5;
 }
 
 .kv-list {
-  margin: 0;
   padding: 0;
-  display: grid;
-  gap: 8px;
+}
+
+.advice-list {
+  padding-left: 20px;
+}
+
+.risk-item,
+.kv-list li {
+  border: 1px solid var(--ws-border);
+  border-radius: 8px;
+  background: var(--ws-surface-soft);
+  padding: 12px;
 }
 
 .kv-list li {
   list-style: none;
   display: flex;
   justify-content: space-between;
-  gap: 10px;
-  border: 1px solid #d7e2ee;
-  border-radius: 8px;
-  padding: 8px 10px;
-  background: #f9fbfd;
+  gap: 12px;
+}
+
+.risk-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.risk-head span,
+.kv-list strong {
+  color: var(--ws-title);
+  font-weight: 800;
+}
+
+.risk-item p,
+.panel-note {
+  margin: 6px 0 0;
+  color: var(--ws-text-muted);
+  line-height: 1.6;
 }
 
 .kv-list span {
-  color: #60778e;
+  color: var(--ws-text-muted);
   font-size: 12px;
 }
 
-.kv-list strong {
-  color: #17324d;
-}
-
-.empty-inline,
-.empty-state {
-  border: 1px dashed #bfd0e1;
+.empty-inline {
+  margin: 0;
+  border: 1px dashed var(--ws-border-strong);
   border-radius: 8px;
   padding: 12px;
-  color: #60778e;
+  color: var(--ws-text-muted);
   text-align: center;
 }
 
 .actions-panel {
   display: grid;
-  gap: 12px;
+  gap: 16px;
 }
 
 .action-row {
   display: flex;
-  gap: 8px;
+  gap: 10px;
 }
 
-@media (max-width: 1200px) {
-  .overview-grid,
-  .detail-grid {
+@media (max-width: 1100px) {
+  .insight-grid {
     grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 820px) {
-  .page-header,
-  .action-row {
-    flex-direction: column;
   }
 }
 </style>

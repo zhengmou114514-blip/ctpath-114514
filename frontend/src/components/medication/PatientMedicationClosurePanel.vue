@@ -12,6 +12,7 @@ import {
 import type {
   DrugCatalogRecord,
   DrugPermissionRecord,
+  DrugPermissionRole,
   MedicationAdequacyAssessment,
   PatientMedicationRecord,
   PatientMedicationReviewStatus,
@@ -51,7 +52,11 @@ const form = reactive<PatientMedicationUpsertRequest>({
   note: '',
 })
 
-const currentRole = computed(() => restoreAuthSession()?.doctor.role ?? 'doctor')
+const currentRole = computed<DrugPermissionRole>(() => {
+  const role = restoreAuthSession()?.doctor.role
+  if (role === 'doctor' || role === 'nurse' || role === 'archivist') return role
+  return 'doctor'
+})
 const currentPermission = computed(() => permissions.value.find((item) => item.role === currentRole.value) ?? null)
 const selectedDrug = computed(() => drugs.value.find((item) => item.drug_id === form.drug_id) ?? null)
 const activeMedications = computed(() => medications.value.filter((item) => item.status === 'active'))
@@ -65,11 +70,13 @@ function resetForm() {
   const today = new Date()
   const defaultEnd = new Date(today)
   defaultEnd.setDate(today.getDate() + 30)
+  const firstDrug = drugs.value[0]
+
   editingMedicationId.value = ''
   form.medication_id = ''
   form.patient_id = props.patientId
-  form.drug_id = drugs.value[0]?.drug_id ?? ''
-  form.drug_name_snapshot = drugs.value[0]?.generic_name ?? ''
+  form.drug_id = firstDrug?.drug_id ?? ''
+  form.drug_name_snapshot = firstDrug?.generic_name ?? ''
   form.dosage = ''
   form.frequency = ''
   form.route = 'po'
@@ -160,6 +167,21 @@ function reviewText(value: PatientMedicationReviewStatus): string {
   return value === 'not_required' ? 'Not required' : `${value.charAt(0).toUpperCase()}${value.slice(1)}`
 }
 
+function statusTagType(value: PatientMedicationStatus) {
+  if (value === 'active') return 'success'
+  if (value === 'paused') return 'warning'
+  return 'info'
+}
+
+function assessmentTagType(value: boolean, positiveIsGood = true) {
+  if (positiveIsGood) return value ? 'success' : 'warning'
+  return value ? 'warning' : 'success'
+}
+
+function rowClass({ row }: { row: PatientMedicationRecord }) {
+  return row.medication_id === editingMedicationId.value ? 'selected-row' : ''
+}
+
 watch(
   () => props.patientId,
   () => {
@@ -177,170 +199,227 @@ watch(selectedDrug, (drug) => {
 
 <template>
   <section class="medication-closure-panel">
-    <header class="panel-header">
-      <div>
-        <p class="eyebrow">Medication closure</p>
-        <h3>Current Medication / Adequacy Assessment</h3>
-        <p class="subtle">
-          The page displays backend rule results only; duplicate, baseline and pharmacist-review judgments stay in the service layer.
-        </p>
-      </div>
-      <button class="secondary-button" type="button" :disabled="loading" @click="reload">
-        {{ loading ? 'Refreshing...' : 'Refresh' }}
-      </button>
-    </header>
+    <el-card shadow="never" class="module-card">
+      <template #header>
+        <div class="module-header">
+          <div>
+            <p class="eyebrow">Medication closure</p>
+            <h3>Current Medication / Adequacy Assessment</h3>
+            <p class="subtle">
+              This panel displays backend rule results only. Duplicate, baseline and pharmacist-review judgments are not reimplemented here.
+            </p>
+          </div>
+          <el-button :loading="loading" @click="reload">Refresh</el-button>
+        </div>
+      </template>
 
-    <section class="summary-grid">
-      <article class="metric-card">
-        <span>Current role</span>
-        <strong>{{ currentRole }}</strong>
-      </article>
-      <article class="metric-card">
-        <span>Active medications</span>
-        <strong>{{ activeMedications.length }}</strong>
-      </article>
-      <article class="metric-card">
-        <span>Controlled meds</span>
-        <strong>{{ controlledMedicationCount }}</strong>
-      </article>
-      <article class="metric-card">
-        <span>Pharmacist review</span>
-        <strong>{{ assessment?.needsPharmacistReview ? 'Needed' : 'No' }}</strong>
-      </article>
+      <el-row :gutter="12" class="summary-row">
+        <el-col :xs="24" :sm="6">
+          <el-statistic title="Current role" :value="currentRole" />
+        </el-col>
+        <el-col :xs="24" :sm="6">
+          <el-statistic title="Active medications" :value="activeMedications.length" />
+        </el-col>
+        <el-col :xs="24" :sm="6">
+          <el-statistic title="Controlled meds" :value="controlledMedicationCount" />
+        </el-col>
+        <el-col :xs="24" :sm="6">
+          <el-statistic title="Pharmacist review" :value="assessment?.needsPharmacistReview ? 'Needed' : 'No'" />
+        </el-col>
+      </el-row>
+
+      <el-alert
+        v-if="errorMessage"
+        :title="errorMessage"
+        type="error"
+        show-icon
+        :closable="false"
+        class="module-alert"
+      />
+      <el-alert
+        v-else-if="successMessage"
+        :title="successMessage"
+        type="success"
+        show-icon
+        :closable="false"
+        class="module-alert"
+      />
+    </el-card>
+
+    <section class="medication-grid">
+      <el-card shadow="never" class="module-card">
+        <template #header>
+          <div class="section-header">
+            <div>
+              <h4>Current Medication List</h4>
+              <span>{{ medications.length }} records</span>
+            </div>
+          </div>
+        </template>
+
+        <el-table
+          v-loading="loading"
+          :data="medications"
+          :row-class-name="rowClass"
+          border
+          stripe
+          empty-text="No current medication records."
+          @row-click="openMedication"
+        >
+          <el-table-column label="Drug" min-width="220">
+            <template #default="{ row }">
+              <strong>{{ row.drug_name_snapshot }}</strong>
+              <p class="table-subtitle">{{ row.start_date }} - {{ row.end_date || 'ongoing' }}</p>
+            </template>
+          </el-table-column>
+          <el-table-column label="Usage" min-width="180">
+            <template #default="{ row }">{{ row.dosage }} / {{ row.frequency }} / {{ row.route }}</template>
+          </el-table-column>
+          <el-table-column label="Status" width="110">
+            <template #default="{ row }">
+              <el-tag :type="statusTagType(row.status)" effect="light">{{ statusText(row.status) }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="Review" width="130">
+            <template #default="{ row }">{{ reviewText(row.review_status) }}</template>
+          </el-table-column>
+          <el-table-column prop="prescribed_by" label="Prescriber" min-width="130" />
+        </el-table>
+      </el-card>
+
+      <el-card shadow="never" class="module-card">
+        <template #header>
+          <div class="section-header">
+            <div>
+              <h4>{{ editingMedicationId ? 'Edit Medication' : 'Add Medication' }}</h4>
+              <span>{{ canEditMedication ? 'Editable by current role' : 'View only for current role' }}</span>
+            </div>
+            <el-tag :type="canEditMedication ? 'success' : 'info'">{{ canEditMedication ? 'Editable' : 'View only' }}</el-tag>
+          </div>
+        </template>
+
+        <el-alert
+          v-if="!canEditMedication"
+          title="Current role can view medication data but cannot prescribe or edit. Backend permissions remain authoritative."
+          type="warning"
+          show-icon
+          :closable="false"
+          class="module-alert"
+        />
+
+        <el-form label-position="top" class="editor-form">
+          <el-form-item label="Drug">
+            <el-select v-model="form.drug_id" :disabled="!canEditMedication" class="full-width" filterable>
+              <el-option
+                v-for="drug in drugs"
+                :key="drug.drug_id"
+                :label="`${drug.generic_name} / ${drug.specification}${drug.is_controlled ? ' / Controlled' : ''}`"
+                :value="drug.drug_id"
+              />
+            </el-select>
+          </el-form-item>
+
+          <el-row :gutter="12">
+            <el-col :xs="24" :md="12">
+              <el-form-item label="Dosage">
+                <el-input v-model="form.dosage" :disabled="!canEditMedication" placeholder="500 mg" />
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :md="12">
+              <el-form-item label="Frequency">
+                <el-input v-model="form.frequency" :disabled="!canEditMedication" placeholder="bid" />
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :md="12">
+              <el-form-item label="Route">
+                <el-input v-model="form.route" :disabled="!canEditMedication" placeholder="po" />
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :md="12">
+              <el-form-item label="Status">
+                <el-select v-model="form.status" :disabled="!canEditMedication" class="full-width">
+                  <el-option label="Active" value="active" />
+                  <el-option label="Paused" value="paused" />
+                  <el-option label="Stopped" value="stopped" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :md="12">
+              <el-form-item label="Start date">
+                <el-date-picker v-model="form.start_date" :disabled="!canEditMedication" value-format="YYYY-MM-DD" class="full-width" />
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :md="12">
+              <el-form-item label="End date">
+                <el-date-picker v-model="form.end_date" :disabled="!canEditMedication" value-format="YYYY-MM-DD" class="full-width" />
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24">
+              <el-form-item label="Review status">
+                <el-select v-model="form.review_status" :disabled="!canEditMedication" class="full-width">
+                  <el-option label="Pending" value="pending" />
+                  <el-option label="Approved" value="approved" />
+                  <el-option label="Rejected" value="rejected" />
+                  <el-option label="Not required" value="not_required" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24">
+              <el-form-item label="Note">
+                <el-input v-model="form.note" :disabled="!canEditMedication" type="textarea" :rows="3" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </el-form>
+
+        <div class="editor-actions">
+          <el-button @click="resetForm">New</el-button>
+          <el-button type="primary" :loading="saving" :disabled="!canEditMedication" @click="saveMedication">
+            {{ editingMedicationId ? 'Save changes' : 'Create medication' }}
+          </el-button>
+        </div>
+      </el-card>
     </section>
 
-    <p v-if="errorMessage" class="message error">{{ errorMessage }}</p>
-    <p v-else-if="successMessage" class="message success">{{ successMessage }}</p>
-
-    <section class="closure-layout">
-      <article class="list-card">
-        <div class="card-head">
-          <h4>Current Medication List</h4>
-          <span>{{ medications.length }} records</span>
+    <el-card shadow="never" class="module-card">
+      <template #header>
+        <div class="section-header">
+          <div>
+            <h4>Backend Assessment Result</h4>
+            <span>{{ assessment?.source || '--' }}</span>
+          </div>
         </div>
+      </template>
 
-        <p v-if="loading" class="empty-state">Loading medications...</p>
-        <p v-else-if="!medications.length" class="empty-state">No current medication records.</p>
-        <div v-else class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Drug</th>
-                <th>Usage</th>
-                <th>Status</th>
-                <th>Review</th>
-                <th>Prescriber</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="item in medications"
-                :key="item.medication_id"
-                :class="{ active: item.medication_id === editingMedicationId }"
-                @click="openMedication(item)"
-              >
-                <td>
-                  <strong>{{ item.drug_name_snapshot }}</strong>
-                  <p>{{ item.start_date }} - {{ item.end_date || 'ongoing' }}</p>
-                </td>
-                <td>{{ item.dosage }} / {{ item.frequency }} / {{ item.route }}</td>
-                <td>{{ statusText(item.status) }}</td>
-                <td>{{ reviewText(item.review_status) }}</td>
-                <td>{{ item.prescribed_by || '--' }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </article>
+      <el-row v-if="assessment" :gutter="12" class="assessment-row">
+        <el-col :xs="24" :sm="6">
+          <el-tag :type="assessmentTagType(assessment.hasDuplicateMedication, false)" effect="light">
+            Duplicate: {{ assessment.hasDuplicateMedication ? 'Warning' : 'Clear' }}
+          </el-tag>
+        </el-col>
+        <el-col :xs="24" :sm="6">
+          <el-tag :type="assessmentTagType(assessment.coversBaselineTherapy)" effect="light">
+            Baseline: {{ assessment.coversBaselineTherapy ? 'Covered' : 'Needs review' }}
+          </el-tag>
+        </el-col>
+        <el-col :xs="24" :sm="6">
+          <el-tag :type="assessmentTagType(assessment.alignsWithModelAdvice)" effect="light">
+            Advice: {{ assessment.alignsWithModelAdvice ? 'Aligned' : 'Review' }}
+          </el-tag>
+        </el-col>
+        <el-col :xs="24" :sm="6">
+          <el-tag :type="assessmentTagType(assessment.needsPharmacistReview, false)" effect="light">
+            Pharmacist: {{ assessment.needsPharmacistReview ? 'Suggested' : 'Not required' }}
+          </el-tag>
+        </el-col>
+      </el-row>
 
-      <article class="editor-card">
-        <div class="card-head">
-          <h4>{{ editingMedicationId ? 'Edit Medication' : 'Add Medication' }}</h4>
-          <span>{{ canEditMedication ? 'Editable' : 'View only' }}</span>
-        </div>
-
-        <p v-if="!canEditMedication" class="message warning">
-          Current role can view medication data but cannot prescribe or edit. Backend permissions remain authoritative.
-        </p>
-
-        <div class="form-grid">
-          <label class="field wide">
-            <span>Drug</span>
-            <select v-model="form.drug_id" :disabled="!canEditMedication">
-              <option v-for="drug in drugs" :key="drug.drug_id" :value="drug.drug_id">
-                {{ drug.generic_name }} / {{ drug.specification }}{{ drug.is_controlled ? ' / Controlled' : '' }}
-              </option>
-            </select>
-          </label>
-          <label class="field">
-            <span>Dosage</span>
-            <input v-model="form.dosage" :disabled="!canEditMedication" type="text" placeholder="500 mg" />
-          </label>
-          <label class="field">
-            <span>Frequency</span>
-            <input v-model="form.frequency" :disabled="!canEditMedication" type="text" placeholder="bid" />
-          </label>
-          <label class="field">
-            <span>Route</span>
-            <input v-model="form.route" :disabled="!canEditMedication" type="text" placeholder="po" />
-          </label>
-          <label class="field">
-            <span>Start date</span>
-            <input v-model="form.start_date" :disabled="!canEditMedication" type="date" />
-          </label>
-          <label class="field">
-            <span>End date</span>
-            <input v-model="form.end_date" :disabled="!canEditMedication" type="date" />
-          </label>
-          <label class="field">
-            <span>Status</span>
-            <select v-model="form.status" :disabled="!canEditMedication">
-              <option value="active">Active</option>
-              <option value="paused">Paused</option>
-              <option value="stopped">Stopped</option>
-            </select>
-          </label>
-          <label class="field">
-            <span>Review status</span>
-            <select v-model="form.review_status" :disabled="!canEditMedication">
-              <option value="pending">Pending</option>
-              <option value="approved">Approved</option>
-              <option value="rejected">Rejected</option>
-              <option value="not_required">Not required</option>
-            </select>
-          </label>
-          <label class="field wide">
-            <span>Note</span>
-            <textarea v-model="form.note" :disabled="!canEditMedication" rows="3" />
-          </label>
-        </div>
-
-        <div class="actions">
-          <button class="secondary-button" type="button" @click="resetForm">New</button>
-          <button class="primary-button" type="button" :disabled="saving || !canEditMedication" @click="saveMedication">
-            {{ saving ? 'Saving...' : editingMedicationId ? 'Save changes' : 'Create medication' }}
-          </button>
-        </div>
-      </article>
-    </section>
-
-    <section class="assessment-card">
-      <div class="card-head">
-        <h4>Backend Assessment Result</h4>
-        <span>{{ assessment?.source || '--' }}</span>
-      </div>
-
-      <div v-if="assessment" class="assessment-grid">
-        <p><span>Duplicate medication</span><strong>{{ assessment.hasDuplicateMedication ? 'Warning' : 'Clear' }}</strong></p>
-        <p><span>Baseline therapy</span><strong>{{ assessment.coversBaselineTherapy ? 'Covered' : 'Needs review' }}</strong></p>
-        <p><span>Model advice alignment</span><strong>{{ assessment.alignsWithModelAdvice ? 'Aligned' : 'Review' }}</strong></p>
-        <p><span>Pharmacist review</span><strong>{{ assessment.needsPharmacistReview ? 'Suggested' : 'Not required' }}</strong></p>
-      </div>
+      <el-empty v-else description="No assessment result loaded." />
 
       <ul v-if="assessment?.notes.length" class="note-list">
         <li v-for="note in assessment.notes" :key="note">{{ note }}</li>
       </ul>
-    </section>
+    </el-card>
   </section>
 </template>
 
@@ -350,23 +429,29 @@ watch(selectedDrug, (drug) => {
   gap: 16px;
 }
 
-.panel-header,
-.card-head,
-.actions {
+.module-card {
+  border-radius: 12px;
+}
+
+.module-header,
+.section-header,
+.editor-actions {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
 }
 
-.panel-header h3,
-.panel-header p,
-.card-head h4,
-.message {
+.module-header h3,
+.module-header p,
+.section-header h4,
+.section-header span,
+.table-subtitle {
   margin: 0;
 }
 
 .eyebrow {
+  margin: 0 0 4px;
   color: #2563eb;
   font-size: 12px;
   font-weight: 700;
@@ -375,171 +460,54 @@ watch(selectedDrug, (drug) => {
 }
 
 .subtle,
-.metric-card span,
-.field span,
-.card-head span,
-.assessment-grid span {
+.section-header span,
+.table-subtitle {
   color: #64748b;
   font-size: 12px;
 }
 
-.summary-grid,
-.closure-layout,
-.form-grid,
-.assessment-grid {
+.summary-row,
+.module-alert,
+.editor-form,
+.assessment-row {
+  margin-top: 14px;
+}
+
+.medication-grid {
   display: grid;
-  gap: 12px;
-}
-
-.summary-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.closure-layout {
   grid-template-columns: minmax(0, 1.2fr) minmax(360px, 0.8fr);
+  gap: 16px;
   align-items: start;
 }
 
-.metric-card,
-.list-card,
-.editor-card,
-.assessment-card {
-  border: 1px solid rgba(148, 163, 184, 0.24);
-  border-radius: 14px;
-  background: #fff;
-  padding: 14px;
-}
-
-.metric-card {
-  display: grid;
-  gap: 4px;
-}
-
-.metric-card strong {
-  color: #0f172a;
-  font-size: 22px;
-  text-transform: capitalize;
-}
-
-.message {
-  border-radius: 10px;
-  padding: 10px 12px;
-}
-
-.message.error {
-  border-left: 4px solid #dc2626;
-  background: #fef2f2;
-  color: #991b1b;
-}
-
-.message.success {
-  border-left: 4px solid #16a34a;
-  background: #f0fdf4;
-  color: #166534;
-}
-
-.message.warning {
-  background: #fff7ed;
-  color: #9a3412;
-}
-
-.table-wrap {
-  margin-top: 12px;
-  overflow: auto;
-}
-
-table {
+.full-width {
   width: 100%;
-  border-collapse: collapse;
 }
 
-th,
-td {
-  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
-  padding: 10px;
-  text-align: left;
-  vertical-align: top;
-}
-
-tbody tr {
-  cursor: pointer;
-}
-
-tbody tr.active {
-  background: rgba(37, 99, 235, 0.08);
-}
-
-td p {
-  margin: 4px 0 0;
-  color: #64748b;
-  font-size: 12px;
-}
-
-.form-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  margin-top: 12px;
-}
-
-.field {
-  display: grid;
-  gap: 6px;
-}
-
-.field.wide {
-  grid-column: 1 / -1;
-}
-
-.field input,
-.field select,
-.field textarea {
-  width: 100%;
-  border: 1px solid rgba(148, 163, 184, 0.42);
-  border-radius: 8px;
-  padding: 8px 10px;
-  background: #fff;
-}
-
-.actions {
-  margin-top: 12px;
+.editor-actions {
   justify-content: flex-end;
 }
 
-.empty-state {
-  margin: 12px 0 0;
-  border: 1px dashed rgba(148, 163, 184, 0.42);
-  border-radius: 10px;
-  padding: 16px;
-  text-align: center;
-  color: #64748b;
-}
-
-.assessment-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  margin-top: 12px;
-}
-
-.assessment-grid p {
-  display: grid;
-  gap: 4px;
-  margin: 0;
-}
-
 .note-list {
-  margin: 12px 0 0;
+  margin: 14px 0 0;
   color: #334155;
+  line-height: 1.8;
 }
 
-@media (max-width: 1120px) {
-  .summary-grid,
-  .closure-layout,
-  .assessment-grid {
+:deep(.selected-row) {
+  --el-table-tr-bg-color: #eff6ff;
+}
+
+@media (max-width: 1180px) {
+  .medication-grid {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 720px) {
-  .form-grid {
-    grid-template-columns: 1fr;
+  .module-header,
+  .section-header {
+    display: grid;
   }
 }
 </style>

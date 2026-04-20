@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import PatientAttachmentPanel from '../components/archive/PatientAttachmentPanel.vue'
-import MedicationAdequacyPanel from '../components/patient-workstation/MedicationAdequacyPanel.vue'
+import PatientMedicationClosurePanel from '../components/medication/PatientMedicationClosurePanel.vue'
+import PatientAttachmentPanel from '../components/patient/PatientAttachmentPanel.vue'
 import { useWorkspaceContext } from '../composables/workspaceContext'
 
 const workspace = useWorkspaceContext()
@@ -15,7 +15,6 @@ const routePatientId = computed(() => {
 })
 
 const selectedPatient = computed(() => workspace.selectedPatient)
-const doctorRole = computed(() => workspace.currentDoctor?.role ?? 'doctor')
 const topPrediction = computed(() => workspace.predictionResult?.topk?.[0] ?? selectedPatient.value?.predictions?.[0] ?? null)
 const adviceList = computed(() => workspace.predictionResult?.advice ?? selectedPatient.value?.careAdvice ?? [])
 const evidence = computed(() => {
@@ -25,7 +24,7 @@ const evidence = computed(() => {
       eventCount: prediction.evidence.eventCount,
       relationCount: prediction.evidence.relationCount,
       supportLevel: prediction.evidence.supportLevel,
-      summary: prediction.supportSummary || '当前患者预测证据已生成。',
+      summary: prediction.supportSummary || '已加载当前患者的结构化证据摘要。',
     }
   }
 
@@ -33,22 +32,35 @@ const evidence = computed(() => {
     eventCount: selectedPatient.value?.timeline.length ?? 0,
     relationCount: selectedPatient.value?.pathExplanation.length ?? 0,
     supportLevel: selectedPatient.value?.dataSupport ?? 'unknown',
-    summary: selectedPatient.value?.summary || '当前患者尚未生成新的预测摘要。',
+    summary: selectedPatient.value?.summary || '暂无结构化证据摘要。',
   }
 })
 
 const modelStatus = computed(() => {
-  if (workspace.modelUnavailable) return '模型降级'
-  if (workspace.health?.mode === 'demo') return 'Demo 模式'
-  if (workspace.predictionResult?.mode === 'model') return '模型正常'
-  if (workspace.predictionResult?.mode === 'similar-case') return '回退结果'
-  return '待加载'
+  if (workspace.modelUnavailable) return { label: '模型不可用', type: 'danger' as const }
+  if (workspace.health?.mode === 'demo') return { label: 'Demo 模式', type: 'warning' as const }
+  if (workspace.predictionResult?.mode === 'model') return { label: '模型结果', type: 'success' as const }
+  if (workspace.predictionResult?.mode === 'similar-case') return { label: '相似病例回退', type: 'warning' as const }
+  return { label: '待预测', type: 'info' as const }
 })
 
-function labelForSupportLevel(value: string) {
-  if (value === 'strong') return '强'
-  if (value === 'limited') return '有限'
-  if (value === 'minimal') return '较弱'
+function riskTagType(level: string) {
+  const raw = (level || '').toLowerCase()
+  if (raw.includes('high')) return 'danger'
+  if (raw.includes('medium')) return 'warning'
+  return 'success'
+}
+
+function supportTagType(value: string) {
+  if (value === 'high' || value === 'strong') return 'success'
+  if (value === 'medium' || value === 'limited') return 'warning'
+  return 'info'
+}
+
+function supportLabel(value: string) {
+  if (value === 'strong' || value === 'high') return '高'
+  if (value === 'limited' || value === 'medium') return '中'
+  if (value === 'minimal' || value === 'low') return '低'
   return value || '--'
 }
 
@@ -78,95 +90,141 @@ watch(
 </script>
 
 <template>
-  <section class="patient-detail-page">
-    <header class="card page-header">
+  <section class="patient-detail-page workstation-page">
+    <header class="workstation-page-header">
       <div>
-        <h2>患者详情</h2>
-        <p>独立承接患者主信息、时间线、当前用药、预测摘要、建议摘要和附件入口。</p>
+        <p class="eyebrow">Patient detail</p>
+        <h1>患者详情 / 电子档案</h1>
+        <p>档案、附件、病程时间线、用药评估和建议集中在当前患者视图。</p>
       </div>
       <div class="header-actions">
-        <button class="secondary-button" @click="handleBack">返回医生首页</button>
-        <button class="primary-button" :disabled="!selectedPatient" @click="handleOpenFollowup">进入随访</button>
+        <el-button @click="handleBack">返回医生工作台</el-button>
+        <el-button type="primary" :disabled="!selectedPatient" @click="handleOpenFollowup">打开随访</el-button>
       </div>
     </header>
 
-    <section v-if="!selectedPatient" class="card empty-state">
-      请先从医生首页选择患者，或者使用患者详情路由打开已选患者。
-    </section>
+    <el-empty v-if="!selectedPatient" description="请从医生工作台选择患者，或打开带患者ID的详情路由。" />
 
     <template v-else>
-      <section class="overview-grid">
-        <article class="card info-card">
-          <span>患者主信息</span>
-          <strong>{{ selectedPatient.name }}</strong>
-          <p>{{ selectedPatient.patientId }} · {{ selectedPatient.primaryDisease }}</p>
-          <div class="meta-grid">
-            <div><span>年龄</span><strong>{{ selectedPatient.age }}</strong></div>
-            <div><span>性别</span><strong>{{ selectedPatient.gender }}</strong></div>
-            <div><span>最近就诊</span><strong>{{ selectedPatient.lastVisit || '--' }}</strong></div>
-            <div><span>病程阶段</span><strong>{{ selectedPatient.currentStage || '--' }}</strong></div>
-          </div>
-        </article>
-
-        <article class="card info-card">
-          <span>预测摘要</span>
-          <strong>{{ modelStatus }}</strong>
-          <p>{{ evidence.summary }}</p>
-          <div v-if="topPrediction" class="prediction-box">
-            <strong>{{ topPrediction.label }}</strong>
-            <span>{{ Math.round(topPrediction.score * 100) }}%</span>
-            <p>{{ topPrediction.reason }}</p>
-          </div>
-        </article>
-      </section>
-
-      <section class="detail-grid">
-        <article class="card panel">
-          <h3>病程时间线</h3>
-          <div v-if="selectedPatient.timeline.length" class="timeline-list">
-            <div v-for="item in selectedPatient.timeline.slice(0, 8)" :key="`${item.date}-${item.type}`" class="timeline-item">
-              <span class="timeline-date">{{ item.date }}</span>
+      <section class="patient-detail-three-column">
+        <aside class="detail-column left-column">
+          <article class="clinical-card profile-card">
+            <div class="profile-head">
+              <div class="avatar-box">{{ selectedPatient.name.slice(-2) }}</div>
               <div>
-                <strong>{{ item.title }}</strong>
-                <p>{{ item.detail }}</p>
+                <h2>{{ selectedPatient.name }}</h2>
+                <p>{{ selectedPatient.patientId }} / {{ selectedPatient.primaryDisease }}</p>
               </div>
             </div>
-          </div>
-          <p v-else class="empty-inline">暂无时间线数据。</p>
-        </article>
 
-        <article class="card panel medication-module">
-          <MedicationAdequacyPanel :patient="selectedPatient" :model-advice="adviceList" :doctor-role="doctorRole" />
-        </article>
+            <div class="tag-row">
+              <el-tag :type="riskTagType(selectedPatient.riskLevel)" effect="light">{{ selectedPatient.riskLevel }}</el-tag>
+              <el-tag :type="supportTagType(selectedPatient.dataSupport)" effect="light">
+                数据支持 {{ supportLabel(selectedPatient.dataSupport) }}
+              </el-tag>
+              <el-tag :type="modelStatus.type" effect="light">{{ modelStatus.label }}</el-tag>
+            </div>
 
-        <article class="card panel">
-          <h3>建议摘要</h3>
-          <ul v-if="adviceList.length" class="simple-list">
-            <li v-for="(item, index) in adviceList.slice(0, 5)" :key="`${index}-${item}`">{{ item }}</li>
-          </ul>
-          <p v-else class="empty-inline">暂无建议摘要。</p>
-        </article>
+            <dl class="facts-list">
+              <div><dt>年龄 / 性别</dt><dd>{{ selectedPatient.age }} / {{ selectedPatient.gender }}</dd></div>
+              <div><dt>病案号</dt><dd>{{ selectedPatient.medicalRecordNumber || '--' }}</dd></div>
+              <div><dt>医保类型</dt><dd>{{ selectedPatient.insuranceType || '--' }}</dd></div>
+              <div><dt>主管医生</dt><dd>{{ selectedPatient.primaryDoctor || '--' }}</dd></div>
+              <div><dt>个案管理</dt><dd>{{ selectedPatient.caseManager || '--' }}</dd></div>
+              <div><dt>最近就诊</dt><dd>{{ selectedPatient.lastVisit || '--' }}</dd></div>
+              <div><dt>档案状态</dt><dd>{{ selectedPatient.archiveStatus || '--' }}</dd></div>
+              <div><dt>知情同意</dt><dd>{{ selectedPatient.consentStatus || '--' }}</dd></div>
+            </dl>
+          </article>
 
-        <article class="card panel attachment-module">
-          <PatientAttachmentPanel :patient-id="selectedPatient.patientId" title="附件摘要入口" />
-        </article>
+          <PatientAttachmentPanel :patient-id="selectedPatient.patientId" title="电子档案 / 附件" />
+        </aside>
 
-        <article class="card panel">
-          <h3>证据摘要</h3>
-          <ul class="kv-list">
-            <li><span>事件数</span><strong>{{ evidence.eventCount }}</strong></li>
-            <li><span>关系数</span><strong>{{ evidence.relationCount }}</strong></li>
-            <li><span>证据强度</span><strong>{{ labelForSupportLevel(evidence.supportLevel) }}</strong></li>
-          </ul>
-        </article>
+        <main class="detail-column center-column">
+          <article class="clinical-card prediction-card">
+            <div class="section-header">
+              <div>
+                <h2>预测摘要</h2>
+                <p>{{ modelStatus.label }}</p>
+              </div>
+              <el-tag :type="modelStatus.type">{{ modelStatus.label }}</el-tag>
+            </div>
+            <div v-if="topPrediction" class="prediction-box">
+              <div class="prediction-head">
+                <strong>{{ topPrediction.label }}</strong>
+                <span>{{ Math.round(topPrediction.score * 100) }}%</span>
+              </div>
+              <el-progress :percentage="Math.round(topPrediction.score * 100)" :stroke-width="8" />
+              <p>{{ topPrediction.reason }}</p>
+            </div>
+            <el-empty v-else description="暂无预测结果。" />
+          </article>
 
-        <article class="card panel">
-          <h3>下一步动作</h3>
-          <div class="action-row">
-            <button class="primary-button" @click="handleBack">返回首页</button>
-            <button class="secondary-button" @click="handleOpenFollowup">进入随访</button>
-          </div>
-        </article>
+          <article class="clinical-card timeline-card">
+            <div class="section-header">
+              <div>
+                <h2>病程时间线</h2>
+                <p>{{ selectedPatient.timeline.length }} 条事件</p>
+              </div>
+            </div>
+            <el-timeline v-if="selectedPatient.timeline.length">
+              <el-timeline-item
+                v-for="item in selectedPatient.timeline.slice(0, 10)"
+                :key="`${item.date}-${item.type}-${item.title}`"
+                :timestamp="item.date"
+                placement="top"
+              >
+                <strong>{{ item.title }}</strong>
+                <p class="timeline-detail">{{ item.detail }}</p>
+              </el-timeline-item>
+            </el-timeline>
+            <el-empty v-else description="暂无病程事件。" />
+          </article>
+
+          <article class="clinical-card evidence-card">
+            <div class="section-header">
+              <div>
+                <h2>证据摘要</h2>
+                <p>当前患者相关证据。</p>
+              </div>
+              <span class="status-chip">支持 {{ supportLabel(evidence.supportLevel) }}</span>
+            </div>
+            <p class="evidence-summary">{{ evidence.summary }}</p>
+            <div class="mini-metric-grid">
+              <article><span>事件</span><strong>{{ evidence.eventCount }}</strong></article>
+              <article><span>关系</span><strong>{{ evidence.relationCount }}</strong></article>
+              <article><span>支持</span><strong>{{ supportLabel(evidence.supportLevel) }}</strong></article>
+            </div>
+          </article>
+        </main>
+
+        <aside class="detail-column right-column">
+          <PatientMedicationClosurePanel :patient-id="selectedPatient.patientId" :model-advice="adviceList" />
+
+          <article class="clinical-card advice-card">
+            <div class="section-header">
+              <div>
+                <h2>建议摘要</h2>
+                <p>{{ adviceList.length }} 条建议</p>
+              </div>
+            </div>
+            <el-empty v-if="!adviceList.length" description="暂无建议。" />
+            <ol v-else class="advice-list">
+              <li v-for="(item, index) in adviceList.slice(0, 5)" :key="`${index}-${item}`">{{ item }}</li>
+            </ol>
+          </article>
+
+          <article class="clinical-card next-actions-card">
+            <div class="section-header">
+              <div>
+                <h2>下一步动作</h2>
+                <p>进入独立工作流处理。</p>
+              </div>
+            </div>
+            <el-button type="primary" @click="handleOpenFollowup">打开随访任务</el-button>
+            <el-button @click="handleBack">返回患者队列</el-button>
+          </article>
+        </aside>
       </section>
     </template>
   </section>
@@ -174,179 +232,178 @@ watch(
 
 <style scoped>
 .patient-detail-page {
-  padding: 20px;
   display: grid;
-  gap: 14px;
-  align-content: start;
+  gap: 24px;
 }
 
-.page-header {
-  padding: 16px;
-  display: flex;
-  justify-content: space-between;
+.patient-detail-three-column {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr) 360px;
+  gap: 24px;
+  align-items: start;
+}
+
+.detail-column {
+  min-width: 0;
+  display: grid;
+  gap: 24px;
+}
+
+.profile-card,
+.prediction-card,
+.timeline-card,
+.evidence-card,
+.advice-card,
+.next-actions-card {
+  display: grid;
+  gap: 16px;
+}
+
+.profile-head {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
   gap: 12px;
   align-items: center;
 }
 
-.page-header h2 {
+.avatar-box {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--ws-primary);
+  color: #fff;
+  font-weight: 800;
+}
+
+.profile-head h2,
+.profile-head p,
+.timeline-detail,
+.evidence-summary,
+.prediction-box p {
   margin: 0;
-  color: #17324d;
 }
 
-.page-header p {
-  margin: 4px 0 0;
-  color: #5f758b;
-  font-size: 13px;
-}
-
-.header-actions,
-.action-row {
-  display: flex;
-  gap: 8px;
-}
-
-.overview-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.detail-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.medication-module,
-.attachment-module {
-  grid-column: 1 / -1;
-}
-
-.info-card,
-.panel {
-  padding: 14px;
-  display: grid;
-  gap: 10px;
-}
-
-.info-card span,
-.panel h3 {
-  color: #60778e;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.info-card strong {
-  color: #17324d;
+.profile-head h2 {
   font-size: 18px;
 }
 
-.info-card p,
-.placeholder-text {
-  margin: 0;
-  color: #5f758b;
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-.meta-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.meta-grid div,
-.prediction-box {
-  border: 1px solid #d7e2ee;
-  border-radius: 8px;
-  background: #f9fbfd;
-  padding: 10px;
-}
-
-.meta-grid span,
+.profile-head p,
+.timeline-detail,
+.evidence-summary,
 .prediction-box p {
-  display: block;
-  color: #6b7f92;
-  font-size: 11px;
-  margin-bottom: 2px;
+  color: var(--ws-text-muted);
 }
 
-.prediction-box strong {
-  color: #17324d;
-}
-
-.timeline-list {
-  display: grid;
-  gap: 10px;
-}
-
-.timeline-item {
-  display: grid;
-  grid-template-columns: 120px 1fr;
-  gap: 10px;
-  align-items: start;
-  border-bottom: 1px solid #e4ebf2;
-  padding-bottom: 10px;
-}
-
-.timeline-date {
-  font-size: 12px;
-  color: #60778e;
-}
-
-.timeline-item p,
-.empty-inline {
-  margin: 4px 0 0;
-  color: #5f758b;
-  font-size: 13px;
-}
-
-.simple-list,
-.kv-list {
-  margin: 0;
-  padding-left: 18px;
-}
-
-.kv-list {
-  list-style: none;
-  padding-left: 0;
-  display: grid;
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
-.kv-list li {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  border: 1px solid #d7e2ee;
-  border-radius: 8px;
-  padding: 8px 10px;
+.facts-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
 }
 
-.kv-list span {
-  color: #60778e;
+.facts-list div {
+  display: grid;
+  gap: 3px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--ws-border);
+}
+
+.facts-list div:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.facts-list dt {
+  color: var(--ws-text-muted);
   font-size: 12px;
 }
 
-.kv-list strong {
-  color: #17324d;
+.facts-list dd {
+  margin: 0;
+  color: var(--ws-title);
+  font-weight: 700;
 }
 
-.empty-state {
-  padding: 16px;
-  text-align: center;
-  color: #5f758b;
+.prediction-box {
+  display: grid;
+  gap: 12px;
 }
 
-@media (max-width: 900px) {
-  .overview-grid,
-  .detail-grid {
+.prediction-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.prediction-head strong,
+.prediction-head span {
+  color: var(--ws-title);
+  font-size: 16px;
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border: 1px solid var(--ws-border);
+  border-radius: 999px;
+  background: var(--ws-surface-soft);
+  color: var(--ws-title);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.mini-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.mini-metric-grid article {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--ws-border);
+  border-radius: 8px;
+  background: var(--ws-surface-soft);
+  padding: 10px;
+}
+
+.mini-metric-grid span {
+  color: var(--ws-text-muted);
+  font-size: 12px;
+}
+
+.mini-metric-grid strong {
+  color: var(--ws-title);
+  font-size: 16px;
+}
+
+.advice-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding-left: 20px;
+}
+
+.advice-list li {
+  color: var(--ws-text);
+  line-height: 1.7;
+}
+
+.next-actions-card .el-button {
+  width: 100%;
+}
+
+@media (max-width: 1320px) {
+  .patient-detail-three-column {
     grid-template-columns: 1fr;
-  }
-
-  .medication-module,
-  .attachment-module {
-    grid-column: auto;
   }
 }
 </style>

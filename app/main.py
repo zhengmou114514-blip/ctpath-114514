@@ -34,10 +34,8 @@ app.add_exception_handler(StarletteHTTPException, http_exception_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
-# Keep CORS outermost so even middleware-generated error responses carry headers.
-app.add_middleware(JWTAuthMiddleware)
-app.add_middleware(TraceIdMiddleware)
-app.add_middleware(GlobalExceptionMiddleware)
+# FastAPI/Starlette wraps middleware in reverse add order. Requests pass through:
+# TraceIdMiddleware -> GlobalExceptionMiddleware -> JWTAuthMiddleware -> CORSMiddleware.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -51,6 +49,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(JWTAuthMiddleware)
+app.add_middleware(GlobalExceptionMiddleware)
+app.add_middleware(TraceIdMiddleware)
 
 
 @app.on_event("startup")

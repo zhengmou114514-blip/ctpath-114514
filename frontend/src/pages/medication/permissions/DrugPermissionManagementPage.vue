@@ -33,6 +33,8 @@ const filteredRecords = computed(() => {
 })
 
 const controlledRoles = computed(() => records.value.filter((item) => item.allow_controlled_drug).length)
+const reviewRoles = computed(() => records.value.filter((item) => item.allow_review).length)
+const executeRoles = computed(() => records.value.filter((item) => item.allow_execute).length)
 
 function applyRecord(record: DrugPermissionRecord) {
   selectedRole.value = record.role
@@ -85,10 +87,10 @@ async function savePermission() {
     const exists = records.value.some((item) => item.role === payload.role)
     if (exists) {
       await updateDrugPermissionItem(payload.role, payload)
-      successMessage.value = 'Permission updated. Audit log recorded by backend.'
+      successMessage.value = 'Permission updated. Audit log is recorded by backend.'
     } else {
       await createDrugPermissionItem(payload)
-      successMessage.value = 'Permission created. Audit log recorded by backend.'
+      successMessage.value = 'Permission created. Audit log is recorded by backend.'
     }
     await loadPermissions(payload.role)
   } catch (error) {
@@ -106,6 +108,14 @@ function yesNo(value: boolean): string {
   return value ? 'Yes' : 'No'
 }
 
+function permissionTagType(value: boolean) {
+  return value ? 'success' : 'info'
+}
+
+function rowClass({ row }: { row: DrugPermissionRecord }) {
+  return row.role === selectedRole.value ? 'selected-row' : ''
+}
+
 watch(roleFilter, () => {
   if (roleFilter.value !== 'all') {
     void openRole(roleFilter.value)
@@ -119,162 +129,218 @@ onMounted(() => {
 
 <template>
   <section class="workspace-page drug-permission-page">
-    <header class="card page-header">
-      <div>
-        <p class="eyebrow">Medication governance</p>
-        <h2>Drug Permission Management</h2>
-        <p>Configure role-level medication permissions separately from the drug catalog and patient details.</p>
-      </div>
-      <div class="header-actions">
-        <button class="secondary-button" type="button" @click="resetForm">Reset role</button>
-        <button class="primary-button" type="button" :disabled="saving" @click="savePermission">
-          {{ saving ? 'Saving...' : 'Save permission' }}
-        </button>
-      </div>
-    </header>
+    <el-page-header class="module-page-header" title="Medication module" content="Drug Permission Management" />
 
-    <section class="summary-strip">
-      <article class="card metric-card">
-        <span>Configured roles</span>
-        <strong>{{ records.length }}</strong>
-      </article>
-      <article class="card metric-card">
-        <span>Controlled-drug roles</span>
-        <strong>{{ controlledRoles }}</strong>
-      </article>
-      <article class="card metric-card">
-        <span>Current role</span>
-        <strong>{{ form.role }}</strong>
-      </article>
-    </section>
-
-    <section v-if="errorMessage" class="card message-card error">{{ errorMessage }}</section>
-    <section v-else-if="successMessage" class="card message-card success">{{ successMessage }}</section>
-
-    <section class="permission-layout">
-      <article class="card panel list-panel">
-        <div class="panel-head">
+    <el-card shadow="never" class="module-card">
+      <template #header>
+        <div class="module-header">
           <div>
-            <h3>Permission List</h3>
-            <p>Review by role before editing.</p>
+            <p class="eyebrow">Medication governance</p>
+            <h2>Drug Permission Management</h2>
+            <p>Configure role-level medication permissions separately from patient detail and drug catalog maintenance.</p>
           </div>
-          <label class="field compact-field">
-            <span>Role filter</span>
-            <select v-model="roleFilter">
-              <option value="all">All roles</option>
-              <option v-for="role in roleOptions" :key="role" :value="role">{{ role }}</option>
-            </select>
-          </label>
-        </div>
-
-        <div v-if="loading" class="empty-state compact">Loading permission matrix...</div>
-        <div v-else-if="!filteredRecords.length" class="empty-state compact">No role permission record found.</div>
-        <div v-else class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Role</th>
-                <th>View</th>
-                <th>Prescribe</th>
-                <th>Review</th>
-                <th>Execute</th>
-                <th>Controlled</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="item in filteredRecords"
-                :key="item.role"
-                :class="{ active: item.role === selectedRole }"
-                @click="openRole(item.role)"
-              >
-                <td><strong>{{ item.role }}</strong></td>
-                <td>{{ yesNo(item.allow_view) }}</td>
-                <td>{{ yesNo(item.allow_prescribe) }}</td>
-                <td>{{ yesNo(item.allow_review) }}</td>
-                <td>{{ yesNo(item.allow_execute) }}</td>
-                <td>
-                  <span class="controlled-pill" :class="{ enabled: item.allow_controlled_drug }">
-                    {{ yesNo(item.allow_controlled_drug) }}
-                  </span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </article>
-
-      <article class="card panel editor-panel">
-        <div class="panel-head">
-          <div>
-            <h3>Role Permission Editor</h3>
-            <p>Changes are audited through the backend operation audit entry.</p>
+          <div class="header-actions">
+            <el-button @click="resetForm">Reset role</el-button>
+            <el-button type="primary" :loading="saving" @click="savePermission">Save permission</el-button>
           </div>
         </div>
+      </template>
 
-        <div v-if="form.allow_controlled_drug" class="controlled-notice">
-          Granting controlled-drug permission is itself a controlled action. The backend will reject it if your role is not allowed.
+      <el-row :gutter="12" class="summary-row">
+        <el-col :xs="24" :sm="6">
+          <el-statistic title="Configured roles" :value="records.length" />
+        </el-col>
+        <el-col :xs="24" :sm="6">
+          <el-statistic title="Controlled-drug roles" :value="controlledRoles" />
+        </el-col>
+        <el-col :xs="24" :sm="6">
+          <el-statistic title="Review roles" :value="reviewRoles" />
+        </el-col>
+        <el-col :xs="24" :sm="6">
+          <el-statistic title="Execute roles" :value="executeRoles" />
+        </el-col>
+      </el-row>
+
+      <el-alert
+        v-if="errorMessage"
+        :title="errorMessage"
+        type="error"
+        show-icon
+        :closable="false"
+        class="module-alert"
+      />
+      <el-alert
+        v-else-if="successMessage"
+        :title="successMessage"
+        type="success"
+        show-icon
+        :closable="false"
+        class="module-alert"
+      />
+    </el-card>
+
+    <section class="permission-grid">
+      <el-card shadow="never" class="module-card">
+        <template #header>
+          <div class="section-header">
+            <div>
+              <h3>Permission Matrix</h3>
+              <span>{{ filteredRecords.length }} visible role records</span>
+            </div>
+            <el-select v-model="roleFilter" class="role-filter">
+              <el-option label="All roles" value="all" />
+              <el-option v-for="role in roleOptions" :key="role" :label="role" :value="role" />
+            </el-select>
+          </div>
+        </template>
+
+        <el-table
+          v-loading="loading"
+          :data="filteredRecords"
+          :row-class-name="rowClass"
+          border
+          stripe
+          empty-text="No role permission record found."
+          @row-click="(row: DrugPermissionRecord) => openRole(row.role)"
+        >
+          <el-table-column prop="role" label="Role" min-width="120" />
+          <el-table-column label="View" width="105">
+            <template #default="{ row }">
+              <el-tag :type="permissionTagType(row.allow_view)" effect="light">{{ yesNo(row.allow_view) }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="Prescribe" width="120">
+            <template #default="{ row }">
+              <el-tag :type="permissionTagType(row.allow_prescribe)" effect="light">{{ yesNo(row.allow_prescribe) }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="Review" width="110">
+            <template #default="{ row }">
+              <el-tag :type="permissionTagType(row.allow_review)" effect="light">{{ yesNo(row.allow_review) }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="Execute" width="110">
+            <template #default="{ row }">
+              <el-tag :type="permissionTagType(row.allow_execute)" effect="light">{{ yesNo(row.allow_execute) }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="Controlled drug" min-width="140">
+            <template #default="{ row }">
+              <el-tag :type="row.allow_controlled_drug ? 'warning' : 'info'" effect="light">
+                {{ yesNo(row.allow_controlled_drug) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+        </el-table>
+      </el-card>
+
+      <el-card shadow="never" class="module-card">
+        <template #header>
+          <div class="section-header">
+            <div>
+              <h3>Role Permission Editor</h3>
+              <span>All changes are saved through backend audit and permission guards.</span>
+            </div>
+            <el-tag>{{ form.role }}</el-tag>
+          </div>
+        </template>
+
+        <el-alert
+          v-if="form.allow_controlled_drug"
+          title="Granting controlled-drug permission is a controlled action. Backend permission checks remain authoritative."
+          type="warning"
+          show-icon
+          :closable="false"
+          class="module-alert"
+        />
+
+        <el-form label-position="top" class="editor-form">
+          <el-form-item label="Role">
+            <el-select v-model="form.role" class="full-width">
+              <el-option v-for="role in roleOptions" :key="role" :label="role" :value="role" />
+            </el-select>
+          </el-form-item>
+
+          <el-divider content-position="left">Permission switches</el-divider>
+
+          <div class="switch-list">
+            <label class="switch-row">
+              <span>
+                <strong>View</strong>
+                <small>View drug catalog and patient medication information.</small>
+              </span>
+              <el-switch v-model="form.allow_view" />
+            </label>
+            <label class="switch-row">
+              <span>
+                <strong>Prescribe</strong>
+                <small>Create or edit current medication records.</small>
+              </span>
+              <el-switch v-model="form.allow_prescribe" />
+            </label>
+            <label class="switch-row">
+              <span>
+                <strong>Review</strong>
+                <small>Perform pharmacist-style medication review.</small>
+              </span>
+              <el-switch v-model="form.allow_review" />
+            </label>
+            <label class="switch-row">
+              <span>
+                <strong>Execute</strong>
+                <small>View or execute nursing medication-related work.</small>
+              </span>
+              <el-switch v-model="form.allow_execute" />
+            </label>
+            <label class="switch-row controlled">
+              <span>
+                <strong>Controlled drug</strong>
+                <small>Allow controlled-drug catalog or permission actions.</small>
+              </span>
+              <el-switch v-model="form.allow_controlled_drug" />
+            </label>
+          </div>
+        </el-form>
+
+        <div class="editor-actions">
+          <el-button @click="resetForm">Reset</el-button>
+          <el-button type="primary" :loading="saving" @click="savePermission">Save permission</el-button>
         </div>
-
-        <div class="edit-grid">
-          <label class="field">
-            <span>Role</span>
-            <select v-model="form.role">
-              <option v-for="role in roleOptions" :key="role" :value="role">{{ role }}</option>
-            </select>
-          </label>
-
-          <label class="check-field">
-            <input v-model="form.allow_view" type="checkbox" />
-            <span>Allow view drug catalog and patient medications</span>
-          </label>
-
-          <label class="check-field">
-            <input v-model="form.allow_prescribe" type="checkbox" />
-            <span>Allow prescribing or editing current medication</span>
-          </label>
-
-          <label class="check-field">
-            <input v-model="form.allow_review" type="checkbox" />
-            <span>Allow pharmacist-style medication review</span>
-          </label>
-
-          <label class="check-field">
-            <input v-model="form.allow_execute" type="checkbox" />
-            <span>Allow medication execution view/action</span>
-          </label>
-
-          <label class="check-field warning">
-            <input v-model="form.allow_controlled_drug" type="checkbox" />
-            <span>Allow controlled-drug operations</span>
-          </label>
-        </div>
-
-        <div class="detail-actions">
-          <button class="secondary-button" type="button" @click="resetForm">Reset</button>
-          <button class="primary-button" type="button" :disabled="saving" @click="savePermission">
-            {{ saving ? 'Saving...' : 'Save permission' }}
-          </button>
-        </div>
-      </article>
+      </el-card>
     </section>
   </section>
 </template>
 
 <style scoped>
-.summary-strip,
-.permission-layout {
+.drug-permission-page {
   display: grid;
-  gap: 16px;
+  gap: 24px;
 }
 
-.summary-strip {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+.module-page-header {
+  padding: 4px 0;
 }
 
-.permission-layout {
-  grid-template-columns: minmax(0, 1.15fr) minmax(360px, 0.85fr);
-  align-items: start;
+.module-card {
+  border-radius: 8px;
+}
+
+.module-header,
+.section-header,
+.header-actions,
+.editor-actions,
+.switch-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.module-header h2,
+.module-header p,
+.section-header h3,
+.section-header span {
+  margin: 0;
 }
 
 .eyebrow {
@@ -286,143 +352,81 @@ onMounted(() => {
   text-transform: uppercase;
 }
 
-.metric-card {
-  display: grid;
-  gap: 4px;
-}
-
-.metric-card span,
-.panel-head p,
-.field span {
+.module-header p,
+.section-header span,
+.switch-row small {
   color: #64748b;
   font-size: 12px;
 }
 
-.metric-card strong {
-  color: #0f172a;
-  font-size: 22px;
-  text-transform: capitalize;
+.summary-row,
+.module-alert,
+.editor-form {
+  margin-top: 14px;
 }
 
-.message-card {
-  border-left: 4px solid #2563eb;
+.permission-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(360px, 0.85fr);
+  gap: 24px;
+  align-items: start;
 }
 
-.message-card.error {
-  border-left-color: #dc2626;
-  color: #991b1b;
+.role-filter {
+  width: 180px;
 }
 
-.message-card.success {
-  border-left-color: #16a34a;
-  color: #166534;
+.full-width {
+  width: 100%;
 }
 
-.panel-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: flex-start;
-  margin-bottom: 16px;
-}
-
-.panel-head h3 {
-  margin: 0;
-}
-
-.compact-field {
-  min-width: 180px;
-}
-
-.field,
-.edit-grid {
+.switch-list {
   display: grid;
   gap: 10px;
 }
 
-.field {
-  gap: 6px;
-}
-
-.field select {
-  width: 100%;
-}
-
-.table-wrap {
-  overflow: auto;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-th,
-td {
-  text-align: left;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
-  padding: 11px 10px;
-}
-
-tbody tr {
-  cursor: pointer;
-}
-
-tbody tr.active {
-  background: rgba(37, 99, 235, 0.08);
-}
-
-.controlled-pill {
-  display: inline-flex;
-  border-radius: 999px;
-  padding: 4px 8px;
-  background: #f1f5f9;
-  color: #475569;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.controlled-pill.enabled,
-.controlled-notice,
-.check-field.warning {
-  background: #fff7ed;
-  color: #9a3412;
-}
-
-.controlled-notice {
-  border: 1px solid #fed7aa;
-  border-radius: 10px;
-  padding: 10px 12px;
-  margin-bottom: 14px;
-  font-size: 13px;
-}
-
-.check-field {
-  display: flex;
-  gap: 10px;
+.switch-row {
   align-items: center;
-  border: 1px solid rgba(148, 163, 184, 0.22);
-  border-radius: 10px;
-  padding: 10px 12px;
-  color: #334155;
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  padding: 12px;
 }
 
-.check-field input {
-  width: 16px;
-  height: 16px;
+.switch-row span {
+  display: grid;
+  gap: 3px;
 }
 
-.detail-actions {
-  display: flex;
+.switch-row.controlled {
+  border-color: #fed7aa;
+  background: #fff7ed;
+}
+
+.editor-actions {
   justify-content: flex-end;
-  gap: 10px;
-  margin-top: 16px;
+  margin-top: 14px;
 }
 
-@media (max-width: 1120px) {
-  .summary-strip,
-  .permission-layout {
+:deep(.selected-row) {
+  --el-table-tr-bg-color: #eff6ff;
+}
+
+@media (max-width: 1180px) {
+  .permission-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .module-header,
+  .section-header,
+  .header-actions,
+  .switch-row {
+    display: grid;
+  }
+
+  .role-filter {
+    width: 100%;
   }
 }
 </style>

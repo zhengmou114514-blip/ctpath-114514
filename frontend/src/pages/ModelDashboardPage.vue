@@ -14,18 +14,15 @@ const board = computed(() =>
 )
 
 const modelHealth = computed(() => {
-  if (!workspace.health) return '未知'
-  if (workspace.health.model_available) return '可用'
-  if (workspace.health.model_error) return '降级'
-  return '不可用'
+  if (!workspace.health) return { label: 'Unknown', type: 'info' as const }
+  if (workspace.health.model_available) return { label: 'Healthy', type: 'success' as const }
+  if (workspace.health.model_error) return { label: 'Degraded', type: 'warning' as const }
+  return { label: 'Unavailable', type: 'danger' as const }
 })
 
-const modelHealthTone = computed(() => {
-  if (!workspace.health) return 'neutral'
-  if (workspace.health.model_available) return 'healthy'
-  if (workspace.health.model_error) return 'warning'
-  return 'danger'
-})
+const loading = computed(() =>
+  workspace.loadingModelMetrics || workspace.loadingMaintenance || workspace.loadingGovernance
+)
 
 function formatPercent(value: number | null | undefined) {
   if (value === null || value === undefined || Number.isNaN(value)) return '--'
@@ -51,167 +48,171 @@ onMounted(() => {
 
 <template>
   <section class="workspace-page model-dashboard-page">
-    <header class="card page-header">
+    <header class="workstation-page-header">
       <div>
-        <h2>模型看板</h2>
-        <p>只展示模型治理指标，不承载训练台或数据导入流程。</p>
+        <p class="eyebrow">Model center</p>
+        <h1>模型看板</h1>
+        <p>模型版本、训练时间、MRR、Hits、调用量、回退比例和健康状态。</p>
       </div>
-      <button class="primary-button" @click="handleRefresh">刷新</button>
+      <el-button type="primary" :loading="loading" @click="handleRefresh">刷新</el-button>
     </header>
 
-    <section v-if="workspace.loadingModelMetrics || workspace.loadingMaintenance || workspace.loadingGovernance" class="card state">
-      正在加载模型治理指标...
-    </section>
+    <el-card shadow="never" class="module-card">
+      <el-alert
+        v-if="workspace.health?.model_error"
+        :title="workspace.health.model_error"
+        type="warning"
+        show-icon
+        :closable="false"
+        class="module-alert"
+      />
 
-    <section v-else-if="!workspace.modelMetrics" class="card state">
-      暂无模型指标数据。
-    </section>
+      <el-row :gutter="12" class="summary-row">
+        <el-col :xs="24" :sm="8">
+          <el-statistic title="Model version" :value="board.currentModelVersion" />
+        </el-col>
+        <el-col :xs="24" :sm="8">
+          <el-statistic title="Recent training" :value="formatDateTime(board.recentTrainingTime)" />
+        </el-col>
+        <el-col :xs="24" :sm="8">
+          <div class="health-card">
+            <span>Model health</span>
+            <el-tag :type="modelHealth.type" effect="light">{{ modelHealth.label }}</el-tag>
+            <small>Mode: {{ workspace.health?.mode ?? '--' }}</small>
+          </div>
+        </el-col>
+      </el-row>
+    </el-card>
+
+    <el-skeleton v-if="loading" :rows="8" animated />
 
     <template v-else>
-      <section class="summary-grid">
-        <article class="card summary-card">
-          <span>模型版本</span>
-          <strong>{{ board.currentModelVersion }}</strong>
-        </article>
-
-        <article class="card summary-card">
-          <span>最近训练时间</span>
-          <strong>{{ formatDateTime(board.recentTrainingTime) }}</strong>
-        </article>
-
-        <article class="card summary-card">
-          <span>模型健康状态</span>
-          <strong :class="`tone-${modelHealthTone}`">{{ modelHealth }}</strong>
-          <p>当前模式：{{ workspace.health?.mode ?? '--' }}</p>
-        </article>
-      </section>
-
       <section class="metric-grid">
-        <article class="card metric-card">
+        <el-card shadow="never" class="metric-card">
           <span>MRR</span>
           <strong>{{ formatPercent(board.mrr) }}</strong>
-        </article>
-        <article class="card metric-card">
+        </el-card>
+        <el-card shadow="never" class="metric-card">
           <span>Hits@1</span>
           <strong>{{ formatPercent(board.hits1) }}</strong>
-        </article>
-        <article class="card metric-card">
+        </el-card>
+        <el-card shadow="never" class="metric-card">
           <span>Hits@10</span>
           <strong>{{ formatPercent(board.hits10) }}</strong>
-        </article>
-        <article class="card metric-card">
-          <span>调用量</span>
+        </el-card>
+        <el-card shadow="never" class="metric-card">
+          <span>Inference calls</span>
           <strong>{{ board.recentInferenceCalls ?? '--' }}</strong>
-        </article>
-        <article class="card metric-card">
-          <span>回退比例</span>
+        </el-card>
+        <el-card shadow="never" class="metric-card">
+          <span>Fallback ratio</span>
           <strong>{{ formatPercent(board.fallbackRatio) }}</strong>
-        </article>
+        </el-card>
+        <el-card shadow="never" class="metric-card">
+          <span>Training task</span>
+          <strong>{{ board.recentTrainingTaskStatus || '--' }}</strong>
+        </el-card>
       </section>
+
+      <el-card shadow="never" class="module-card">
+        <template #header>
+          <div class="section-header">
+            <h3>Version and service status</h3>
+            <el-tag :type="modelHealth.type">{{ modelHealth.label }}</el-tag>
+          </div>
+        </template>
+
+        <el-descriptions :column="2" border>
+          <el-descriptions-item label="Current model">{{ board.currentModelName }}</el-descriptions-item>
+          <el-descriptions-item label="Version">{{ board.currentModelVersion }}</el-descriptions-item>
+          <el-descriptions-item label="Dataset coverage">{{ formatPercent(board.datasetCoverage) }}</el-descriptions-item>
+          <el-descriptions-item label="Recent training">{{ formatDateTime(board.recentTrainingTime) }}</el-descriptions-item>
+          <el-descriptions-item label="Service mode">{{ workspace.health?.mode ?? '--' }}</el-descriptions-item>
+          <el-descriptions-item label="Patient count">{{ workspace.allPatients.length }}</el-descriptions-item>
+        </el-descriptions>
+      </el-card>
     </template>
   </section>
 </template>
 
 <style scoped>
 .model-dashboard-page {
-  padding: 20px;
   display: grid;
-  gap: 14px;
-  align-content: start;
+  gap: 24px;
 }
 
-.page-header {
-  padding: 16px;
+.module-card,
+.metric-card {
+  border-radius: 8px;
+}
+
+.module-header,
+.section-header {
   display: flex;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  align-items: center;
 }
 
-.page-header h2 {
+.module-header h2,
+.module-header p,
+.section-header h3 {
   margin: 0;
-  color: #17324d;
 }
 
-.page-header p {
-  margin: 4px 0 0;
-  color: #5f758b;
-  font-size: 13px;
+.eyebrow {
+  margin: 0 0 4px;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
-.state {
-  padding: 16px;
-  color: #5f758b;
-  text-align: center;
-}
-
-.summary-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.summary-card,
-.metric-card {
-  padding: 14px;
-  display: grid;
-  gap: 6px;
-}
-
-.summary-card span,
+.module-header p,
+.health-card span,
+.health-card small,
 .metric-card span {
-  color: #60778e;
+  color: #64748b;
   font-size: 12px;
 }
 
-.summary-card strong,
-.metric-card strong {
-  color: #17324d;
-  font-size: 18px;
+.module-alert,
+.summary-row {
+  margin-top: 14px;
 }
 
-.summary-card p {
-  margin: 0;
-  color: #60778e;
-  font-size: 12px;
+.health-card,
+.metric-card {
+  display: grid;
+  gap: 8px;
+}
+
+.health-card {
+  border: 1px solid #ebeef5;
+  border-radius: 10px;
+  padding: 12px;
 }
 
 .metric-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  gap: 24px;
 }
 
-.metric-card {
-  min-height: 104px;
+.metric-card strong {
+  color: #303133;
+  font-size: 24px;
 }
 
-.tone-healthy {
-  color: #1f7a57;
-}
-
-.tone-warning {
-  color: #a56b00;
-}
-
-.tone-danger {
-  color: #b33a43;
-}
-
-.tone-neutral {
-  color: #38536d;
-}
-
-@media (max-width: 1200px) {
-  .summary-grid,
+@media (max-width: 960px) {
   .metric-grid {
     grid-template-columns: 1fr;
   }
-}
 
-@media (max-width: 820px) {
-  .page-header {
-    flex-direction: column;
+  .module-header,
+  .section-header {
+    display: grid;
   }
 }
 </style>

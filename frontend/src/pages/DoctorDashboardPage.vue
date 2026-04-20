@@ -27,12 +27,14 @@ const selectedPatientId = computed(() => props.selectedPatient?.patientId ?? '')
 
 const filteredPatients = computed(() => {
   if (props.patients.length) return props.patients
-  const risk = props.riskFilter
+
   const keyword = props.searchText.trim().toLowerCase()
-  const isAllRisk = props.riskOptions[0] === risk
-  return props.allPatients.filter((item) => {
-    const matchRisk = !risk || isAllRisk || item.riskLevel === risk
-    const haystack = `${item.patientId} ${item.name} ${item.primaryDisease}`.toLowerCase()
+  const risk = props.riskFilter
+  const allRisk = !risk || props.riskOptions[0] === risk
+
+  return props.allPatients.filter((patient) => {
+    const matchRisk = allRisk || patient.riskLevel === risk
+    const haystack = `${patient.patientId} ${patient.name} ${patient.primaryDisease}`.toLowerCase()
     return matchRisk && (!keyword || haystack.includes(keyword))
   })
 })
@@ -41,52 +43,52 @@ const currentSummary = computed(() => {
   const patient = props.selectedPatient
   if (!patient) {
     return {
-      title: '请选择一位患者',
-      subtitle: '当前患者摘要会显示在这里。',
-      summary: '先从待处理患者列表中选择一位患者。',
+      title: '请选择患者',
+      subtitle: '从左侧待处理列表打开一个慢病患者',
+      summary: '请选择患者后查看档案、时间线、当前用药和建议摘要。',
       risk: '--',
       support: '--',
       stage: '--',
       lastVisit: '--',
+      tasks: 0,
     }
   }
 
   return {
     title: patient.name,
-    subtitle: `${patient.patientId} · ${patient.primaryDisease}`,
+    subtitle: `${patient.patientId} / ${patient.primaryDisease}`,
     summary: patient.summary || '暂无患者摘要。',
     risk: patient.riskLevel || '--',
     support: patient.dataSupport || '--',
     stage: patient.currentStage || '--',
     lastVisit: patient.lastVisit || '--',
+    tasks: patient.outpatientTasks?.length ?? 0,
   }
 })
+
+const highRiskCount = computed(() => props.allPatients.filter((patient) => patient.riskLevel.toLowerCase().includes('high')).length)
+const lowSupportCount = computed(() => props.allPatients.filter((patient) => patient.dataSupport === 'low').length)
 
 const riskHint = computed(() => {
   const patient = props.selectedPatient
-  if (!patient) return '请先选择患者以查看风险提示。'
-  if (patient.riskLevel.toLowerCase().includes('high')) {
-    return '高风险患者，请优先处理。'
-  }
-  if (patient.dataSupport === 'low') {
-    return '当前患者数据支持偏弱，请结合时间线与病程一起判断。'
-  }
-  return '当前患者风险可关注，建议继续随访。'
+  if (!patient) return '先选择患者，再进入详情或随访闭环。'
+  if (patient.riskLevel.toLowerCase().includes('high')) return '该患者处于高风险队列，建议优先查看病程时间线和随访任务。'
+  if (patient.dataSupport === 'low') return '该患者数据支持不足，建议补齐档案或检查报告附件。'
+  return '当前患者基础信息较完整，可进入详情页查看模型摘要和用药评估。'
 })
 
 function riskClass(level: string) {
-  const raw = level.toLowerCase()
-  if (raw.includes('high') || level.includes('高')) return 'risk-high'
-  if (raw.includes('medium') || level.includes('中')) return 'risk-medium'
+  const raw = (level || '').toLowerCase()
+  if (raw.includes('high')) return 'risk-high'
+  if (raw.includes('medium')) return 'risk-medium'
   return 'risk-low'
 }
 
 function dataSupportLabel(value?: string) {
-  if (!value) return '--'
-  if (value === 'high') return '强'
+  if (value === 'high') return '高'
   if (value === 'medium') return '中'
-  if (value === 'low') return '弱'
-  return value
+  if (value === 'low') return '低'
+  return value || '--'
 }
 
 function handleOpenDetail() {
@@ -96,91 +98,100 @@ function handleOpenDetail() {
 </script>
 
 <template>
-  <section class="doctor-home-page">
-    <div v-if="props.noPermission" class="card empty-state">
-      当前角色没有访问医生首页的权限。
-    </div>
+  <section class="doctor-home-page workstation-page">
+    <section v-if="noPermission" class="empty-state-card">
+      <h3>无权限访问医生工作台</h3>
+      <p>当前账号没有医生首页访问权限，请从左侧选择可访问模块。</p>
+    </section>
 
     <template v-else>
-      <aside class="column panel">
-        <header class="column-header">
-          <p class="eyebrow">待处理患者</p>
-          <h3>患者队列</h3>
-        </header>
+      <header class="workstation-page-header">
+        <div>
+          <p class="eyebrow">Doctor workstation</p>
+          <h1>医生工作台</h1>
+          <p>待处理患者、风险摘要和主要临床动作。</p>
+        </div>
+        <div class="header-metrics">
+          <article>
+            <span>患者档案</span>
+            <strong>{{ allPatients.length }}</strong>
+          </article>
+          <article>
+            <span>高风险</span>
+            <strong>{{ highRiskCount }}</strong>
+          </article>
+          <article>
+            <span>待补全</span>
+            <strong>{{ lowSupportCount }}</strong>
+          </article>
+        </div>
+      </header>
 
-        <section class="surface-card filter-card">
-          <label>
-            <span>搜索患者</span>
-            <input
-              :value="props.searchText"
-              type="text"
-              placeholder="按姓名、ID 或疾病搜索"
-              @input="emit('update:search-text', ($event.target as HTMLInputElement).value)"
-            />
-          </label>
-          <label>
-            <span>风险筛选</span>
-            <select
-              :value="props.riskFilter"
-              @change="emit('update:risk-filter', ($event.target as HTMLSelectElement).value)"
-            >
-              <option v-for="risk in props.riskOptions" :key="risk" :value="risk">{{ risk }}</option>
-            </select>
-          </label>
-        </section>
+      <section class="doctor-workbench-grid">
+        <aside class="clinical-card queue-panel">
+          <div class="section-header">
+            <div>
+              <h2>待处理患者</h2>
+              <p>{{ filteredPatients.length }} 条记录</p>
+            </div>
+          </div>
 
-        <div v-if="props.loadingPatients" class="card empty-state compact">正在加载患者列表...</div>
-        <div v-else-if="!filteredPatients.length" class="card empty-state compact">暂无待处理患者。</div>
-
-        <section v-else class="queue-table card">
-          <table>
-            <thead>
-              <tr>
-                <th>患者</th>
-                <th>风险</th>
-                <th>最近就诊</th>
-                <th>操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="patient in filteredPatients"
-                :key="patient.patientId"
-                :class="{ active: selectedPatientId === patient.patientId }"
-                @click="emit('open', patient.patientId)"
+          <div class="filter-card">
+            <label>
+              <span>检索患者</span>
+              <input
+                :value="searchText"
+                type="text"
+                placeholder="姓名 / 患者ID / 疾病"
+                @input="emit('update:search-text', ($event.target as HTMLInputElement).value)"
+              />
+            </label>
+            <label>
+              <span>风险筛选</span>
+              <select
+                :value="riskFilter"
+                @change="emit('update:risk-filter', ($event.target as HTMLSelectElement).value)"
               >
-                <td>
-                  <strong>{{ patient.name }}</strong>
-                  <p>{{ patient.patientId }} · {{ patient.primaryDisease }}</p>
-                </td>
-                <td>
-                  <span class="risk-badge" :class="riskClass(patient.riskLevel)">{{ patient.riskLevel }}</span>
-                </td>
-                <td>{{ patient.lastVisit || '--' }}</td>
-                <td>
-                  <button class="secondary-button" @click.stop="emit('open', patient.patientId)">选中</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </section>
-      </aside>
+                <option v-for="risk in riskOptions" :key="risk" :value="risk">{{ risk }}</option>
+              </select>
+            </label>
+          </div>
 
-      <main class="column panel">
-        <header class="column-header">
-          <p class="eyebrow">当前患者摘要</p>
-          <h3>首页摘要卡</h3>
-        </header>
+          <div v-if="loadingPatients" class="empty-state-card compact">正在加载患者队列...</div>
+          <div v-else-if="!filteredPatients.length" class="empty-state-card compact">暂无符合条件的患者。</div>
 
-        <div v-if="props.loadingPatient" class="card empty-state">正在加载当前患者...</div>
-        <template v-else>
-          <section class="surface-card summary-card">
-            <div class="summary-head">
-              <div>
-                <h4>{{ currentSummary.title }}</h4>
-                <p>{{ currentSummary.subtitle }}</p>
-              </div>
-              <span class="risk-badge" :class="riskClass(currentSummary.risk)">{{ currentSummary.risk }}</span>
+          <div v-else class="queue-list">
+            <button
+              v-for="patient in filteredPatients"
+              :key="patient.patientId"
+              type="button"
+              class="queue-row"
+              :class="{ active: selectedPatientId === patient.patientId }"
+              @click="emit('open', patient.patientId)"
+            >
+              <span>
+                <strong>{{ patient.name }}</strong>
+                <small>{{ patient.patientId }} / {{ patient.primaryDisease }}</small>
+              </span>
+              <span class="risk-badge" :class="riskClass(patient.riskLevel)">{{ patient.riskLevel }}</span>
+            </button>
+          </div>
+        </aside>
+
+        <main class="clinical-card patient-summary-panel">
+          <div class="section-header">
+            <div>
+              <h2>当前患者摘要</h2>
+              <p>临床入口信息。</p>
+            </div>
+            <span class="risk-badge" :class="riskClass(currentSummary.risk)">{{ currentSummary.risk }}</span>
+          </div>
+
+          <div v-if="loadingPatient" class="empty-state-card">正在加载患者摘要...</div>
+          <template v-else>
+            <div class="patient-title-block">
+              <h3>{{ currentSummary.title }}</h3>
+              <p>{{ currentSummary.subtitle }}</p>
             </div>
 
             <div class="summary-grid">
@@ -189,54 +200,59 @@ function handleOpenDetail() {
                 <strong>{{ currentSummary.lastVisit }}</strong>
               </article>
               <article>
-                <span>当前病程</span>
+                <span>当前阶段</span>
                 <strong>{{ currentSummary.stage }}</strong>
               </article>
               <article>
                 <span>数据支持</span>
                 <strong>{{ dataSupportLabel(currentSummary.support) }}</strong>
               </article>
+              <article>
+                <span>任务数</span>
+                <strong>{{ currentSummary.tasks }}</strong>
+              </article>
             </div>
 
-            <div class="summary-text">
-              <span>摘要</span>
+            <div class="summary-note">
+              <strong>摘要</strong>
               <p>{{ currentSummary.summary }}</p>
             </div>
-          </section>
 
-          <section class="surface-card risk-card">
-            <h4>风险提示</h4>
-            <p>{{ riskHint }}</p>
-          </section>
-        </template>
-      </main>
+            <div class="summary-note warning">
+              <strong>风险提示</strong>
+              <p>{{ riskHint }}</p>
+            </div>
+          </template>
+        </main>
 
-      <aside class="column panel">
-        <header class="column-header">
-          <p class="eyebrow">快捷入口</p>
-          <h3>常用动作</h3>
-        </header>
-
-        <section class="surface-card shortcut-card">
-          <button class="primary-button" :disabled="!selectedPatientId || props.loadingPatient" @click="handleOpenDetail">
-            查看患者详情
+        <aside class="clinical-card action-panel">
+          <div class="section-header">
+            <div>
+              <h2>主动作</h2>
+              <p>进入独立业务页处理。</p>
+            </div>
+          </div>
+          <button class="primary-button" :disabled="!selectedPatientId || loadingPatient" type="button" @click="handleOpenDetail">
+            打开患者详情
           </button>
           <button
             class="secondary-button"
-            :disabled="!selectedPatientId || props.loadingPatient"
+            :disabled="!selectedPatientId || loadingPatient"
+            type="button"
             @click="emit('open-followup', { patientId: selectedPatientId, section: 'tasks' })"
           >
-            进入随访
+            打开随访任务
           </button>
           <button
             class="secondary-button"
-            :disabled="!selectedPatientId || props.loadingPatient"
+            :disabled="!selectedPatientId || loadingPatient"
+            type="button"
             @click="emit('open-archive', { patientId: selectedPatientId, focus: 'overview' })"
           >
-            打开档案
+            打开患者档案
           </button>
-        </section>
-      </aside>
+        </aside>
+      </section>
     </template>
   </section>
 </template>
@@ -244,54 +260,30 @@ function handleOpenDetail() {
 <style scoped>
 .doctor-home-page {
   display: grid;
-  grid-template-columns: 330px minmax(0, 1fr) 280px;
-  gap: 16px;
-  padding: 16px;
-  background: #f5f8fc;
-  min-height: 100%;
+  gap: 24px;
 }
 
-.column {
+.doctor-workbench-grid {
   display: grid;
-  gap: 14px;
-  align-content: start;
+  grid-template-columns: 360px minmax(0, 1fr) 280px;
+  gap: 24px;
+  align-items: start;
 }
 
-.panel {
-  min-width: 0;
+.queue-panel,
+.patient-summary-panel,
+.action-panel {
+  display: grid;
+  gap: 16px;
 }
 
-.column-header {
-  padding: 12px 16px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #1e3a5f 0%, #2c5282 100%);
-  color: #fff;
-}
-
-.column-header h3,
-.column-header .eyebrow {
-  margin: 0;
-}
-
-.column-header h3 {
-  font-size: 18px;
-}
-
-.eyebrow {
-  font-size: 12px;
-  opacity: 0.85;
-  margin-bottom: 4px;
-}
-
-.surface-card,
-.empty-state {
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  background: #fff;
-  padding: 16px;
+.filter-card {
   display: grid;
   gap: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  padding: 12px;
+  border: 1px solid var(--ws-border);
+  border-radius: 8px;
+  background: var(--ws-surface-soft);
 }
 
 .filter-card label {
@@ -300,192 +292,111 @@ function handleOpenDetail() {
 }
 
 .filter-card span {
-  font-size: 13px;
-  color: #4a5568;
-  font-weight: 600;
-}
-
-.filter-card input,
-.filter-card select {
-  border: 1px solid #cbd5e0;
-  border-radius: 6px;
-  padding: 8px 10px;
-  font-size: 14px;
-}
-
-.queue-table {
-  padding: 0;
-  overflow: hidden;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-th,
-td {
-  text-align: left;
-  padding: 12px 14px;
-  border-bottom: 1px solid #eef2f7;
-  vertical-align: middle;
-}
-
-th {
-  font-size: 12px;
-  color: #5f758b;
-  background: #f8fbff;
-}
-
-td strong,
-.summary-head h4 {
-  color: #17324d;
-}
-
-td p {
-  margin: 4px 0 0;
-  color: #60778e;
-  font-size: 12px;
-}
-
-tbody tr {
-  cursor: pointer;
-}
-
-tbody tr:hover {
-  background: #f8fbff;
-}
-
-tbody tr.active {
-  background: #edf5ff;
-}
-
-.risk-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 10px;
-  border-radius: 999px;
+  color: var(--ws-text-muted);
   font-size: 12px;
   font-weight: 700;
 }
 
-.risk-high {
-  background: #fed7d7;
-  color: #c53030;
+.queue-list {
+  display: grid;
+  gap: 8px;
+  max-height: 580px;
+  overflow: auto;
 }
 
-.risk-medium {
-  background: #feebc8;
-  color: #c05621;
-}
-
-.risk-low {
-  background: #c6f6d5;
-  color: #276749;
-}
-
-.summary-card {
-  gap: 14px;
-}
-
-.summary-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+.queue-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
+  align-items: center;
+  border: 1px solid var(--ws-border);
+  border-radius: 8px;
+  background: #fff;
+  padding: 12px;
+  text-align: left;
 }
 
-.summary-head h4 {
-  margin: 0 0 4px;
-  font-size: 20px;
+.queue-row:hover,
+.queue-row.active {
+  border-color: var(--ws-primary);
+  background: var(--ws-primary-soft);
 }
 
-.summary-head p {
+.queue-row span:first-child {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.queue-row small {
+  color: var(--ws-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.patient-title-block h3,
+.patient-title-block p,
+.summary-note p {
   margin: 0;
-  color: #60778e;
-  font-size: 13px;
+}
+
+.patient-title-block h3 {
+  font-size: 18px;
+}
+
+.patient-title-block p,
+.summary-note p {
+  color: var(--ws-text-muted);
 }
 
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
 }
 
-.summary-grid article {
+.summary-grid article,
+.summary-note {
   display: grid;
-  gap: 4px;
-  border: 1px solid #e2e8f0;
+  gap: 6px;
+  border: 1px solid var(--ws-border);
   border-radius: 8px;
-  background: #f7fafc;
+  background: var(--ws-surface-soft);
   padding: 12px;
 }
 
 .summary-grid span,
-.summary-text span {
+.summary-note strong {
+  color: var(--ws-text-muted);
   font-size: 12px;
-  color: #7a8ea3;
-  font-weight: 600;
 }
 
 .summary-grid strong {
-  color: #17324d;
+  color: var(--ws-title);
+  font-size: 16px;
 }
 
-.summary-text {
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  background: #fffaf0;
-  padding: 12px;
+.summary-note.warning {
+  border-color: var(--ws-warning-border);
+  background: var(--ws-warning-soft);
 }
 
-.summary-text p,
-.risk-card p {
-  margin: 6px 0 0;
-  color: #744210;
-  line-height: 1.6;
-}
-
-.risk-card h4,
-.shortcut-card h4 {
-  margin: 0;
-  color: #17324d;
-  font-size: 15px;
-}
-
-.shortcut-card {
-  gap: 10px;
-}
-
-.primary-button,
-.secondary-button {
+.action-panel .primary-button,
+.action-panel .secondary-button {
   width: 100%;
 }
 
-.compact {
-  padding: 12px;
-}
-
-.empty-state {
-  color: #60778e;
-  text-align: center;
-}
-
 @media (max-width: 1280px) {
-  .doctor-home-page {
+  .doctor-workbench-grid {
     grid-template-columns: 1fr;
   }
 }
 
-@media (max-width: 820px) {
-  .summary-grid,
-  th,
-  td {
+@media (max-width: 760px) {
+  .summary-grid {
     grid-template-columns: 1fr;
-  }
-
-  .summary-head {
-    flex-direction: column;
   }
 }
 </style>

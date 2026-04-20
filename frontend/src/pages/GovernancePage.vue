@@ -5,13 +5,14 @@ import { useWorkspaceContext } from '../composables/workspaceContext'
 const workspace = useWorkspaceContext()
 
 const maintenance = computed(() => workspace.maintenanceOverview)
+const loading = computed(() => workspace.loadingMaintenance || workspace.loadingGovernance)
 
 const overviewCards = computed(() => {
   const data = maintenance.value
   if (!data) return []
   return [
-    { label: '患者总数', value: data.patientCount },
-    { label: '事件总数', value: data.eventCount },
+    { label: '患者档案', value: data.patientCount },
+    { label: '病程事件', value: data.eventCount },
     { label: '高风险患者', value: data.highRiskCount },
     { label: '低支持档案', value: data.lowSupportCount },
     { label: '逾期随访', value: data.overdueFollowupCount },
@@ -23,9 +24,9 @@ const missingFields = computed(() => {
   const data = maintenance.value
   if (!data) return []
   return [
-    { label: 'MRN 缺失', value: data.missingMrnCount },
-    { label: '知情同意待补', value: data.pendingConsentCount },
-    { label: '低支持档案', value: data.lowSupportCount },
+    { label: '缺失病案号', value: data.missingMrnCount },
+    { label: '待补知情同意', value: data.pendingConsentCount },
+    { label: '数据支持不足', value: data.lowSupportCount },
   ]
 })
 
@@ -42,11 +43,7 @@ const anomalyRows = computed(() => {
     .slice(0, 8)
 })
 
-const conflictRows = computed(() => {
-  const data = maintenance.value
-  if (!data) return []
-  return (data.masterIndexAlerts ?? []).slice(0, 8)
-})
+const conflictRows = computed(() => (maintenance.value?.masterIndexAlerts ?? []).slice(0, 8))
 
 const pendingArchiveRows = computed(() => {
   const data = maintenance.value
@@ -56,11 +53,7 @@ const pendingArchiveRows = computed(() => {
     .slice(0, 8)
 })
 
-const governanceActions = computed(() => {
-  const data = maintenance.value
-  if (!data) return []
-  return (data.recentEvents ?? []).slice(0, 8)
-})
+const governanceActions = computed(() => (maintenance.value?.recentEvents ?? []).slice(0, 8))
 
 function handleRefresh() {
   void workspace.refreshGovernanceWorkspace()
@@ -75,107 +68,133 @@ onMounted(() => {
 </script>
 
 <template>
-  <section class="workspace-page governance-page">
-    <header class="card page-header">
+  <section class="governance-page workstation-page">
+    <header class="workstation-page-header">
       <div>
-        <h2>治理看板</h2>
-        <p>只展示数据治理内容，不展示当前患者预测或模型训练面板。</p>
+        <p class="eyebrow">Governance center</p>
+        <h1>治理中心</h1>
+        <p>数据质量、冲突记录、待补全档案和治理动作集中处理。</p>
       </div>
-      <button class="primary-button" @click="handleRefresh">刷新</button>
+      <el-button type="primary" :loading="loading" @click="handleRefresh">刷新</el-button>
     </header>
 
-    <section v-if="workspace.loadingMaintenance || workspace.loadingGovernance" class="card state">
-      正在加载治理数据...
-    </section>
-
-    <section v-else-if="!maintenance" class="card state">
-      暂无治理数据。
-    </section>
+    <section v-if="loading" class="empty-state-card">正在加载治理数据...</section>
+    <section v-else-if="!maintenance" class="empty-state-card">暂无治理数据。</section>
 
     <template v-else>
-      <section class="summary-grid">
-        <article v-for="card in overviewCards" :key="card.label" class="card summary-card">
+      <section class="metric-grid six">
+        <article v-for="card in overviewCards" :key="card.label" class="metric-card">
           <span>{{ card.label }}</span>
           <strong>{{ card.value }}</strong>
         </article>
       </section>
 
-      <section class="detail-grid">
-        <article class="card panel">
-          <h3>数据质量概览</h3>
-          <div class="quality-grid">
-            <div class="quality-item">
-              <span>缺失字段</span>
-              <strong>{{ maintenance.missingMrnCount + maintenance.pendingConsentCount + maintenance.lowSupportCount }}</strong>
+      <section class="governance-grid">
+        <article class="clinical-card">
+          <div class="section-header">
+            <div>
+              <h2>数据质量概览</h2>
+              <p>缺失字段、异常时间线、待补全档案。</p>
             </div>
-            <div class="quality-item">
+          </div>
+          <div class="quality-grid">
+            <article>
+              <span>缺失/待补</span>
+              <strong>{{ maintenance.missingMrnCount + maintenance.pendingConsentCount + maintenance.lowSupportCount }}</strong>
+            </article>
+            <article>
               <span>重复风险</span>
               <strong>{{ maintenance.duplicateRiskCount }}</strong>
-            </div>
-            <div class="quality-item">
+            </article>
+            <article>
               <span>高风险患者</span>
               <strong>{{ maintenance.highRiskCount }}</strong>
-            </div>
-            <div class="quality-item">
+            </article>
+            <article>
               <span>逾期随访</span>
               <strong>{{ maintenance.overdueFollowupCount }}</strong>
-            </div>
+            </article>
           </div>
         </article>
 
-        <article class="card panel">
-          <h3>缺失字段</h3>
+        <article class="clinical-card">
+          <div class="section-header">
+            <div>
+              <h2>缺失字段</h2>
+              <p>用于档案员补录，不直接修改正式患者表结构。</p>
+            </div>
+          </div>
           <ul v-if="missingFields.length" class="simple-list">
             <li v-for="item in missingFields" :key="item.label">
               <span>{{ item.label }}</span>
               <strong>{{ item.value }}</strong>
             </li>
           </ul>
-          <p v-else class="empty-inline">暂无缺失字段。</p>
+          <p v-else class="empty-inline">暂无缺失字段统计。</p>
         </article>
 
-        <article class="card panel">
-          <h3>异常时间线</h3>
+        <article class="clinical-card">
+          <div class="section-header">
+            <div>
+              <h2>异常时间线</h2>
+              <p>空关系、空对象或未来时间事件。</p>
+            </div>
+          </div>
           <ul v-if="anomalyRows.length" class="record-list">
             <li v-for="(item, index) in anomalyRows" :key="`${item.patientId}-${item.eventTime}-${index}`">
               <strong>{{ item.patientName }}</strong>
-              <p>{{ item.eventTime }} · {{ item.relationLabel || item.relation }} · {{ item.objectValue || '--' }}</p>
+              <p>{{ item.eventTime }} / {{ item.relationLabel || item.relation || '关系缺失' }} / {{ item.objectValue || '对象缺失' }}</p>
             </li>
           </ul>
-          <p v-else class="empty-inline">暂无异常时间线。</p>
+          <p v-else class="empty-inline">暂无异常时间线记录。</p>
         </article>
 
-        <article class="card panel">
-          <h3>冲突记录</h3>
+        <article class="clinical-card">
+          <div class="section-header">
+            <div>
+              <h2>冲突记录</h2>
+              <p>主索引或患者档案冲突。</p>
+            </div>
+          </div>
           <ul v-if="conflictRows.length" class="record-list">
             <li v-for="item in conflictRows" :key="`${item.patientId}-${item.issueType}`">
               <strong>{{ item.name }}</strong>
-              <p>{{ item.issueType }} · {{ item.detail }}</p>
+              <p>{{ item.issueLabel || item.issueType }} / {{ item.detail }}</p>
             </li>
           </ul>
           <p v-else class="empty-inline">暂无冲突记录。</p>
         </article>
 
-        <article class="card panel">
-          <h3>待补全档案</h3>
+        <article class="clinical-card">
+          <div class="section-header">
+            <div>
+              <h2>待补全档案</h2>
+              <p>优先处理高风险或数据支持不足患者。</p>
+            </div>
+          </div>
           <ul v-if="pendingArchiveRows.length" class="record-list">
             <li v-for="item in pendingArchiveRows" :key="item.patientId">
               <strong>{{ item.name }}</strong>
-              <p>{{ item.primaryDisease }} · {{ item.riskLevel }} · 支持度 {{ item.dataSupport }}</p>
+              <p>{{ item.primaryDisease }} / {{ item.riskLevel }} / 数据支持 {{ item.dataSupport }}</p>
             </li>
           </ul>
           <p v-else class="empty-inline">暂无待补全档案。</p>
         </article>
 
-        <article class="card panel">
-          <h3>治理动作</h3>
+        <article class="clinical-card">
+          <div class="section-header">
+            <div>
+              <h2>治理动作记录</h2>
+              <p>最近病程事件可作为治理追踪线索。</p>
+            </div>
+          </div>
           <ul v-if="governanceActions.length" class="record-list">
             <li v-for="(item, index) in governanceActions" :key="`${item.patientId}-${item.eventTime}-${index}`">
               <strong>{{ item.patientName }}</strong>
-              <p>{{ item.relationLabel }} · {{ item.objectValue }} · {{ item.source }}</p>
+              <p>{{ item.relationLabel || item.relation }} / {{ item.objectValue || '--' }} / {{ item.source }}</p>
             </li>
           </ul>
-          <p v-else class="empty-inline">暂无治理动作。</p>
+          <p v-else class="empty-inline">暂无治理动作记录。</p>
         </article>
       </section>
     </template>
@@ -184,158 +203,93 @@ onMounted(() => {
 
 <style scoped>
 .governance-page {
-  padding: 20px;
   display: grid;
-  gap: 14px;
-  align-content: start;
+  gap: 24px;
 }
 
-.page-header {
-  padding: 16px;
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: center;
-}
-
-.page-header h2 {
-  margin: 0;
-  color: #17324d;
-}
-
-.page-header p {
-  margin: 4px 0 0;
-  color: #5f758b;
-  font-size: 13px;
-}
-
-.state {
-  padding: 16px;
-  color: #5f758b;
-  text-align: center;
-}
-
-.summary-grid {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.summary-card,
-.panel {
-  padding: 14px;
-  display: grid;
-  gap: 8px;
-}
-
-.summary-card span {
-  color: #60778e;
-  font-size: 12px;
-}
-
-.summary-card strong {
-  color: #17324d;
-  font-size: 18px;
-}
-
-.detail-grid {
+.governance-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.panel h3 {
-  margin: 0;
-  color: #17324d;
-  font-size: 15px;
+  gap: 24px;
 }
 
 .quality-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 12px;
 }
 
-.quality-item {
-  border: 1px solid #d7e2ee;
+.quality-grid article,
+.simple-list li,
+.record-list li {
+  border: 1px solid var(--ws-border);
   border-radius: 8px;
-  padding: 10px;
-  background: #f9fbfd;
+  background: var(--ws-surface-soft);
+  padding: 12px;
+}
+
+.quality-grid article {
   display: grid;
   gap: 6px;
 }
 
-.quality-item span {
-  color: #60778e;
+.quality-grid span,
+.simple-list span,
+.record-list p {
+  color: var(--ws-text-muted);
   font-size: 12px;
 }
 
-.quality-item strong {
-  color: #17324d;
+.quality-grid strong,
+.simple-list strong,
+.record-list strong {
+  color: var(--ws-title);
   font-size: 16px;
 }
 
 .simple-list,
 .record-list {
+  display: grid;
+  gap: 10px;
   margin: 0;
   padding: 0;
-  display: grid;
-  gap: 8px;
 }
 
 .simple-list li,
 .record-list li {
   list-style: none;
-  border: 1px solid #d7e2ee;
-  border-radius: 8px;
-  padding: 10px;
-  background: #fbfdff;
+}
+
+.simple-list li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.record-list li {
   display: grid;
   gap: 4px;
 }
 
-.simple-list li {
-  grid-template-columns: 1fr auto;
-  align-items: center;
-}
-
-.simple-list span,
 .record-list p {
-  color: #60778e;
-  font-size: 13px;
   margin: 0;
-}
-
-.simple-list strong,
-.record-list strong {
-  color: #17324d;
+  line-height: 1.5;
 }
 
 .empty-inline {
-  border: 1px dashed #bfd0e1;
+  margin: 0;
+  border: 1px dashed var(--ws-border-strong);
   border-radius: 8px;
   padding: 12px;
-  color: #60778e;
+  color: var(--ws-text-muted);
   text-align: center;
 }
 
-@media (max-width: 1400px) {
-  .summary-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 1200px) {
-  .detail-grid,
-  .summary-grid,
+@media (max-width: 1180px) {
+  .governance-grid,
   .quality-grid {
     grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 820px) {
-  .page-header {
-    flex-direction: column;
   }
 }
 </style>

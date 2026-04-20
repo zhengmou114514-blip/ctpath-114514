@@ -1,476 +1,541 @@
 # PROJECT_LOGIC_MANIFEST.md
 
-## 1. 项目名称
-基于时序知识图谱的慢病辅助诊疗业务系统
+最后更新：2026-04-21
 
----
+本文档用于让其他 AI 或开发者快速理解本仓库的真实结构、模块边界和当前完成状态。它不是产品宣传文档，而是代码协作入口。
 
-## 2. 系统定位
-本项目是“慢病辅助诊疗业务系统”，核心目标是：
-- 支持患者档案管理
-- 支持病程时间线展示
-- 支持模型预测与辅助建议
-- 支持随访与任务闭环
-- 支持数据治理与模型治理
+## 1. 项目定位
 
-本项目不是：
-- 完整 HIS
-- 完整 EMR
-- 收费结算系统
-- 住院管理系统
-- 药房库存全流程系统
+本项目是慢病辅助诊疗业务系统，不是完整 HIS。
 
-本项目会借鉴 openhis 的：
-- 模块化组织方式
-- 医疗工作台布局
-- 权限与角色分层
-- 药品管理与档案管理思路
+核心目标：
 
----
+- 提供接近真实医院工作站的慢病业务工作台
+- 支持患者档案、电子档案、病程时间线和随访闭环
+- 支持模型预测、建议生成、模型状态展示和模型治理
+- 支持药品目录、当前用药、用药充分性评估和药品权限
+- 支持数据质量、冲突、审计和治理中心能力
 
-## 3. 四层结构
-### 3.1 数据层
-负责：
-- 患者主数据
-- 临床事件数据
-- 附件与电子档案
-- 药品与用药
-- 随访任务
-- 模型训练与指标数据
-- 导入暂存数据
+明确不做：
 
-### 3.2 模型层
-负责：
-- CTpath / CHRONIC 等模型推理
-- 辅助建议生成
-- 训练任务
-- 模型版本管理
-- 模型评估指标
-- 模型回退与降级逻辑
+- 收费系统
+- 住院系统
+- 药房库存系统
+- 医保结算系统
+- 完整 HIS / 完整 EMR
+- 完整处方流
+- 医生主流程中的 CSV 导入
+- 医生主流程中的模型训练中心
 
-### 3.3 服务层
-分为两类：
-- 业务服务：档案、患者、药品、附件、随访、治理、审计、权限
-- 模型服务：预测、建议、训练、指标、数据集导入、调试
+## 2. 当前技术栈
 
-### 3.4 展示层
-分为多个前端工作区：
-- 医生首页
-- 患者详情
-- 患者档案
-- 随访工作台
-- 模型洞察
-- 模型看板
-- 模型调试台
-- 治理看板
-- 系统管理
+### 前端
 
----
+目录：`frontend/`
 
-## 4. 当前系统核心能力
-当前系统核心能力包括：
-- 登录认证
-- 患者列表与患者详情
-- 病程时间线
-- 模型预测
-- 辅助建议
-- 健康检查
-- demo/mysql 模式切换
-- 部分任务与治理能力
+- Vue 3
+- TypeScript
+- Vue Router
+- Pinia
+- Element Plus
+- ECharts
+- Vite
 
-当前公开模型指标包括：
-- MRR ≈ 0.345
-- Hits@1 ≈ 0.232
-- Hits@10 ≈ 0.515
+关键入口：
 
-这些指标属于“模型看板”，不应混入医生首页或治理页。
+- `frontend/src/main.ts`
+- `frontend/src/App.vue`
+- `frontend/src/router/index.ts`
+- `frontend/src/pages/LoginPage.vue`
+- `frontend/src/pages/AppWorkspacePage.vue`
+- `frontend/src/layouts/AppShell.vue`
+- `frontend/src/styles/workstation-theme.css`
 
----
+### 后端
 
-## 5. 当前数据源逻辑
-系统当前运行模式可能包括：
-- demo
-- mysql（或正式业务数据库）
-- 降级混合模式
+目录：`app/`
 
-必须区分三件事：
-1. 当前业务数据源
-2. 当前模型可用状态
-3. 当前训练数据来源
+- FastAPI
+- Pydantic
+- demo store / MySQL 双模式
+- CTpath / CHRONIC 数据加载
+- 慢病预测服务
+- LLM 建议服务
+- JWT 认证
+- RBAC 权限能力
+- trace_id
+- 全局异常处理
+- 审计日志
+- SlowAPI 限流
 
-页面上应明确告知：
-- 当前是否为 demo
-- 当前模型是否降级
-- 当前建议来自模型 / 规则 / 相似病例 / LLM
+关键入口：
 
----
+- `app/main.py`
+- `app/schemas.py`
+- `app/store.py`
+- `app/demo_store.py`
+- `app/model_service.py`
 
-## 6. 模块划分与职责边界
+## 3. 当前 canonical 前端结构
 
-### 6.1 医生首页
+### 路由
+
+当前 canonical 路由定义在 `frontend/src/router/index.ts`。
+
+主路由：
+
+- `/login`
+- `/`
+- `/patient-detail/:patientId?`
+- `/nurse-followups`
+- `/model-insight`
+- `/model-dashboard`
+- `/governance`
+- `/drug-management`
+- `/drug-permission-management`
+
+规则：
+
+- `/login` 只渲染独立登录页
+- `/` 只渲染业务工作台壳层
+- 子路由进入业务主内容区
+- 不通过 `display:none` 假隐藏多个工作区
+- 一个导航项只对应一个主内容区
+
+### 壳层
+
+当前业务壳层：
+
+- `frontend/src/pages/AppWorkspacePage.vue`
+- `frontend/src/layouts/AppShell.vue`
+- `frontend/src/components/AppSidebar.vue`
+- `frontend/src/components/WorkspaceTopbar.vue`
+- `frontend/src/components/RoleWorkspaceBanner.vue`
+- `frontend/src/components/PatientContextBar.vue`
+
+壳层职责：
+
+- 左侧稳定导航
+- 顶部状态栏
+- 当前患者上下文条
+- 统一消息状态
+- 单一主内容区
+- 角色可访问模块切换
+
+### 统一样式
+
+当前工作台主题：
+
+- `frontend/src/styles/workstation-theme.css`
+
+已统一：
+
+- 页面标题 24px
+- 区块标题 18px
+- 卡片标题 16px
+- 正文 14px
+- 次级说明 12px
+- 区块间距 24px
+- 卡片内边距 16px
+- 卡片和按钮圆角 8px
+- 蓝灰医疗工作台色彩
+- success / warning / danger / info 状态色
+- Element Plus 基础覆盖
+
+## 4. 前端模块边界
+
+### 登录页
+
+文件：
+
+- `frontend/src/pages/LoginPage.vue`
+- `frontend/src/components/LoginScreen.vue`
+
 职责：
-- 工作台入口
-- 待处理患者
+
+- 登录
+- 注册入口
+- 展示后端健康状态、运行模式和模型可用状态
+- 登录后重定向到业务工作台
+
+禁止：
+
+- 承载业务工作台内容
+- 作为营销页
+- 展示完整业务模块
+
+### 医生工作台
+
+文件：
+
+- `frontend/src/pages/DoctorDashboardPage.vue`
+
+职责：
+
+- 待处理患者队列
 - 当前患者摘要
 - 风险提示
-- 快速入口
+- 打开患者详情、档案和随访的主动作入口
 
-不负责：
-- 完整模型看板
-- 完整治理看板
-- 长表格堆叠
-- 训练任务
+禁止：
 
----
+- 展示完整患者详情
+- 展示完整模型看板
+- 展示完整治理中心
+- 堆叠所有业务页
 
-### 6.2 患者详情
+### 患者详情 / 电子档案
+
+文件：
+
+- `frontend/src/pages/PatientDetailPage.vue`
+- `frontend/src/components/patient/PatientAttachmentPanel.vue`
+- `frontend/src/components/medication/PatientMedicationClosurePanel.vue`
+
+当前布局：
+
+- 左栏：患者主信息、档案状态、附件
+- 中栏：预测摘要、病程时间线、证据摘要
+- 右栏：当前用药、用药评估、建议摘要、下一步动作
+
 职责：
+
+- 当前患者核心工作区
 - 患者主信息
 - 病程时间线
 - 当前用药
-- 预测摘要
+- 模型预测摘要
 - 建议摘要
-- 附件摘要
-- 下一步动作入口
+- 随访入口
+- 附件预览
 
-不负责：
-- 全局模型指标
-- 治理总览
+禁止：
 
----
+- 展示全局模型训练指标
+- 展示全局治理看板
+- 承载 CSV 导入或训练中心
 
-### 6.3 患者档案
+### 护士随访工作台
+
+文件：
+
+- `frontend/src/pages/NurseFollowupsPage.vue`
+- `frontend/src/pages/FollowupWorkbenchPage.vue`
+
 职责：
-- 身份信息
-- 联系方式
-- 紧急联系人
-- 建档状态
-- 档案来源
-- 证件信息
-- 电子档案入口
 
-不负责：
-- 训练任务
-- 模型版本总览
+- 今日待随访
+- 未接通联系
+- 医生复核队列
+- 联系记录
+- 随访状态和下一次计划
 
----
+状态：
 
-### 6.4 电子档案 / 附件
+- 基础工作台已存在
+- 更完整的状态操作、关闭任务和细粒度权限体验仍在收口
+
+### 药品管理
+
+文件：
+
+- `frontend/src/pages/medication/DrugCatalogPage.vue`
+- `app/api/drugs.py`
+- `app/services/drug_catalog_service.py`
+
 职责：
-- 患者照片
-- 身份证照片
-- 医保卡照片
-- 转诊单
-- 检查报告
-- 知情同意书
-- 上传记录
 
-不负责：
-- 模型训练文件
-- CSV 训练数据入口
-
----
-
-### 6.5 药品管理
-职责：
 - 药品目录
-- 通用名 / 商品名
-- 规格 / 剂型 / 单位
+- 通用名
+- 品牌名
+- 剂型规格
+- 单位
 - 是否处方药
 - 是否管制药
-- 药品状态
+- 启用/停用状态
+- 适应症
 
-不负责：
-- 患者当前用药评估的展示入口（那属于患者详情）
+禁止：
 
----
+- 做库存
+- 做采购
+- 做药房出入库
+- 做完整处方流
 
-### 6.6 药品权限管理
+### 药品权限管理
+
+文件：
+
+- `frontend/src/pages/medication/permissions/DrugPermissionManagementPage.vue`
+- `app/api/drug_permissions.py`
+- `app/services/drug_permission_service.py`
+
 职责：
-- 角色与药品权限配置
-- 管制药权限控制
-- 开立 / 审核 / 执行权限划分
 
----
+- 角色级药品权限矩阵
+- 查看权限
+- 开立权限
+- 审核权限
+- 执行权限
+- 管制药权限
 
-### 6.7 当前用药 / 用药充分性
+当前角色：
+
+- doctor
+- nurse
+- pharmacist
+- archivist
+- admin
+
+注意：
+
+- 前端登录用户目前主要是 doctor / nurse / archivist
+- drug permission service 已为更完整业务角色预留权限矩阵
+
+### 模型洞察
+
+文件：
+
+- `frontend/src/pages/ModelInsightPage.vue`
+- `app/api/predictions.py`
+- `app/model_service.py`
+
 职责：
-- 当前用药清单
-- 基础治疗覆盖情况
-- 重复用药提示
-- 建议补药提示
-- 与模型建议的一致性
-- 药师复核提示
 
-位置：
-- 患者详情页
-- 或独立页签
-
----
-
-### 6.8 随访工作台
-职责：
-- 待随访任务
-- 联系记录
-- 随访完成/关闭
-- 下次随访计划
-- 任务流转
-
----
-
-### 6.9 模型洞察
-职责：
 - 当前患者预测结果
 - Top-K 风险事件
 - 证据摘要
 - 建议来源
-- 当前模型降级状态
-- 当前患者相关动作
+- 模型降级状态
+- 当前患者下一步动作
 
-不负责：
-- 模型版本总览
+禁止：
+
+- 全局模型版本总览
+- 全局训练指标
 - 训练任务列表
-- 指标总览
+- CSV 数据集导入
 
----
+### 模型看板
 
-### 6.10 模型看板
+文件：
+
+- `frontend/src/pages/ModelDashboardPage.vue`
+- `frontend/src/services/modelBoardAdapter.ts`
+- `app/api/analytics.py`
+
 职责：
+
 - 模型版本
 - 最近训练时间
 - MRR
 - Hits@1
 - Hits@10
-- 推理调用量
+- 调用量
 - 回退比例
 - 模型健康状态
 
-不负责：
+禁止：
+
 - 当前患者详情
 - 当前患者建议卡片
-- 数据质量问题列表
+- 治理中心的数据质量列表
 
----
+### 治理中心
 
-### 6.11 模型调试台
+文件：
+
+- `frontend/src/pages/GovernancePage.vue`
+- `app/api/governance.py`
+- `app/api/audit.py`
+- `app/services/governance_service.py`
+
 职责：
-- 测试样本输入
-- 原始输入/输出 JSON
-- 模型版本切换
-- 推理耗时
-- 回退原因
-- 错误日志
-- 数据源切换
 
-不负责：
-- 正式临床工作台主流程
-
----
-
-### 6.12 治理看板
-职责：
 - 数据质量概览
 - 缺失字段
 - 异常时间线
-- 冲突记录
 - 待补全档案
-- 治理动作
+- 冲突记录
+- 治理动作记录
 
-不负责：
-- 模型训练指标
-- 当前患者建议
+禁止：
 
----
+- 当前患者预测结果
+- 模型训练指标总览
+- 医生首页摘要卡
 
-### 6.13 系统管理
-职责：
-- 用户
-- 角色
-- 权限
-- 字典
-- 系统配置
+## 5. 后端 API 和中间件状态
 
----
+### 当前挂载 router
 
-## 7. 新增功能应该放在哪里
+在 `app/main.py` 中挂载：
 
-### 7.1 患者照片 / 证件附件
-放在：
-- 患者档案
-- 患者详情
-- 电子档案 / 附件页
+- `analytics`
+- `attachments`
+- `audit`
+- `auth`
+- `authz`
+- `drug_permissions`
+- `drugs`
+- `governance`
+- `patient_medications`
+- `patients`
+- `predictions`
+- `worklists`
 
-不允许放在：
-- 模型页
-- 治理页
+### 当前中间件链路
 
----
+`app/main.py` 中实际加入：
 
-### 7.2 当前用药 / 用药充分性
-放在：
-- 患者详情
-- 用药评估页签
+- `CORSMiddleware`
+- `JWTAuthMiddleware`
+- `GlobalExceptionMiddleware`
+- `TraceIdMiddleware`
 
-不允许放在：
-- 治理看板
+注释中说明请求经过顺序：
+
+```text
+TraceIdMiddleware -> GlobalExceptionMiddleware -> JWTAuthMiddleware -> CORSMiddleware
+```
+
+限流能力：
+
+- `app/middleware/rate_limit.py`
+- `slowapi`
+- `RateLimitExceeded` handler
+
+异常处理：
+
+- `app/errors.py`
+- `app/middleware/exception.py`
+
+审计：
+
+- `app/api/audit.py`
+- `app/audit/operation_audit.py`
+- `app/audit/system_audit.py`
+
+权限：
+
+- `app/auth/*`
+- `app/api/authz.py`
+- `app/middleware/jwt_auth.py`
+
+## 6. 数据源和运行模式
+
+系统必须区分三类概念：
+
+1. 业务数据源：`demo` / `mysql`
+2. 模型状态：available / degraded / unavailable
+3. 训练数据来源：dataset / csv / staging import
+
+当前实际状态：
+
+- demo 模式可运行
+- MySQL 模式通过 `CTPATH_DB_URL` 启用
+- `/api/health` 返回服务状态、运行模式和模型可用状态
+- CTpath / CHRONIC 数据可在启动时加载到 demo 数据中
+- CSV 正式导入暂存区仍未完成
+- 正式训练中心仍未完成
+
+## 7. 当前完成状态
+
+### 已完成或基本可用
+
+- 独立登录页
+- 业务工作台壳层
+- 左侧导航、顶部状态栏、当前患者上下文
+- 医生工作台
+- 患者详情三栏布局
+- 患者附件面板
+- 当前用药与用药充分性评估
+- 护士随访工作台基础视图
+- 药品目录管理
+- 药品权限矩阵
+- 模型洞察
 - 模型看板
+- 治理中心基础视图
+- demo/mysql 运行模式
+- JWT、trace_id、全局异常、限流、审计基础能力
 
----
+### 部分完成 / 正在收口
 
-### 7.3 CSV / 训练中心
-放在：
-- 模型看板
-- 训练中心
-- 数据集导入页
+- 护士随访任务状态的完整闭环体验
+- 治理动作的可操作闭环
+- 药品权限与实际业务按钮的前端提示联动
+- LLM 建议服务的稳定性、降级说明和审计体验
+- RBAC 权限覆盖一致性
+- 模型看板与真实训练任务的更深衔接
 
-不允许放在：
-- 医生首页
-- 患者档案主流程
-- 电子档案主入口
+### 规划中 / 待完善
 
----
+- 模型调试台
+- 导入暂存区
+- CSV 校验、映射、问题查看
+- 正式模型训练中心
+- 文件上传安全校验增强
+- 数据脱敏策略增强
+- 更细粒度审计查询
+- 更完整的权限管理 UI
 
-### 7.4 药品管理 / 药品权限管理
-放在：
-- 系统管理或药品管理模块
-- 角色权限配置模块
+## 8. 当前不应误判的历史内容
 
-不允许放在：
-- 医生首页
-- 患者详情正文主区中当作全局管理功能
+仓库历史中可能出现过 simple、legacy、backup、unused 或被替代页面。判断当前页面是否有效时，以 `frontend/src/router/index.ts` 和 `frontend/src/pages/AppWorkspacePage.vue` 为准。
 
----
+不要把以下内容当作当前目标：
 
-## 8. 当前系统不允许出现的错误设计
-以下设计一律视为错误：
+- 完整 HIS 模块地图
+- 大型医院全流程页面
+- 营销型首页
+- 医生首页里的模型训练或 CSV 导入
+- 一个长页面堆叠多个模块
+- 被 router 移除或无引用的旧页面
 
-1. 点击“模型洞察”后仍显示“治理看板”
-2. 点击“治理看板”后仍显示“模型洞察”
-3. 模型看板和模型洞察不分开
-4. 医生首页承载完整治理页
-5. 医生首页承载完整模型看板
-6. 用 `display:none` 隐藏多个模块来模拟切页
-7. CSV 作为前台建档主入口
-8. 只有一个 `avatar_url` 文本字段，没有附件系统
-9. 只有患者和事件，没有药品与用药结构
-10. 模型调试界面混在医生工作台里
-11. 药品管理和药品权限管理没有分开
-12. demo/mysql 模式不对用户展示
-13. 没有审计日志却自称真实业务系统
+## 9. 建议 AI 修改流程
 
----
+其他 AI 接手后请按以下流程：
 
-## 9. 数据结构原则
-业务数据库至少应覆盖：
+1. 先读 `AGENTS.md`
+2. 再读 `README.md`
+3. 再读本 manifest
+4. 用 `rg` 确认目标文件是否被引用
+5. 先判断属于哪个模块
+6. 只修改该模块相关文件
+7. 不改后端字段名，除非任务明确要求并同步前后端
+8. 不新增收费、住院、库存、完整处方流
+9. 不确定是否废弃的文件不要删除
+10. 修改后至少运行对应构建或验证命令
 
-### 患者主数据
-- patient_master
-- patient_identity
-- patient_contact
-- patient_emergency_contact
+## 10. 常用命令
 
-### 临床事件
-- encounter
-- clinical_event
-- diagnosis_record
-- observation_record
-- lab_result
-- exam_result
+后端：
 
-### 附件
-- patient_attachment
+```powershell
+cd E:\CTpath-master
+conda activate ctpath
+uvicorn app.main:app --reload
+```
 
-### 药品与用药
-- drug_catalog
-- prescription
-- prescription_item
-- patient_medication
-- medication_assessment
+前端：
 
-### 随访与任务
-- followup_task
-- followup_record
-- outpatient_task
-- task_action_log
+```powershell
+cd E:\CTpath-master\frontend
+npm install
+npm run dev
+```
 
-### 模型治理
-- model_version
-- training_job
-- training_dataset
-- model_metric_snapshot
-- inference_log
+前端构建：
 
-### 导入暂存区
-- import_job
-- import_row
-- import_validation_issue
+```powershell
+cd E:\CTpath-master\frontend
+npm run build
+```
 
----
+后端导入检查：
 
-## 10. 中间件原则
-业务服务必须优先支持：
-- JWT
-- RBAC
-- 全局异常处理
-- TraceId
-- 审计日志
-- 限流
-- 文件上传校验
-- 数据脱敏
-
-模型服务必须优先支持：
-- TraceId
-- 请求耗时日志
-- 健康检查
-- 统一异常
-- 模型状态
-- 限流
-
----
-
-## 11. 以后给 Codex / Agent 的提示规则
-后续所有代码修改请求必须遵守：
-
-1. 先阅读 AGENTS.md
-2. 先阅读本文件 PROJECT_LOGIC_MANIFEST.md
-3. 只做一个模块
-4. 明确指定允许修改的文件
-5. 明确写出验收标准
-6. 禁止“参考 openhis 全面优化”这种泛化请求
-
-推荐提示格式：
-
-- 当前问题
-- 目标结果
-- 允许修改文件
-- 禁止修改内容
-- 验收清单
-
----
-
-## 12. 当前优先级清单
-当前重构优先级：
-
-1. 拆分模型洞察 / 模型看板 / 治理看板
-2. 拆分医生首页与患者详情
-3. 建立电子档案 / 附件系统
-4. 建立药品管理 / 药品权限管理
-5. 建立模型调试台
-6. 建立 CSV/训练中心
-7. 完善中间件与审计能力
-
----
-
-## 13. 最终目标
-本项目最终目标不是“和 openhis 一样大”，而是：
-
-在“慢病辅助诊疗”主题下，做出一个：
-- 模块边界清晰
-- 工作台结构清楚
-- 有真实业务入口
-- 有模型能力
-- 有治理能力
-- 有附件与药品能力
-- 有中间件与审计能力
-
-的接近实际应用级系统。
+```powershell
+cd E:\CTpath-master
+conda activate ctpath
+python -c "import app.main; print('backend import ok')"
+```
