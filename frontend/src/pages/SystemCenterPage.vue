@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import type { AuthzCapabilityResponse, DoctorUser, HealthResponse, SystemAuditLog } from '../services/types'
-import { getAuthzCapabilities, getMe, getSystemAudit, healthCheck } from '../services/api'
+import { getAuthzCapabilities, getSystemAudit } from '../services/api'
 
 const props = defineProps<{
   doctor: DoctorUser
@@ -10,7 +10,6 @@ const props = defineProps<{
 
 const loading = ref(false)
 const error = ref('')
-const me = ref<{ username: string; name: string; title: string; department: string; role: string } | null>(null)
 const caps = ref<AuthzCapabilityResponse | null>(null)
 const auditRows = ref<SystemAuditLog[]>([])
 
@@ -25,14 +24,11 @@ async function refresh() {
   loading.value = true
   error.value = ''
   try {
-    // refresh backend health in case user opened system center first
-    await healthCheck().catch(() => null)
-    const [meResp, capsResp, auditResp] = await Promise.all([getMe(), getAuthzCapabilities(), getSystemAudit(80)])
-    me.value = meResp
+    const [capsResp, auditResp] = await Promise.all([getAuthzCapabilities(), getSystemAudit(80)])
     caps.value = capsResp
     auditRows.value = auditResp.items
   } catch (e) {
-    error.value = e instanceof Error ? e.message : '加载系统中心失败。'
+    error.value = e instanceof Error ? e.message : '系统中心加载失败。'
   } finally {
     loading.value = false
   }
@@ -48,7 +44,7 @@ onMounted(() => {
     <header class="card page-header">
       <div>
         <h2>系统中心</h2>
-        <p>用于展示健康状态、当前账号权限能力与系统审计，贴近真实 HIS 的“后台可运营”视角。</p>
+        <p>查看当前账号、权限能力和最近系统审计记录。这里不承接模型训练和患者级诊疗内容。</p>
       </div>
       <button class="primary-button" :disabled="loading" @click="refresh">
         {{ loading ? '刷新中...' : '刷新' }}
@@ -64,22 +60,22 @@ onMounted(() => {
         <small>health: {{ props.health?.status ?? '--' }}</small>
       </article>
       <article class="kpi">
-        <span>模型服务</span>
+        <span>模型状态</span>
         <strong>{{ modelLabel }}</strong>
-        <small>{{ props.health?.model_error ?? '—' }}</small>
+        <small>{{ props.health?.model_error ?? '当前无异常' }}</small>
       </article>
       <article class="kpi">
         <span>当前账号</span>
-        <strong>{{ me?.name ?? props.doctor.name }}</strong>
-        <small>{{ me?.department ?? props.doctor.department }} / {{ me?.role ?? props.doctor.role }}</small>
+        <strong>{{ props.doctor.name }}</strong>
+        <small>{{ props.doctor.department }} / {{ props.doctor.role }}</small>
       </article>
     </section>
 
     <section class="card grid two-col">
       <article class="panel">
-        <h3>权限能力（Capabilities）</h3>
-        <p class="hint">用于验收展示：系统按角色返回可用模块与允许访问的 API。</p>
-        <div v-if="!caps" class="empty-mini">尚未加载</div>
+        <h3>可访问模块</h3>
+        <p class="hint">根据当前角色返回允许访问的模块和 API 能力。</p>
+        <div v-if="!caps" class="empty-mini">正在载入权限信息...</div>
         <template v-else>
           <div class="chips">
             <span v-for="s in caps.allowedSections" :key="s" class="chip">{{ s }}</span>
@@ -94,15 +90,15 @@ onMounted(() => {
       </article>
 
       <article class="panel">
-        <h3>系统审计（最近记录）</h3>
-        <p class="hint">RBAC 放行/拒绝、关键接口访问会写入审计，体现“可追溯”。</p>
-        <div v-if="!auditRows.length" class="empty-mini">暂无审计记录</div>
+        <h3>最近审计记录</h3>
+        <p class="hint">用于查看访问结果、接口路径和最近账号动作。</p>
+        <div v-if="!auditRows.length" class="empty-mini">暂无审计记录。</div>
         <div v-else class="audit-table">
           <header>
             <span>时间</span>
             <span>结果</span>
             <span>角色</span>
-            <span>用户</span>
+            <span>账号</span>
             <span>请求</span>
           </header>
           <article v-for="row in auditRows.slice(0, 30)" :key="row.logId">
@@ -277,7 +273,7 @@ onMounted(() => {
 }
 
 .mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
 }
 
 @media (max-width: 1100px) {
@@ -292,4 +288,3 @@ onMounted(() => {
   }
 }
 </style>
-

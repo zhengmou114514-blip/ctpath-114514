@@ -57,12 +57,14 @@ const RISK_ALL = '全部风险'
 const TASK_STATUS_PENDING = 'Pending'
 const TASK_STATUS_COMPLETED = 'Completed'
 const TASK_STATUS_CLOSED = 'Closed'
+const RISK_ALL_LABEL = '全部风险'
 const APP_SECTIONS: AppSection[] = [
   'doctor',
   'archive',
   'drug-management',
   'drug-permission-management',
   'tasks',
+  'model-operations',
   'training-center',
   'governance',
   'insights',
@@ -89,8 +91,8 @@ export function useWorkspaceController() {
     password: '',
     name: '',
     role: 'doctor',
-    title: 'Attending Physician',
-    department: 'Chronic Care Clinic',
+    title: '主治医师',
+    department: '慢病管理门诊',
   })
 
   const section = ref<AppSection>('doctor')
@@ -140,7 +142,7 @@ export function useWorkspaceController() {
   const importResultText = ref('')
 
   const workspaceSearchText = ref('')
-  const workspaceRiskFilter = ref(RISK_ALL)
+  const workspaceRiskFilter = ref(RISK_ALL_LABEL)
   const archivePage = ref(1)
   const archivePageSize = 6
 
@@ -288,12 +290,15 @@ export function useWorkspaceController() {
 
   const riskOptions = computed(() => {
     const dynamicLevels = Array.from(new Set(allPatients.value.map((item) => item.riskLevel)))
-    return [RISK_ALL, ...dynamicLevels]
+    return [RISK_ALL_LABEL, ...dynamicLevels]
   })
 
   const filteredWorkspacePatients = computed(() =>
     allPatients.value.filter((item) => {
-      const matchesRisk = workspaceRiskFilter.value === RISK_ALL || item.riskLevel === workspaceRiskFilter.value
+      const matchesRisk =
+        workspaceRiskFilter.value === RISK_ALL ||
+        workspaceRiskFilter.value === RISK_ALL_LABEL ||
+        item.riskLevel === workspaceRiskFilter.value
       const keyword = workspaceSearchText.value.trim().toLowerCase()
       const haystack = `${item.patientId} ${item.name} ${item.primaryDisease}`.toLowerCase()
       return matchesRisk && (!keyword || haystack.includes(keyword))
@@ -356,6 +361,7 @@ export function useWorkspaceController() {
     | 'drug-permission-management'
     | 'governance'
     | 'model-dashboard'
+    | 'model-operations'
     | 'training-center'
     | 'model-insight'
     | 'followup'
@@ -368,6 +374,7 @@ export function useWorkspaceController() {
     if (section.value === 'drug-permission-management') return 'drug-permission-management'
     if (section.value === 'governance') return 'governance'
     if (section.value === 'model-dashboard') return 'model-dashboard'
+    if (section.value === 'model-operations') return 'model-operations'
     if (section.value === 'training-center') return 'training-center'
     if (section.value === 'insights') return 'model-insight'
     if (section.value === 'tasks' || section.value === 'contacts' || section.value === 'flow') return 'followup'
@@ -1001,8 +1008,8 @@ export function useWorkspaceController() {
         password: '',
         name: '',
         role: 'doctor',
-        title: 'Attending Physician',
-        department: 'Chronic Care Clinic',
+        title: '主治医师',
+        department: '慢病管理门诊',
       }
     }
   }
@@ -1025,7 +1032,7 @@ export function useWorkspaceController() {
     archiveSuccess.value = ''
     importResultText.value = ''
     workspaceSearchText.value = ''
-    workspaceRiskFilter.value = RISK_ALL
+    workspaceRiskFilter.value = RISK_ALL_LABEL
     archivePage.value = 1
     section.value = 'doctor'
     doctorMode.value = 'list'

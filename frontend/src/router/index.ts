@@ -4,6 +4,7 @@ import LoginPage from '../pages/LoginPage.vue'
 import GovernancePage from '../pages/GovernancePage.vue'
 import ModelDashboardPage from '../pages/ModelDashboardPage.vue'
 import ModelInsightPage from '../pages/ModelInsightPage.vue'
+import ModelOperationsPage from '../pages/ModelOperationsPage.vue'
 import TrainingCenterPage from '../pages/TrainingCenterPage.vue'
 import NurseFollowupsPage from '../pages/NurseFollowupsPage.vue'
 import DrugCatalogPage from '../pages/medication/DrugCatalogPage.vue'
@@ -39,6 +40,11 @@ const routes: RouteRecordRaw[] = [
         path: 'model-dashboard',
         name: 'model-dashboard',
         component: ModelDashboardPage,
+      },
+      {
+        path: 'model-operations',
+        name: 'model-operations',
+        component: ModelOperationsPage,
       },
       {
         path: 'training-center',

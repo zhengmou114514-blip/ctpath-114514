@@ -71,7 +71,7 @@ function progressTasks(tasks: ModelTrainingTaskRecord[]): ModelTrainingTaskRecor
         ...task,
         status: 'running',
         startedAt: new Date(created + 2000).toISOString(),
-        logs: [...task.logs, '任务进入训练阶段，开始加载数据与参数。'],
+        logs: [...task.logs, '训练任务已进入执行阶段，开始装载数据并初始化模型参数。'],
       }
     }
 
@@ -85,7 +85,7 @@ function progressTasks(tasks: ModelTrainingTaskRecord[]): ModelTrainingTaskRecor
           hits1: randomMetric(0.28, 0.58),
           hits10: randomMetric(0.62, 0.88),
         },
-        logs: [...task.logs, '训练完成，模型已进入待发布状态。'],
+        logs: [...task.logs, '训练完成，指标已回写到本地训练记录。'],
       }
     }
 
@@ -139,7 +139,7 @@ export function createTrainingTask(input: {
     createdAt: new Date().toISOString(),
     triggeredBy: getCurrentUser(),
     params: input.params,
-    logs: ['任务已创建，正在等待资源调度。'],
+    logs: ['已创建训练任务，等待调度器启动执行。'],
     source: 'mock-local',
   }
 

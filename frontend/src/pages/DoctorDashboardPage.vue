@@ -42,26 +42,25 @@ const filteredPatients = computed(() => {
 
 const highRiskCount = computed(() => props.allPatients.filter((patient) => patient.riskLevel.toLowerCase().includes('high')).length)
 const followupCount = computed(() => props.allPatients.filter((patient) => patient.summary.toLowerCase().includes('follow')).length)
-const modelHealth = computed(() => {
+const modelCoverage = computed(() => {
   if (!props.allPatients.length) return '0%'
   const readyCount = props.allPatients.filter((patient) => patient.dataSupport !== 'low').length
   return `${Math.round((readyCount / props.allPatients.length) * 1000) / 10}%`
 })
 
-const alertCards = computed(() => {
-  const primary = filteredPatients.value.slice(0, 3)
-  return primary.map((patient, index) => {
+const alertCards = computed(() =>
+  filteredPatients.value.slice(0, 3).map((patient, index) => {
     const isHigh = patient.riskLevel.toLowerCase().includes('high')
     return {
       patientId: patient.patientId,
       tone: isHigh ? 'critical' : index === 1 ? 'warning' : 'info',
-      title: isHigh ? '高风险阈值' : index === 1 ? '用药冲突' : '检查遗漏',
-      headline: `${patient.patientId}: ${patient.name}`,
-      body: patient.summary || `${patient.primaryDisease} 结合近期随访信息需要优先复核。`,
-      action: isHigh ? '查看病历' : index === 1 ? '查看详情' : '安排随访',
+      title: isHigh ? '高风险预警' : index === 1 ? '随访提醒' : '档案提示',
+      headline: `${patient.patientId} · ${patient.name}`,
+      body: patient.summary || `${patient.primaryDisease} 需要继续关注近期病程变化。`,
+      action: isHigh ? '进入详情' : index === 1 ? '安排随访' : '打开档案',
     }
   })
-})
+)
 
 function riskClass(level: string) {
   const raw = (level || '').toLowerCase()
@@ -79,43 +78,44 @@ function openPatientDetail(patientId: string) {
 <template>
   <section class="doctor-dashboard-page workstation-page">
     <section v-if="noPermission" class="empty-state-card">
-      <h3>无权限访问</h3>
-      <p>当前账号暂未开通医生工作台权限。</p>
+      <h3>当前账号没有医生工作台权限</h3>
+      <p>请切换到具备医生角色的账号，或从左侧导航进入你当前角色可以访问的模块。</p>
     </section>
 
     <template v-else>
       <section class="dashboard-metrics">
         <article class="metric-panel clinical-card">
-          <p class="eyebrow">在管患者</p>
+          <p class="eyebrow">患者总量</p>
           <strong>{{ allPatients.length }}</strong>
-          <span>本周新增 12 人</span>
+          <span>当前工作台可见患者</span>
         </article>
 
         <article class="metric-panel clinical-card accent-warm">
-          <p class="eyebrow">待随访任务</p>
+          <p class="eyebrow">重点处理</p>
           <strong>{{ highRiskCount + followupCount }}</strong>
-          <span>{{ highRiskCount }} 人需重点关注</span>
+          <span>{{ highRiskCount }} 位高风险，{{ followupCount }} 位待随访</span>
         </article>
 
         <article class="metric-panel clinical-card accent-cool">
-          <p class="eyebrow">模型服务</p>
-          <strong>{{ modelHealth }}</strong>
-          <span>可用于当前临床链路</span>
+          <p class="eyebrow">模型覆盖率</p>
+          <strong>{{ modelCoverage }}</strong>
+          <span>按当前患者数据支持度估算</span>
         </article>
       </section>
 
       <section class="dashboard-grid">
-        <main class="queue-panel">
+        <main class="queue-panel clinical-card">
           <div class="queue-header">
             <div>
-              <h2>待处理患者队列</h2>
-              <p>从当前队列直接进入患者详情与预测主链路。</p>
+              <p class="eyebrow">患者队列</p>
+              <h2>待处理患者</h2>
+              <p>保持 Stitch 的工作站结构，只保留当前医生主流程需要的患者队列和入口动作。</p>
             </div>
             <div class="queue-toolbar">
               <input
                 :value="searchText"
                 type="text"
-                placeholder="搜索患者姓名、病案号或主病种..."
+                placeholder="搜索患者编号、姓名或主诊断..."
                 @input="emit('update:search-text', ($event.target as HTMLInputElement).value)"
               />
               <select
@@ -127,14 +127,14 @@ function openPatientDetail(patientId: string) {
             </div>
           </div>
 
-          <div v-if="loadingPatients" class="empty-state-card">正在加载患者队列...</div>
-          <div v-else-if="!filteredPatients.length" class="empty-state-card">当前筛选条件下没有患者。</div>
+          <div v-if="loadingPatients" class="empty-state-card">正在载入患者队列...</div>
+          <div v-else-if="!filteredPatients.length" class="empty-state-card">当前筛选条件下没有可显示的患者。</div>
 
           <table v-else class="queue-table">
             <thead>
               <tr>
                 <th>患者编号</th>
-                <th>姓名</th>
+                <th>患者信息</th>
                 <th>风险等级</th>
                 <th>最近就诊</th>
                 <th>操作</th>
@@ -160,12 +160,7 @@ function openPatientDetail(patientId: string) {
                 <td>{{ patient.lastVisit || '--' }}</td>
                 <td>
                   <div class="row-actions">
-                    <button
-                      class="icon-action"
-                      type="button"
-                      :disabled="loadingPatient"
-                      @click.stop="openPatientDetail(patient.patientId)"
-                    >
+                    <button class="icon-action" type="button" :disabled="loadingPatient" @click.stop="openPatientDetail(patient.patientId)">
                       <el-icon><View /></el-icon>
                     </button>
                   </div>
@@ -177,7 +172,10 @@ function openPatientDetail(patientId: string) {
 
         <aside class="alerts-panel">
           <div class="alerts-header">
-            <h2>风险提醒</h2>
+            <div>
+              <p class="eyebrow">风险提醒</p>
+              <h2>临床提示</h2>
+            </div>
             <button type="button" class="text-link">查看全部 <el-icon><ArrowRight /></el-icon></button>
           </div>
 
@@ -194,7 +192,7 @@ function openPatientDetail(patientId: string) {
           </article>
 
           <article v-if="selectedPatient" class="clinical-card alert-card alert-selected">
-            <span class="alert-title">当前关注患者</span>
+            <span class="alert-title">当前聚焦患者</span>
             <strong>{{ selectedPatient.name }}</strong>
             <p>{{ selectedPatient.summary }}</p>
             <div class="focus-actions">
@@ -202,7 +200,7 @@ function openPatientDetail(patientId: string) {
                 打开档案
               </button>
               <button class="primary-button" type="button" @click="emit('open-followup', { patientId: selectedPatient.patientId, section: 'tasks' })">
-                进入随访
+                安排随访
               </button>
             </div>
           </article>
@@ -299,10 +297,6 @@ function openPatientDetail(patientId: string) {
 
 .queue-toolbar select {
   min-width: 168px;
-}
-
-.queue-table {
-  cursor: default;
 }
 
 .queue-table tbody tr.selected td {

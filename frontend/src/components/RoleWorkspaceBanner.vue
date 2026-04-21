@@ -20,6 +20,7 @@ const sectionLabels: Record<AppSection, string> = {
   flow: '随访流程',
   insights: '模型洞察',
   'model-dashboard': '模型看板',
+  'model-operations': '模型运营台',
   'training-center': '训练中心',
   governance: '治理看板',
   'data-quality': '数据质量',
@@ -29,26 +30,26 @@ const sectionLabels: Record<AppSection, string> = {
 const bannerConfig = computed(() => {
   if (props.doctor.role === 'nurse') {
     return {
-      eyebrow: '随访工作域',
+      eyebrow: '随访工作台',
       title: '护士随访工作台',
-      description: '聚焦待随访任务、联系记录与流程推进，确保患者回访闭环能够稳定落地。',
+      description: '聚焦待随访患者、联系记录和流程推进，不混入训练中心或治理看板。',
       role: '护士',
     }
   }
 
   if (props.doctor.role === 'archivist') {
     return {
-      eyebrow: '档案治理域',
+      eyebrow: '档案治理',
       title: '患者档案与治理工作台',
-      description: '聚焦档案主数据、建档状态、数据质量与治理巡检，不混入临床主流程。',
+      description: '聚焦档案归集、信息补全、电子附件和治理动作，保持与临床主流程边界清晰。',
       role: '档案员',
     }
   }
 
   return {
-    eyebrow: '临床工作域',
-    title: '医生慢病工作台',
-    description: '聚焦待处理患者、风险识别、预测触发与随访入口，服务慢病辅助诊疗主闭环。',
+    eyebrow: '临床工作台',
+    title: '医生慢病辅助诊疗工作台',
+    description: '聚焦待处理患者、风险提示、真实预测入口和随访闭环，不把模型治理和训练堆进首页。',
     role: '医生',
   }
 })

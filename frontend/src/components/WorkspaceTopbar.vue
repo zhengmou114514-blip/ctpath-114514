@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Bell, Connection, Search, SwitchButton, UserFilled } from '@element-plus/icons-vue'
+import { Bell, Connection, Search, UserFilled } from '@element-plus/icons-vue'
 import type { DoctorUser, HealthResponse } from '../services/types'
 import type { AppSection } from '../types/workspace'
 
@@ -11,119 +11,144 @@ const props = defineProps<{
   loading?: boolean
 }>()
 
-const sectionLabelMap: Record<AppSection, string> = {
-  doctor: '搜索患者、风险事件或模型摘要...',
-  archive: '搜索患者档案、病案号或主病种...',
+const placeholderMap: Record<AppSection, string> = {
+  doctor: '搜索患者编号、姓名或主诊断...',
+  archive: '搜索患者档案、病历号或建档来源...',
   tasks: '搜索随访任务...',
   contacts: '搜索联系记录...',
-  flow: '搜索随访流程看板...',
-  insights: '搜索当前患者洞察...',
-  'model-dashboard': '搜索模型版本与指标...',
-  'training-center': '搜索数据集、训练任务或模型名称...',
-  governance: '搜索治理记录...',
+  flow: '搜索随访流程阶段...',
+  insights: '搜索当前患者模型洞察...',
+  'model-dashboard': '搜索模型版本、指标或运行状态...',
+  'model-operations': '搜索用户信息、登录审计或模型状态...',
+  'training-center': '搜索训练数据集、任务或模型名称...',
+  governance: '搜索治理问题、冲突记录或待补全档案...',
   'data-quality': '搜索数据质量问题...',
   'drug-management': '搜索药品目录...',
-  'drug-permission-management': '搜索权限配置...',
-  system: '搜索系统配置与日志...',
+  'drug-permission-management': '搜索药品权限映射...',
+  system: '搜索系统审计或账号权限...',
 }
 
-const modeLabel = computed(() => `${(props.health?.mode ?? 'demo').toUpperCase()}/MYSQL 模式`)
+const modeLabel = computed(() => `${String(props.health?.mode ?? 'demo').toUpperCase()} / MYSQL`)
 const modelLabel = computed(() => {
-  if (props.health?.model_available) return '模型正常'
+  if (props.loading) return '加载中'
+  if (props.health?.model_available) return '模型可用'
   if (props.health?.model_error) return '模型降级'
-  return '模型状态未知'
+  return '模型不可用'
 })
 </script>
 
 <template>
-  <section class="workspace-topbar">
-    <div class="stitch-search-shell">
+  <header class="stitch-topbar">
+    <div class="topbar-search">
       <el-icon><Search /></el-icon>
-      <input :value="''" type="text" :placeholder="sectionLabelMap[section]" readonly />
+      <input :placeholder="placeholderMap[section]" readonly type="text" />
     </div>
 
-    <div class="stitch-topbar-right">
-      <span class="workspace-status-pill">{{ modeLabel }}</span>
-      <button class="topbar-icon-button" type="button" aria-label="连接状态">
+    <div class="topbar-actions">
+      <span class="topbar-pill">{{ modeLabel }}</span>
+      <button class="topbar-icon" type="button" aria-label="连接状态">
         <el-icon><Connection /></el-icon>
       </button>
-      <button class="topbar-icon-button" type="button" aria-label="消息通知">
+      <button class="topbar-icon" type="button" aria-label="通知">
         <el-icon><Bell /></el-icon>
       </button>
-      <button class="topbar-icon-button" type="button" aria-label="会话状态">
-        <el-icon><SwitchButton /></el-icon>
-      </button>
-      <span class="workspace-status-pill" :class="props.health?.model_available ? 'status-success' : 'status-warning'">
-        {{ loading ? '同步中...' : modelLabel }}
-      </span>
-      <div class="topbar-avatar">
+      <span class="topbar-pill">{{ modelLabel }}</span>
+      <div class="topbar-avatar" :title="doctor.name">
         <el-icon><UserFilled /></el-icon>
       </div>
     </div>
-  </section>
+  </header>
 </template>
 
 <style scoped>
-.stitch-search-shell {
-  min-width: min(420px, 100%);
+.stitch-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 0 18px;
-  border-radius: 18px;
-  background: rgba(241, 244, 245, 0.95);
-  box-shadow: inset 0 0 0 1px rgba(190, 200, 201, 0.45);
+  justify-content: space-between;
+  gap: 24px;
+  min-height: 80px;
+  padding: 0 40px;
+  background: #f7fafb;
 }
 
-.stitch-search-shell :deep(input) {
+.topbar-search {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: min(420px, 100%);
+  border-radius: 999px;
+  background: #ebeeef;
+  padding: 0 16px;
+}
+
+.topbar-search :deep(input) {
   border: 0;
   background: transparent;
-  box-shadow: none;
-  color: rgba(24, 28, 29, 0.72);
+  color: #181c1d;
   cursor: default;
-}
-
-.stitch-search-shell :deep(input):focus {
+  padding: 12px 0;
   box-shadow: none;
 }
 
-.stitch-search-shell :deep(svg) {
-  color: rgba(24, 28, 29, 0.6);
+.topbar-search :deep(input):focus {
+  box-shadow: none;
 }
 
-.stitch-topbar-right {
+.topbar-search :deep(svg) {
+  color: #6f797a;
+}
+
+.topbar-actions {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
   gap: 12px;
   flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
-.topbar-icon-button {
-  width: 42px;
-  height: 42px;
+.topbar-pill {
+  border-radius: 999px;
+  background: #ebeeef;
+  padding: 6px 12px;
+  color: #3f4849;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.topbar-icon {
   display: inline-grid;
+  height: 40px;
+  width: 40px;
   place-items: center;
   border: 0;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.74);
-  box-shadow: inset 0 0 0 1px rgba(190, 200, 201, 0.56);
-  color: var(--ws-on-surface);
+  border-radius: 999px;
+  background: transparent;
+  color: #3f4849;
 }
 
 .topbar-avatar {
-  width: 44px;
-  height: 44px;
   display: grid;
+  height: 40px;
+  width: 40px;
   place-items: center;
-  border-radius: 14px;
-  background: linear-gradient(135deg, var(--ws-primary), var(--ws-primary-container));
-  color: white;
+  border-radius: 999px;
+  background: #005c61;
+  color: #fff;
 }
 
 @media (max-width: 900px) {
-  .stitch-search-shell {
-    min-width: 100%;
+  .stitch-topbar {
+    padding: 16px 20px;
+    display: grid;
+  }
+
+  .topbar-search {
+    width: 100%;
   }
 }
 </style>

@@ -25,32 +25,21 @@ const emit = defineEmits<{
   (e: 'submit-register'): void
 }>()
 
-const showAutocomplete = ref(false)
 const savedAccounts = ref<SavedAccount[]>([])
-const selectedIndex = ref(-1)
-const rememberSession = ref(true)
+const showAutocomplete = ref(false)
 
-const roleLabels: Record<string, string> = {
-  doctor: '医生',
-  nurse: '护士',
-  archivist: '档案员',
-}
+const systemStatus = computed(() => ({
+  mode: `${String(props.health?.mode ?? 'demo').toUpperCase()} 模式`,
+  model: props.health?.model_available ? '模型可用' : '模型降级',
+  db: '业务数据源 · MySQL',
+}))
 
-const autocompleteSuggestions = computed(() => {
-  const input = props.username.trim().toLowerCase()
-  if (!input) return []
+const suggestions = computed(() => {
+  const keyword = props.username.trim().toLowerCase()
+  if (!keyword) return []
   return savedAccounts.value
-    .filter((account) => account.username.toLowerCase().includes(input) || account.name.toLowerCase().includes(input))
+    .filter((item) => item.username.toLowerCase().includes(keyword) || item.name.toLowerCase().includes(keyword))
     .slice(0, 5)
-})
-
-const systemStatus = computed(() => {
-  const mode = (props.health?.mode ?? 'demo').toUpperCase()
-  return {
-    mode: `${mode} 模式`,
-    model: props.health?.model_available ? '模型：可用' : '模型：降级',
-    db: '业务库：MYSQL',
-  }
 })
 
 onMounted(() => {
@@ -60,192 +49,156 @@ onMounted(() => {
 watch(
   () => props.username,
   (value) => {
-    showAutocomplete.value = Boolean(value && autocompleteSuggestions.value.length)
-    selectedIndex.value = -1
+    showAutocomplete.value = Boolean(value && suggestions.value.length)
   }
 )
-
-function updateUsername(event: Event) {
-  emit('update:username', (event.target as HTMLInputElement).value)
-}
-
-function updatePassword(event: Event) {
-  emit('update:password', (event.target as HTMLInputElement).value)
-}
 
 function updateRegisterField(field: keyof RegisterPayload, event: Event) {
   const target = event.target as HTMLInputElement | HTMLSelectElement
   emit('update:register-field', field, target.value as RegisterPayload[keyof RegisterPayload])
 }
 
-function selectSuggestion(account: SavedAccount) {
+function pickSuggestion(account: SavedAccount) {
   emit('update:username', account.username)
-  emit('update:password', '')
   showAutocomplete.value = false
-  window.setTimeout(() => {
-    document.querySelector<HTMLInputElement>('input[type="password"]')?.focus()
-  }, 80)
 }
 
-function handleKeydown(event: KeyboardEvent) {
-  if (!showAutocomplete.value) return
-  const suggestions = autocompleteSuggestions.value
-
-  if (event.key === 'ArrowDown') {
-    event.preventDefault()
-    selectedIndex.value = Math.min(selectedIndex.value + 1, suggestions.length - 1)
-  } else if (event.key === 'ArrowUp') {
-    event.preventDefault()
-    selectedIndex.value = Math.max(selectedIndex.value - 1, -1)
-  } else if (event.key === 'Enter' && selectedIndex.value >= 0) {
-    event.preventDefault()
-    const selected = suggestions[selectedIndex.value]
-    if (selected) selectSuggestion(selected)
-  } else if (event.key === 'Escape') {
+function deferHideAutocomplete() {
+  globalThis.setTimeout(() => {
     showAutocomplete.value = false
-  }
-}
-
-function handleBlur() {
-  window.setTimeout(() => {
-    showAutocomplete.value = false
-  }, 160)
-}
-
-function handleFocus() {
-  if (props.username && autocompleteSuggestions.value.length > 0) {
-    showAutocomplete.value = true
-  }
+  }, 120)
 }
 </script>
 
 <template>
   <div class="login-shell">
-    <section class="login-panel" aria-label="登录认证">
-      <div class="login-brand">
-        <h1>CTpath</h1>
-        <p>慢病辅助诊疗业务系统</p>
-        <small>基于时序知识图谱的慢病辅助诊疗工作台</small>
-      </div>
+    <div class="login-bg"></div>
+    <div class="login-overlay"></div>
 
-      <form v-if="!registerMode" class="login-form" @submit.prevent="emit('submit-login')">
-        <label class="field">
-          <span>登录账号</span>
-          <div class="auth-input-shell autocomplete-wrapper">
-            <span class="auth-input-icon">
-              <el-icon><User /></el-icon>
-            </span>
-            <input
-              :value="username"
-              type="text"
-              placeholder="请输入账号或演示账号"
-              autocomplete="off"
-              @input="updateUsername"
-              @keydown="handleKeydown"
-              @blur="handleBlur"
-              @focus="handleFocus"
-            />
-            <div v-if="showAutocomplete && autocompleteSuggestions.length" class="autocomplete-dropdown">
-              <button
-                v-for="(account, index) in autocompleteSuggestions"
-                :key="account.username"
-                type="button"
-                class="autocomplete-item"
-                :class="{ selected: index === selectedIndex }"
-                @click="selectSuggestion(account)"
-              >
-                <span class="suggestion-avatar">{{ account.name.slice(-2) }}</span>
-                <span class="suggestion-info">
-                  <strong>{{ account.name }}</strong>
-                  <small>@{{ account.username }}</small>
-                </span>
-                <span class="suggestion-role">{{ roleLabels[account.role] ?? account.role }}</span>
-              </button>
+    <main class="login-main">
+      <section class="login-card">
+        <div class="login-brand">
+          <h1>CTPATH</h1>
+          <p>慢病辅助诊疗业务系统</p>
+        </div>
+
+        <form v-if="!registerMode" class="login-form" @submit.prevent="emit('submit-login')">
+          <label class="field">
+            <span>账号</span>
+            <div class="field-shell autocomplete-shell">
+              <span class="field-icon"><el-icon><User /></el-icon></span>
+              <input
+                :value="username"
+                autocomplete="off"
+                placeholder="请输入账号"
+                type="text"
+                @blur="deferHideAutocomplete"
+                @focus="showAutocomplete = Boolean(suggestions.length)"
+                @input="emit('update:username', ($event.target as HTMLInputElement).value)"
+              />
+              <div v-if="showAutocomplete && suggestions.length" class="autocomplete-list">
+                <button
+                  v-for="item in suggestions"
+                  :key="item.username"
+                  class="autocomplete-item"
+                  type="button"
+                  @mousedown.prevent="pickSuggestion(item)"
+                >
+                  <strong>{{ item.name }}</strong>
+                  <small>@{{ item.username }}</small>
+                </button>
+              </div>
             </div>
-          </div>
-        </label>
-
-        <label class="field">
-          <span>登录密码</span>
-          <div class="auth-input-shell">
-            <span class="auth-input-icon">
-              <el-icon><Key /></el-icon>
-            </span>
-            <input :value="password" type="password" placeholder="请输入密码" @input="updatePassword" />
-          </div>
-        </label>
-
-        <div class="login-options">
-          <label class="remember-toggle">
-            <input v-model="rememberSession" type="checkbox" />
-            <span>记住账号</span>
-          </label>
-          <button type="button" class="text-link" @click="emit('toggle-register', true)">注册账号</button>
-        </div>
-
-        <p class="login-hint">演示账号：`demo_clinic`、`demo_nurse`、`demo_archivist`，统一密码：`demo123456`。</p>
-        <p v-if="loginError" class="error-text">{{ loginError }}</p>
-
-        <button class="primary-button login-submit" type="submit" :disabled="loadingLogin">
-          {{ loadingLogin ? '登录中...' : '登录系统' }}
-        </button>
-      </form>
-
-      <form v-else class="login-form" @submit.prevent="emit('submit-register')">
-        <div class="register-copy">
-          <h2>账号注册</h2>
-          <p>使用当前后端注册流程创建工作台账号。注册成功后会直接进入系统，不额外新增新的认证模块。</p>
-        </div>
-
-        <label class="field">
-          <span>账号</span>
-          <input :value="registerForm.username" type="text" placeholder="请输入登录账号" @input="updateRegisterField('username', $event)" />
-        </label>
-
-        <label class="field">
-          <span>密码</span>
-          <input :value="registerForm.password" type="password" placeholder="请设置登录密码" @input="updateRegisterField('password', $event)" />
-        </label>
-
-        <label class="field">
-          <span>姓名</span>
-          <input :value="registerForm.name" type="text" placeholder="请输入真实姓名" @input="updateRegisterField('name', $event)" />
-        </label>
-
-        <div class="register-grid">
-          <label class="field">
-            <span>角色</span>
-            <select :value="registerForm.role" @change="updateRegisterField('role', $event)">
-              <option value="doctor">医生</option>
-              <option value="nurse">护士</option>
-              <option value="archivist">档案员</option>
-            </select>
           </label>
 
           <label class="field">
-            <span>职称</span>
-            <input :value="registerForm.title" type="text" placeholder="如：主治医师" @input="updateRegisterField('title', $event)" />
+            <span>密码</span>
+            <div class="field-shell">
+              <span class="field-icon"><el-icon><Key /></el-icon></span>
+              <input
+                :value="password"
+                placeholder="请输入密码"
+                type="password"
+                @input="emit('update:password', ($event.target as HTMLInputElement).value)"
+              />
+            </div>
           </label>
+
+          <div class="login-actions-row">
+            <label class="remember">
+              <input checked type="checkbox" />
+              <span>记住账号</span>
+            </label>
+            <button class="text-link" type="button" @click="emit('toggle-register', true)">注册账号</button>
+          </div>
+
+          <p class="login-hint">演示账号：`demo_clinic / demo123456`。登录后将进入慢病辅助诊疗工作台。</p>
+          <p v-if="loginError" class="error-text">{{ loginError }}</p>
+
+          <button class="login-submit" :disabled="loadingLogin" type="submit">
+            {{ loadingLogin ? '登录中...' : '登录系统' }}
+          </button>
+        </form>
+
+        <form v-else class="login-form" @submit.prevent="emit('submit-register')">
+          <div class="register-copy">
+            <h2>注册账号</h2>
+            <p>沿用当前系统已有注册流程，为毕设演示补齐真实注册入口，不新增第二套认证逻辑。</p>
+          </div>
+
+          <label class="field">
+            <span>账号</span>
+            <input :value="registerForm.username" placeholder="请输入账号" type="text" @input="updateRegisterField('username', $event)" />
+          </label>
+          <label class="field">
+            <span>密码</span>
+            <input :value="registerForm.password" placeholder="请输入密码" type="password" @input="updateRegisterField('password', $event)" />
+          </label>
+          <label class="field">
+            <span>姓名</span>
+            <input :value="registerForm.name" placeholder="请输入姓名" type="text" @input="updateRegisterField('name', $event)" />
+          </label>
+
+          <div class="register-grid">
+            <label class="field">
+              <span>角色</span>
+              <select :value="registerForm.role" @change="updateRegisterField('role', $event)">
+                <option value="doctor">医生</option>
+                <option value="nurse">护士</option>
+                <option value="archivist">档案员</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>职称</span>
+              <input :value="registerForm.title" placeholder="请输入职称" type="text" @input="updateRegisterField('title', $event)" />
+            </label>
+          </div>
+
+          <label class="field">
+            <span>科室</span>
+            <input :value="registerForm.department" placeholder="请输入科室" type="text" @input="updateRegisterField('department', $event)" />
+          </label>
+
+          <p v-if="registerError" class="error-text">{{ registerError }}</p>
+
+          <button class="login-submit" :disabled="loadingRegister" type="submit">
+            {{ loadingRegister ? '注册中...' : '完成注册' }}
+          </button>
+          <button class="text-link align-left" type="button" @click="emit('toggle-register', false)">返回登录</button>
+        </form>
+
+        <div class="login-legal">
+          <p>系统仅用于慢病辅助诊疗业务展示和答辩演示，不覆盖完整 HIS 全流程。</p>
         </div>
+      </section>
+    </main>
 
-        <label class="field">
-          <span>科室</span>
-          <input :value="registerForm.department" type="text" placeholder="如：慢病门诊" @input="updateRegisterField('department', $event)" />
-        </label>
-
-        <p v-if="registerError" class="error-text">{{ registerError }}</p>
-
-        <button class="primary-button login-submit" type="submit" :disabled="loadingRegister">
-          {{ loadingRegister ? '提交中...' : '提交注册' }}
-        </button>
-
-        <button type="button" class="text-link align-left" @click="emit('toggle-register', false)">返回登录</button>
-      </form>
-    </section>
-
-    <footer class="login-system-bar" aria-label="系统状态">
-      <span>系统在线</span>
-      <div class="meta-row">
+    <footer class="login-footer">
+      <div class="footer-left">
+        <span class="footer-dot"></span>
+        <span>系统状态</span>
+      </div>
+      <div class="footer-right">
         <span>{{ systemStatus.mode }}</span>
         <span>{{ systemStatus.model }}</span>
         <span>{{ systemStatus.db }}</span>
@@ -255,39 +208,70 @@ function handleFocus() {
 </template>
 
 <style scoped>
-.login-panel {
+.login-shell {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+}
+
+.login-bg,
+.login-overlay {
+  position: absolute;
+  inset: 0;
+}
+
+.login-bg {
+  background:
+    radial-gradient(circle at top left, rgba(140, 210, 215, 0.28), transparent 38%),
+    radial-gradient(circle at bottom right, rgba(76, 97, 108, 0.16), transparent 32%),
+    linear-gradient(180deg, rgba(247, 250, 251, 0.92), rgba(235, 238, 239, 0.98));
+}
+
+.login-overlay {
+  background: linear-gradient(180deg, rgba(247, 250, 251, 0.82), rgba(235, 238, 239, 0.94));
+}
+
+.login-main {
   position: relative;
   z-index: 1;
-  width: min(560px, calc(100vw - 48px));
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.login-card {
+  width: min(520px, calc(100vw - 48px));
   display: grid;
   gap: 28px;
-  padding: 56px 48px 42px;
+  border-radius: 16px;
+  background: #fff;
+  padding: 40px;
+  box-shadow: 0 12px 32px -4px rgba(24, 28, 29, 0.06);
 }
 
 .login-brand {
-  display: grid;
-  justify-items: center;
-  gap: 8px;
   text-align: center;
 }
 
 .login-brand h1 {
-  font-size: clamp(48px, 7vw, 72px);
-  color: var(--ws-primary);
+  margin: 0;
+  color: #004347;
+  font-size: clamp(52px, 7vw, 74px);
+  font-weight: 800;
+  letter-spacing: -0.04em;
 }
 
 .login-brand p {
-  margin: 0;
-  font-family: var(--ws-font-headline);
-  font-size: 14px;
-  letter-spacing: 0.14em;
+  margin: 6px 0 0;
+  color: #3f4849;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-}
-
-.login-brand small {
-  color: rgba(63, 72, 73, 0.78);
-  font-size: 13px;
-  line-height: 1.6;
 }
 
 .login-form {
@@ -301,144 +285,107 @@ function handleFocus() {
 }
 
 .field span {
-  font-family: var(--ws-font-headline);
+  color: #181c1d;
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
-.auth-input-shell {
-  position: relative;
-}
-
-.auth-input-shell input {
-  padding-left: 54px;
-}
-
-.login-form input,
-.login-form select,
-.login-form textarea {
+.field-shell,
+.field :deep(input),
+.field :deep(select) {
   width: 100%;
 }
 
-.auth-input-icon {
-  position: absolute;
-  top: 50%;
-  left: 18px;
-  transform: translateY(-50%);
-  color: rgba(24, 28, 29, 0.48);
-  font-size: 18px;
+.field :deep(input),
+.field :deep(select) {
+  border: 0;
+  border-bottom: 1px solid rgba(190, 200, 201, 0.45);
+  border-radius: 4px 4px 0 0;
+  background: #f1f4f5;
+  padding: 12px 14px;
+  min-height: 48px;
+  color: #181c1d;
 }
 
-.autocomplete-wrapper {
+.field-shell {
   position: relative;
 }
 
-.autocomplete-dropdown {
+.field-shell :deep(input) {
+  padding-left: 46px;
+}
+
+.field-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #6f797a;
+  z-index: 1;
+}
+
+.autocomplete-shell {
+  position: relative;
+}
+
+.autocomplete-list {
   position: absolute;
   top: calc(100% + 8px);
   left: 0;
   right: 0;
   z-index: 4;
   display: grid;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.98);
-  box-shadow: var(--ws-shadow-card);
+  gap: 0;
   overflow: hidden;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 12px 32px -4px rgba(24, 28, 29, 0.1);
 }
 
 .autocomplete-item {
-  display: grid;
-  grid-template-columns: 42px minmax(0, 1fr) auto;
-  gap: 12px;
-  align-items: center;
-  padding: 14px 16px;
   border: 0;
   background: transparent;
+  padding: 12px 14px;
   text-align: left;
 }
 
-.autocomplete-item:hover,
-.autocomplete-item.selected {
-  background: rgba(207, 230, 242, 0.45);
+.autocomplete-item:hover {
+  background: #f1f4f5;
 }
 
-.suggestion-avatar {
-  width: 42px;
-  height: 42px;
-  display: grid;
-  place-items: center;
-  border-radius: 12px;
-  background: linear-gradient(135deg, var(--ws-primary), var(--ws-primary-container));
-  color: white;
-  font-weight: 700;
+.autocomplete-item strong {
+  display: block;
 }
 
-.suggestion-info {
-  min-width: 0;
-  display: grid;
+.autocomplete-item small {
+  color: #526772;
 }
 
-.suggestion-info strong,
-.suggestion-info small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.suggestion-info small,
-.suggestion-role {
-  color: rgba(63, 72, 73, 0.72);
-  font-size: 12px;
-}
-
-.suggestion-role {
-  font-weight: 700;
-}
-
-.login-options {
+.login-actions-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
 
-.remember-toggle {
+.remember {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  color: rgba(24, 28, 29, 0.82);
-}
-
-.remember-toggle input {
-  width: 20px;
-  min-height: 20px;
-  height: 20px;
-  padding: 0;
-}
-
-.text-link {
-  border: 0;
-  background: transparent;
-  color: var(--ws-primary);
-  font-weight: 700;
+  gap: 8px;
+  color: #526772;
 }
 
 .login-hint,
 .register-copy p {
   margin: 0;
-  color: rgba(63, 72, 73, 0.76);
-  line-height: 1.65;
-}
-
-.register-copy {
-  display: grid;
-  gap: 10px;
+  color: #526772;
+  line-height: 1.6;
 }
 
 .register-copy h2 {
-  font-size: 28px;
+  margin: 0 0 8px;
 }
 
 .register-grid {
@@ -449,29 +396,87 @@ function handleFocus() {
 
 .error-text {
   margin: 0;
-  padding: 14px 16px;
-  border-radius: 14px;
-  background: rgba(255, 218, 214, 0.9);
-  color: var(--ws-error);
+  border-radius: 12px;
+  background: #ffdad6;
+  padding: 12px 14px;
+  color: #93000a;
   font-weight: 700;
 }
 
 .login-submit {
-  width: 100%;
+  border: 0;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #004347 0%, #005c61 100%);
+  min-height: 48px;
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.text-link {
+  border: 0;
+  background: transparent;
+  color: #004347;
+  font-weight: 700;
 }
 
 .align-left {
   justify-self: start;
 }
 
+.login-legal {
+  border-top: 1px solid rgba(190, 200, 201, 0.18);
+  padding-top: 16px;
+  text-align: center;
+}
+
+.login-legal p {
+  margin: 0;
+  color: rgba(63, 72, 73, 0.72);
+  font-size: 12px;
+}
+
+.login-footer {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  background: #f1f4f5;
+  padding: 12px 24px;
+}
+
+.footer-left,
+.footer-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  color: #526772;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.footer-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #004347;
+  box-shadow: 0 0 0 6px rgba(0, 67, 71, 0.1);
+}
+
 @media (max-width: 720px) {
-  .login-panel {
+  .login-card {
     width: 100%;
-    padding: 36px 24px 28px;
+    padding: 28px 22px;
   }
 
-  .login-options,
-  .register-grid {
+  .register-grid,
+  .login-footer {
+    grid-template-columns: 1fr;
     display: grid;
   }
 }

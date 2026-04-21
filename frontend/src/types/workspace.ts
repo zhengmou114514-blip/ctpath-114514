@@ -4,6 +4,7 @@ export type AppSection =
   | 'drug-management'
   | 'drug-permission-management'
   | 'tasks'
+  | 'model-operations'
   | 'training-center'
   | 'governance'
   | 'model-dashboard'

@@ -47,7 +47,7 @@ const keyword = ref('')
 const selectedTaskKey = ref('')
 const contactMethod = ref<ContactMethod>('call')
 const contactOutcome = ref<ContactOutcome>('reached')
-const clinicalNotes = ref('已在随访工作台记录本次患者联系情况。')
+const clinicalNotes = ref('请记录联系结果、患者反馈与下一次随访计划。')
 const localState = reactive<Record<string, LocalTaskState>>({})
 
 function taskKey(item: FollowupTaskRow): string {
@@ -102,7 +102,7 @@ function ensureState(item: FollowupTaskRow): LocalTaskState {
       history: [
         {
           id: `${key}-init`,
-          label: '任务加载',
+          label: '任务生成',
           status: item.status,
           at: initialAt,
           note: `来源：${item.source}`,
@@ -160,8 +160,8 @@ const boardColumns = computed(() => {
   const completed = filteredTasks.value.filter((item) => item.completed)
 
   return [
-    { key: 'pending', label: '待处理', accent: 'accent-danger', items: pending },
-    { key: 'progress', label: '处理中', accent: 'accent-info', items: inProgress },
+    { key: 'pending', label: '待联系', accent: 'accent-danger', items: pending },
+    { key: 'progress', label: '跟进中', accent: 'accent-info', items: inProgress },
     { key: 'completed', label: '已完成', accent: 'accent-success', items: completed },
   ]
 })
@@ -192,30 +192,30 @@ function submitContact(item: FollowupTaskRow, result: ContactLogCreatePayload['c
   emit('submit-contact-log', { patientId: item.patientId, payload })
 }
 
-function markReached(item: FollowupTaskRow, note = '本次随访已联系到患者。') {
+function markReached(item: FollowupTaskRow, note = '已联系到患者，并同步了当前健康状态。') {
   const state = ensureState(item)
   state.unreached = false
   state.needsReview = false
-  appendHistory(item, '已联系患者', 'Contacted', note)
+  appendHistory(item, '联系成功', 'Contacted', note)
   submitContact(item, 'reached', note, state.nextFollowupDate)
 }
 
-function markUnreached(item: FollowupTaskRow, note = '本次未接通，需再次联系。') {
+function markUnreached(item: FollowupTaskRow, note = '本次未联系到患者，建议在下一时间窗继续联系。') {
   const state = ensureState(item)
   state.unreached = true
-  appendHistory(item, '联系未果', 'Unreached', note)
+  appendHistory(item, '联系未达', 'Unreached', note)
   submitContact(item, 'missed', note, state.nextFollowupDate)
 }
 
-function markNeedReview(item: FollowupTaskRow, note = '根据随访情况需医生进一步复核。') {
+function markNeedReview(item: FollowupTaskRow, note = '存在异常情况，已标记为需要医生进一步复核。') {
   const state = ensureState(item)
   state.needsReview = true
-  appendHistory(item, '需要医生复核', 'Need Review', note)
+  appendHistory(item, '升级复核', 'Need Review', note)
   submitContact(item, 'urgent', note, state.nextFollowupDate)
 }
 
 function markCompleted(item: FollowupTaskRow) {
-  appendHistory(item, '已完成任务', 'Completed', '本轮随访已完成。')
+  appendHistory(item, '随访完成', 'Completed', '本次随访已完成并闭环。')
   const current = localState[taskKey(item)]
   if (current) {
     current.unreached = false
@@ -227,7 +227,7 @@ function markCompleted(item: FollowupTaskRow) {
 }
 
 function markClosed(item: FollowupTaskRow) {
-  appendHistory(item, '已关闭任务', 'Closed', '任务已由随访人员关闭。')
+  appendHistory(item, '任务关闭', 'Closed', '任务已关闭，不再继续本轮随访。')
   const current = localState[taskKey(item)]
   if (current) {
     current.unreached = false
@@ -240,7 +240,7 @@ function markClosed(item: FollowupTaskRow) {
 
 function saveContactEntry() {
   if (!selectedTask.value) return
-  const note = clinicalNotes.value.trim() || '已在慢病随访工作台保存联系记录。'
+  const note = clinicalNotes.value.trim() || '已补充本次联系记录。'
 
   if (contactOutcome.value === 'missed') {
     markUnreached(selectedTask.value, note)
@@ -276,7 +276,7 @@ watch(
 
 watch(selectedTask, (task) => {
   if (!task) return
-  clinicalNotes.value = `${task.patientName}：${task.taskType}。`
+  clinicalNotes.value = `${task.patientName}：${task.taskType}`
   contactOutcome.value = task.unreached ? 'missed' : task.needsReview ? 'urgent' : 'reached'
 })
 </script>
@@ -287,27 +287,27 @@ watch(selectedTask, (task) => {
       <div>
         <p class="eyebrow">随访工作台</p>
         <h2>随访账本</h2>
-        <p>集中处理当前患者联系、记录与任务闭环。</p>
+        <p>延续 Stitch 的左右结构：左侧聚焦待随访任务，右侧专门录入联系记录，不把患者详情和模型训练混进来。</p>
       </div>
 
       <div class="followup-filters">
-        <input v-model="keyword" type="text" placeholder="搜索患者姓名或主病种..." />
+        <input v-model="keyword" type="text" placeholder="搜索患者编号、姓名或任务类型..." />
         <select v-model="riskFilter">
-          <option value="all">全部风险等级</option>
+          <option value="all">全部风险</option>
           <option value="high">高风险</option>
           <option value="medium">中风险</option>
           <option value="low">低风险</option>
         </select>
         <select v-model="dateFilter">
           <option value="all">全部日期</option>
-          <option value="today">今日到期</option>
+          <option value="today">今天到期</option>
           <option value="overdue">已逾期</option>
           <option value="next7">未来 7 天</option>
         </select>
       </div>
     </div>
 
-    <div v-if="loading" class="empty-state-card">正在加载随访账本...</div>
+    <div v-if="loading" class="empty-state-card">正在载入随访账本...</div>
     <div v-else-if="!filteredTasks.length" class="empty-state-card">当前筛选条件下没有随访任务。</div>
 
     <section v-else class="followup-ledger-layout">
@@ -336,11 +336,11 @@ watch(selectedTask, (task) => {
               </div>
               <p class="ledger-card-copy">{{ item.primaryDisease }} / {{ item.patientId }}</p>
               <div class="ledger-card-meta">
-                <span>最近联系</span>
-                <strong>{{ item.lastActionAt ? formatDateTime(item.lastActionAt) : '暂无记录' }}</strong>
+                <span>最近动作</span>
+                <strong>{{ item.lastActionAt ? formatDateTime(item.lastActionAt) : '暂无' }}</strong>
               </div>
               <div class="ledger-card-meta">
-                <span>下次计划</span>
+                <span>下次随访</span>
                 <strong>{{ item.nextFollowupDate || item.dueDate }}</strong>
               </div>
             </article>
@@ -377,7 +377,7 @@ watch(selectedTask, (task) => {
                 type="button"
                 @click="contactMethod = 'message'"
               >
-                消息
+                微信
               </button>
             </div>
           </div>
@@ -385,16 +385,16 @@ watch(selectedTask, (task) => {
           <label class="entry-field">
             <span>联系结果</span>
             <select v-model="contactOutcome">
-              <option value="reached">已联系患者</option>
-              <option value="scheduled">已约定随访</option>
-              <option value="missed">无人接听</option>
+              <option value="reached">已联系到患者</option>
+              <option value="scheduled">已预约下次随访</option>
+              <option value="missed">未联系到患者</option>
               <option value="urgent">需要医生复核</option>
             </select>
           </label>
 
           <label class="entry-field">
             <span>临床备注</span>
-            <textarea v-model="clinicalNotes" placeholder="请输入联系情况、症状变化或后续安排..." />
+            <textarea v-model="clinicalNotes" placeholder="记录联系结果、依从性、症状变化和后续计划..." />
           </label>
 
           <div class="contact-entry-footer">
@@ -406,12 +406,12 @@ watch(selectedTask, (task) => {
 
           <div class="contact-entry-actions">
             <button class="text-link" type="button" @click="emit('open-patient', selectedTask.patientId)">打开患者详情</button>
-            <button class="text-link" type="button" @click="markCompleted(selectedTask)">完成任务</button>
+            <button class="text-link" type="button" @click="markCompleted(selectedTask)">完成随访</button>
             <button class="text-link" type="button" @click="markClosed(selectedTask)">关闭任务</button>
           </div>
         </template>
 
-        <div v-else class="empty-state-card compact-empty">请选择一条随访任务后再录入联系记录。</div>
+        <div v-else class="empty-state-card compact-empty">请先从左侧账本中选择一条随访任务。</div>
       </aside>
     </section>
   </section>

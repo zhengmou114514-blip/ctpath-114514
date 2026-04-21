@@ -16,15 +16,13 @@ const board = computed(() =>
 )
 
 const modelHealth = computed(() => {
-  if (!workspace.health) return { label: '状态待确认', type: 'info' as const }
+  if (!workspace.health) return { label: '状态待加载', type: 'info' as const }
   if (workspace.health.model_available) return { label: '模型可用', type: 'success' as const }
   if (workspace.health.model_error) return { label: '降级运行', type: 'warning' as const }
   return { label: '模型不可用', type: 'danger' as const }
 })
 
-const loading = computed(() =>
-  workspace.loadingModelMetrics || workspace.loadingMaintenance || workspace.loadingGovernance
-)
+const loading = computed(() => workspace.loadingModelMetrics || workspace.loadingMaintenance || workspace.loadingGovernance)
 
 function formatPercent(value: number | null | undefined) {
   if (value === null || value === undefined || Number.isNaN(value)) return '--'
@@ -32,7 +30,7 @@ function formatPercent(value: number | null | undefined) {
 }
 
 function formatDateTime(value: string | undefined) {
-  if (!value) return '--'
+  if (!value || value === '--') return '--'
   return value.replace('T', ' ').slice(0, 16)
 }
 
@@ -43,6 +41,11 @@ function handleRefresh() {
 function handleOpenTrainingCenter() {
   workspace.selectSection('training-center')
   void router.push({ name: 'training-center' })
+}
+
+function handleOpenOperations() {
+  workspace.selectSection('model-operations')
+  void router.push({ name: 'model-operations' })
 }
 
 onMounted(() => {
@@ -59,71 +62,75 @@ onMounted(() => {
       <div>
         <p class="eyebrow">模型中心</p>
         <h1>模型看板</h1>
-        <p>面向模型治理与监控，集中展示当前版本、最近训练、指标表现、回退比例与模型健康状态。</p>
+        <p>这里只承接模型治理和监控信息，不展示当前患者详情。模型运营台和训练中心通过独立入口查看。</p>
       </div>
       <div class="header-actions">
-        <el-button @click="handleOpenTrainingCenter">进入训练中心</el-button>
-        <el-button type="primary" :loading="loading" @click="handleRefresh">刷新看板</el-button>
+        <button class="secondary-button" type="button" @click="handleOpenOperations">进入模型运营台</button>
+        <button class="secondary-button" type="button" @click="handleOpenTrainingCenter">进入训练中心</button>
+        <button class="primary-button" type="button" :disabled="loading" @click="handleRefresh">刷新看板</button>
       </div>
     </header>
 
-    <el-card shadow="never" class="module-card">
-      <el-alert
-        v-if="workspace.health?.model_error"
-        :title="workspace.health.model_error"
-        type="warning"
-        show-icon
-        :closable="false"
-        class="module-alert"
-      />
+    <section class="metric-grid">
+      <article class="clinical-card metric-card">
+        <span>模型版本</span>
+        <strong>{{ board.currentModelVersion }}</strong>
+        <small>{{ board.currentModelName }}</small>
+      </article>
+      <article class="clinical-card metric-card">
+        <span>最近训练</span>
+        <strong>{{ formatDateTime(board.recentTrainingTime) }}</strong>
+        <small>最新任务状态：{{ board.recentTrainingTaskStatus }}</small>
+      </article>
+      <article class="clinical-card metric-card">
+        <span>模型健康</span>
+        <strong>{{ modelHealth.label }}</strong>
+        <small>运行模式：{{ workspace.health?.mode ?? '--' }}</small>
+      </article>
+      <article class="clinical-card metric-card">
+        <span>数据覆盖率</span>
+        <strong>{{ formatPercent(board.datasetCoverage) }}</strong>
+        <small>按训练数据集规模估算</small>
+      </article>
+    </section>
 
-      <el-row :gutter="12" class="summary-row">
-        <el-col :xs="24" :sm="8">
-          <el-statistic title="当前模型版本" :value="board.currentModelVersion" />
-        </el-col>
-        <el-col :xs="24" :sm="8">
-          <el-statistic title="最近训练时间" :value="formatDateTime(board.recentTrainingTime)" />
-        </el-col>
-        <el-col :xs="24" :sm="8">
-          <div class="health-card">
-            <span>模型服务状态</span>
-            <el-tag :type="modelHealth.type" effect="light">{{ modelHealth.label }}</el-tag>
-            <small>当前运行模式：{{ workspace.health?.mode ?? '--' }}</small>
+    <section class="performance-grid">
+      <article class="clinical-card performance-card">
+        <p class="eyebrow">核心指标</p>
+        <div class="performance-list">
+          <div>
+            <span>MRR</span>
+            <strong>{{ formatPercent(board.mrr) }}</strong>
           </div>
-        </el-col>
-      </el-row>
-    </el-card>
-
-    <el-skeleton v-if="loading" :rows="8" animated />
-
-    <template v-else>
-      <section class="metric-grid">
-        <el-card shadow="never" class="metric-card"><span>MRR</span><strong>{{ formatPercent(board.mrr) }}</strong></el-card>
-        <el-card shadow="never" class="metric-card"><span>Hits@1</span><strong>{{ formatPercent(board.hits1) }}</strong></el-card>
-        <el-card shadow="never" class="metric-card"><span>Hits@10</span><strong>{{ formatPercent(board.hits10) }}</strong></el-card>
-        <el-card shadow="never" class="metric-card"><span>近七日调用量</span><strong>{{ board.recentInferenceCalls ?? '--' }}</strong></el-card>
-        <el-card shadow="never" class="metric-card"><span>模型回退比例</span><strong>{{ formatPercent(board.fallbackRatio) }}</strong></el-card>
-        <el-card shadow="never" class="metric-card"><span>最近任务状态</span><strong>{{ board.recentTrainingTaskStatus || '--' }}</strong></el-card>
-      </section>
-
-      <el-card shadow="never" class="module-card">
-        <template #header>
-          <div class="section-header">
-            <h3>版本与运行信息</h3>
-            <el-tag :type="modelHealth.type">{{ modelHealth.label }}</el-tag>
+          <div>
+            <span>Hits@1</span>
+            <strong>{{ formatPercent(board.hits1) }}</strong>
           </div>
-        </template>
+          <div>
+            <span>Hits@10</span>
+            <strong>{{ formatPercent(board.hits10) }}</strong>
+          </div>
+        </div>
+      </article>
 
-        <el-descriptions :column="2" border>
-          <el-descriptions-item label="当前模型">{{ board.currentModelName }}</el-descriptions-item>
-          <el-descriptions-item label="版本号">{{ board.currentModelVersion }}</el-descriptions-item>
-          <el-descriptions-item label="数据覆盖率">{{ formatPercent(board.datasetCoverage) }}</el-descriptions-item>
-          <el-descriptions-item label="最近训练时间">{{ formatDateTime(board.recentTrainingTime) }}</el-descriptions-item>
-          <el-descriptions-item label="运行模式">{{ workspace.health?.mode ?? '--' }}</el-descriptions-item>
-          <el-descriptions-item label="服务患者数">{{ workspace.allPatients.length }}</el-descriptions-item>
-        </el-descriptions>
-      </el-card>
-    </template>
+      <article class="clinical-card performance-card">
+        <p class="eyebrow">运行概况</p>
+        <div class="performance-list">
+          <div>
+            <span>近 7 天调用量</span>
+            <strong>{{ board.recentInferenceCalls ?? '--' }}</strong>
+          </div>
+          <div>
+            <span>回退比例</span>
+            <strong>{{ formatPercent(board.fallbackRatio) }}</strong>
+          </div>
+          <div>
+            <span>患者规模</span>
+            <strong>{{ workspace.allPatients.length }}</strong>
+          </div>
+        </div>
+      </article>
+    </section>
   </section>
 </template>
 
@@ -133,64 +140,56 @@ onMounted(() => {
   gap: 24px;
 }
 
-.module-card,
-.metric-card {
-  border-radius: 8px;
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
 }
 
-.section-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+.metric-card,
+.performance-card {
+  display: grid;
   gap: 12px;
 }
 
-.section-header h3 {
-  margin: 0;
-}
-
-.module-alert,
-.summary-row {
-  margin-top: 14px;
-}
-
-.health-card,
-.metric-card {
-  display: grid;
-  gap: 8px;
-}
-
-.health-card {
-  border: 1px solid var(--ws-border);
-  border-radius: 8px;
-  padding: 12px;
-}
-
-.health-card span,
-.health-card small,
-.metric-card span {
-  color: var(--ws-text-muted);
-  font-size: 12px;
-}
-
-.metric-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 24px;
+.metric-card span,
+.metric-card small,
+.performance-card span {
+  color: rgba(63, 72, 73, 0.74);
 }
 
 .metric-card strong {
-  color: var(--ws-title);
-  font-size: 24px;
+  font-size: clamp(24px, 4vw, 34px);
 }
 
-@media (max-width: 960px) {
-  .metric-grid {
-    grid-template-columns: 1fr;
-  }
+.performance-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
 
-  .section-header {
-    display: grid;
+.performance-list {
+  display: grid;
+  gap: 14px;
+}
+
+.performance-list div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(190, 200, 201, 0.45);
+}
+
+.performance-list strong {
+  font-size: 20px;
+}
+
+@media (max-width: 1180px) {
+  .metric-grid,
+  .performance-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

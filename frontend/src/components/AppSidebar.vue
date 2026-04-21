@@ -1,16 +1,15 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import {
-  FolderOpened,
-  Grid,
   DataAnalysis,
   Document,
+  FolderOpened,
+  Grid,
   Memo,
   Operation,
   SetUp,
   SwitchButton,
   Tickets,
-  UserFilled,
 } from '@element-plus/icons-vue'
 import { ROLE_WORKSPACE_MENUS } from '../config/workspaceMenu'
 import type { DoctorUser, HealthResponse } from '../services/types'
@@ -29,23 +28,7 @@ const emit = defineEmits<{
   (e: 'logout'): void
 }>()
 
-const menuLabelMap: Record<AppSection, string> = {
-  doctor: '医生工作台',
-  archive: '患者档案',
-  tasks: '患者管理',
-  contacts: '联系记录',
-  flow: '随访流程',
-  insights: '模型洞察',
-  'model-dashboard': '模型看板',
-  'training-center': '训练中心',
-  governance: '治理看板',
-  'data-quality': '数据质量',
-  'drug-management': '药品管理',
-  'drug-permission-management': '药品权限',
-  system: '系统中心',
-}
-
-const menuIconMap: Record<AppSection, object> = {
+const iconMap: Record<AppSection, object> = {
   doctor: Grid,
   archive: Document,
   tasks: Memo,
@@ -53,6 +36,7 @@ const menuIconMap: Record<AppSection, object> = {
   flow: FolderOpened,
   insights: DataAnalysis,
   'model-dashboard': DataAnalysis,
+  'model-operations': DataAnalysis,
   'training-center': DataAnalysis,
   governance: FolderOpened,
   'data-quality': Document,
@@ -61,260 +45,192 @@ const menuIconMap: Record<AppSection, object> = {
   system: SetUp,
 }
 
-const navItems = computed(() => {
-  const items = ROLE_WORKSPACE_MENUS[props.doctor.role] ?? []
-  const seen = new Set<string>()
-  return items.filter((item) => {
-    const dedupeKey =
-      props.doctor.role === 'doctor' && item.section === 'archive'
-        ? 'patient-management'
-        : props.doctor.role === 'nurse' && (item.section === 'tasks' || item.section === 'contacts' || item.section === 'flow')
-          ? item.section
-          : item.section
-
-    if (seen.has(dedupeKey)) return false
-    seen.add(dedupeKey)
-    return true
-  })
-})
-
-const sidebarMeta = computed(() => ({
-  mode: `${(props.health?.mode ?? 'demo').toUpperCase()}/MYSQL 模式`,
-  identity: props.doctor.name,
-  department: props.doctor.department,
-}))
-
-function labelFor(section: AppSection) {
-  if (props.doctor.role === 'doctor' && section === 'archive') return '患者档案'
-  if (props.doctor.role === 'doctor' && section === 'insights') return '模型洞察'
-  return menuLabelMap[section] ?? section
-}
-
-function iconFor(section: AppSection) {
-  if (props.doctor.role === 'doctor' && section === 'archive') return UserFilled
-  if (props.doctor.role === 'doctor' && section === 'insights') return DataAnalysis
-  return menuIconMap[section] ?? Grid
-}
+const navItems = computed(() => ROLE_WORKSPACE_MENUS[props.doctor.role] ?? [])
+const modeLabel = computed(() => `${String(props.health?.mode ?? 'demo').toUpperCase()} / MYSQL`)
 </script>
 
 <template>
-  <aside class="workstation-sidebar" aria-label="主导航">
-    <div class="brand-panel sidebar-brand">
-      <div class="brand-mark">C</div>
-      <div class="brand-copy">
-        <strong>CTpath</strong>
-        <span>慢病辅助诊疗业务系统</span>
-      </div>
+  <aside class="stitch-sidenav">
+    <div class="sidenav-brand">
+      <h1>CTPATH</h1>
+      <p>慢病辅助诊疗工作站</p>
     </div>
 
-    <div class="sidebar-session-card">
-      <span class="workspace-status-pill">{{ sidebarMeta.mode }}</span>
-      <div class="sidebar-user">
-        <div class="sidebar-avatar">{{ doctor.name.slice(-1) }}</div>
+    <div class="sidenav-meta">
+      <span class="meta-pill">{{ modeLabel }}</span>
+      <div class="meta-user">
+        <div class="meta-avatar">{{ doctor.name.slice(-1) }}</div>
         <div>
-          <strong>{{ sidebarMeta.identity }}</strong>
-          <p>{{ sidebarMeta.department }}</p>
+          <strong>{{ doctor.name }}</strong>
+          <small>{{ doctor.department }}</small>
         </div>
       </div>
-      <div class="sidebar-counters">
-        <article>
-          <span>在管患者</span>
-          <strong>{{ patientCount }}</strong>
-        </article>
-        <article>
-          <span>待随访</span>
-          <strong>{{ followupCount }}</strong>
-        </article>
+      <div class="meta-stats">
+        <span>患者 {{ patientCount }}</span>
+        <span>随访 {{ followupCount }}</span>
       </div>
     </div>
 
-    <nav class="sidebar-nav">
+    <nav class="sidenav-menu">
       <button
         v-for="item in navItems"
         :key="item.section"
-        class="nav-item stitch-nav-item"
+        class="sidenav-item"
         :class="{ active: item.section === activeSection }"
         type="button"
         @click="emit('select', item.section)"
       >
-        <span class="nav-item-icon">
-          <el-icon><component :is="iconFor(item.section)" /></el-icon>
-        </span>
-        <span>{{ labelFor(item.section) }}</span>
+        <el-icon><component :is="iconMap[item.section]" /></el-icon>
+        <span>{{ item.label }}</span>
       </button>
     </nav>
 
-    <div class="sidebar-footer">
-      <button class="sidebar-button ghost sidebar-logout" type="button" @click="emit('logout')">
-        <el-icon><SwitchButton /></el-icon>
-        <span>退出登录</span>
-      </button>
-    </div>
+    <button class="sidenav-logout" type="button" @click="emit('logout')">
+      <el-icon><SwitchButton /></el-icon>
+      <span>退出登录</span>
+    </button>
   </aside>
 </template>
 
 <style scoped>
-.sidebar-brand {
-  padding: 8px 12px 0;
+.stitch-sidenav {
+  position: sticky;
+  top: 0;
+  display: flex;
+  min-height: 100vh;
+  width: 288px;
+  flex-direction: column;
+  gap: 24px;
+  padding: 32px 16px;
+  background: #ebeeef;
 }
 
-.brand-copy {
+.sidenav-brand {
+  padding: 0 16px;
+}
+
+.sidenav-brand h1 {
+  margin: 0;
+  color: #004347;
+  font-family: var(--ws-font-headline);
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+}
+
+.sidenav-brand p {
+  margin: 6px 0 0;
+  color: #004347;
+  font-family: var(--ws-font-headline);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.sidenav-meta {
+  display: grid;
+  gap: 14px;
+  padding: 0 16px;
+}
+
+.meta-pill {
+  display: inline-flex;
+  width: fit-content;
+  border-radius: 999px;
+  background: #f1f4f5;
+  padding: 6px 12px;
+  color: #3f4849;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.meta-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.meta-avatar {
+  display: grid;
+  height: 42px;
+  width: 42px;
+  place-items: center;
+  border-radius: 999px;
+  background: #005c61;
+  color: #fff;
+  font-family: var(--ws-font-headline);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.meta-user strong {
+  display: block;
+  color: #181c1d;
+}
+
+.meta-user small {
+  color: #526772;
+}
+
+.meta-stats {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  color: #526772;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.sidenav-menu {
   display: grid;
   gap: 4px;
 }
 
-.brand-copy strong {
-  font-family: var(--ws-font-headline);
-  font-size: 28px;
-  letter-spacing: 0.12em;
-  color: var(--ws-primary);
-}
-
-.brand-copy span {
-  color: rgba(24, 28, 29, 0.78);
-  font-family: var(--ws-font-headline);
-  font-size: 13px;
-  letter-spacing: 0.04em;
-}
-
-.brand-mark {
-  width: 48px;
-  height: 48px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, var(--ws-primary), var(--ws-primary-container));
-}
-
-.sidebar-session-card {
-  display: grid;
-  gap: 18px;
-  padding: 0 12px;
-}
-
-.sidebar-user {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.sidebar-avatar {
-  width: 44px;
-  height: 44px;
-  display: grid;
-  place-items: center;
-  border-radius: 14px;
-  background: rgba(207, 230, 242, 0.7);
-  color: var(--ws-primary);
-  font-family: var(--ws-font-headline);
-  font-size: 22px;
-  font-weight: 700;
-}
-
-.sidebar-user strong {
-  display: block;
-  font-family: var(--ws-font-headline);
-  font-size: 18px;
-}
-
-.sidebar-user p {
-  margin: 4px 0 0;
-  color: rgba(63, 72, 73, 0.74);
-}
-
-.sidebar-counters {
-  display: grid;
-  gap: 10px;
-}
-
-.sidebar-counters article {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 14px 16px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.65);
-  box-shadow: inset 0 0 0 1px rgba(190, 200, 201, 0.6);
-}
-
-.sidebar-counters span {
-  color: rgba(24, 28, 29, 0.68);
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-}
-
-.sidebar-counters strong {
-  font-family: var(--ws-font-headline);
-  font-size: 26px;
-  color: var(--ws-primary);
-}
-
-.sidebar-nav {
-  display: grid;
-  gap: 8px;
-  align-content: start;
-}
-
-.stitch-nav-item {
+.sidenav-item {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 16px;
-  min-height: 58px;
-  padding: 0 18px;
-  border-radius: 0;
-  color: rgba(24, 28, 29, 0.62);
+  gap: 14px;
+  min-height: 52px;
+  border: 0;
+  background: transparent;
+  padding: 0 20px;
+  color: #3f4849;
   font-family: var(--ws-font-headline);
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: left;
 }
 
-.stitch-nav-item:hover,
-.stitch-nav-item.active {
-  background: rgba(255, 255, 255, 0.72);
-  color: var(--ws-primary);
+.sidenav-item.active {
+  background: rgba(241, 244, 245, 0.8);
+  color: #004347;
 }
 
-.stitch-nav-item.active::after {
+.sidenav-item.active::after {
   content: '';
   position: absolute;
   top: 8px;
   right: 0;
   bottom: 8px;
   width: 4px;
-  border-radius: 999px;
-  background: linear-gradient(180deg, var(--ws-primary), var(--ws-primary-container));
+  background: #004347;
 }
 
-.nav-item-icon {
-  display: inline-grid;
-  place-items: center;
-  width: 28px;
-  color: currentColor;
-  font-size: 18px;
-}
-
-.sidebar-footer {
-  display: grid;
-  align-content: end;
-}
-
-.sidebar-logout {
-  width: 100%;
-  display: inline-flex;
+.sidenav-logout {
+  margin-top: auto;
+  display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  min-height: 50px;
-  color: rgba(24, 28, 29, 0.72);
-  background: rgba(255, 255, 255, 0.72);
-  box-shadow: inset 0 0 0 1px rgba(190, 200, 201, 0.72);
-}
-
-@media (max-width: 1080px) {
-  .sidebar-session-card,
-  .sidebar-footer {
-    padding: 0;
-  }
+  min-height: 46px;
+  border: 0;
+  border-radius: 10px;
+  background: #f1f4f5;
+  color: #3f4849;
+  font-weight: 700;
 }
 </style>

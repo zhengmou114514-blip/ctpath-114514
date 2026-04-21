@@ -59,5 +59,3 @@ export function buildModelBoardSnapshot(params: {
     source: 'mixed',
   }
 }
-
-// TODO(api): replace dataset coverage/training status with backend model-governance API.

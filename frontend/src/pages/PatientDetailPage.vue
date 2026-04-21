@@ -20,11 +20,13 @@ const latestPrediction = computed(() => {
   if (!selectedPatient.value || !workspace.predictionResult) return null
   return workspace.predictionResult.patientId === selectedPatient.value.patientId ? workspace.predictionResult : null
 })
+
 const hasLatestPrediction = computed(() => Boolean(latestPrediction.value))
 const topPrediction = computed(() => latestPrediction.value?.topk?.[0] ?? selectedPatient.value?.predictions?.[0] ?? null)
 const secondaryPredictions = computed(() => (latestPrediction.value?.topk ?? selectedPatient.value?.predictions ?? []).slice(1, 3))
 const adviceList = computed(() => latestPrediction.value?.advice ?? selectedPatient.value?.careAdvice ?? [])
 const pathList = computed(() => (latestPrediction.value?.pathExplanation ?? selectedPatient.value?.pathExplanation ?? []).slice(0, 4))
+
 const evidence = computed(() => {
   const prediction = latestPrediction.value
   if (prediction?.evidence) {
@@ -32,7 +34,7 @@ const evidence = computed(() => {
       eventCount: prediction.evidence.eventCount,
       relationCount: prediction.evidence.relationCount,
       supportLevel: prediction.evidence.supportLevel,
-      summary: prediction.supportSummary || '当前为预测服务返回的最新证据摘要。',
+      summary: prediction.supportSummary || '模型已结合当前病程事件和图谱路径生成证据摘要。',
     }
   }
 
@@ -40,16 +42,16 @@ const evidence = computed(() => {
     eventCount: selectedPatient.value?.timeline.length ?? 0,
     relationCount: selectedPatient.value?.pathExplanation.length ?? 0,
     supportLevel: selectedPatient.value?.dataSupport ?? 'unknown',
-    summary: selectedPatient.value?.summary || '当前展示的是预置临床摘要，尚未触发新的实时预测。',
+    summary: selectedPatient.value?.summary || '当前页面展示的是患者预置摘要，尚未触发真实预测。',
   }
 })
 
 const modelStatus = computed(() => {
   if (workspace.modelUnavailable) return { label: '模型不可用', type: 'danger' as const }
   if (workspace.health?.mode === 'demo') return { label: 'Demo 模式', type: 'warning' as const }
-  if (latestPrediction.value?.mode === 'model') return { label: '模型预测就绪', type: 'success' as const }
+  if (latestPrediction.value?.mode === 'model') return { label: '真实模型结果', type: 'success' as const }
   if (latestPrediction.value?.mode === 'similar-case') return { label: '相似病例回退', type: 'warning' as const }
-  return { label: '等待预测', type: 'info' as const }
+  return { label: '预置摘要', type: 'info' as const }
 })
 
 const predictionButtonLabel = computed(() => (hasLatestPrediction.value ? '刷新预测' : '触发预测'))
@@ -58,7 +60,7 @@ const predictionSource = computed(() => {
     return {
       label: '预测中',
       type: 'warning' as const,
-      note: '正在为当前患者调用真实 /api/predict 接口。',
+      note: '正在调用真实 /api/predict，请等待最新预测结果返回。',
     }
   }
 
@@ -67,8 +69,8 @@ const predictionSource = computed(() => {
       label: '预测失败',
       type: 'danger' as const,
       note: hasLatestPrediction.value
-        ? `${workspace.predictionError} 当前继续展示最近一次成功预测结果。`
-        : `${workspace.predictionError} 当前预测区仍展示预置摘要。`,
+        ? `${workspace.predictionError}，当前仍显示上一次成功预测结果。`
+        : `${workspace.predictionError}，当前仍显示患者预置摘要。`,
     }
   }
 
@@ -76,14 +78,14 @@ const predictionSource = computed(() => {
     return {
       label: '最新预测结果',
       type: 'success' as const,
-      note: `当前结果来自 /api/predict，策略：${latestPrediction.value?.strategy ?? 'unknown'}。`,
+      note: `当前内容来自真实 /api/predict 调用，策略：${latestPrediction.value?.strategy ?? 'unknown'}。`,
     }
   }
 
   return {
     label: '初始预置摘要',
     type: 'info' as const,
-    note: '当前页面尚未调用 /api/predict，请点击“触发预测”获取最新结果。',
+    note: '当前仅展示患者自带 predictions/careAdvice 作为占位内容，不代表已经调用真实预测。',
   }
 })
 
@@ -161,17 +163,17 @@ watch(
 <template>
   <section class="patient-detail-page workstation-page">
     <section v-if="!selectedPatient" class="empty-state-card">
-      <h3>未选择患者</h3>
-      <p>请先从医生工作台患者队列打开一名患者，再进入详情工作区。</p>
+      <h3>未找到患者详情</h3>
+      <p>请先从医生工作台选择一个患者，再进入当前详情页查看病程、预测和建议。</p>
     </section>
 
     <template v-else>
       <header class="patient-detail-hero">
         <div>
           <p class="eyebrow">患者详情</p>
-          <h1>{{ selectedPatient.name.toUpperCase() }}</h1>
+          <h1>{{ selectedPatient.name }}</h1>
           <p class="hero-meta">
-            出生日期未录入 / {{ selectedPatient.age }} 岁 / 病案号 {{ selectedPatient.medicalRecordNumber || selectedPatient.patientId }}
+            {{ selectedPatient.gender }} / {{ selectedPatient.age }} 岁 / 病历号 {{ selectedPatient.medicalRecordNumber || selectedPatient.patientId }}
           </p>
         </div>
 
@@ -181,7 +183,7 @@ watch(
             <el-icon><MagicStick /></el-icon>
             <span>{{ predictionButtonLabel }}</span>
           </button>
-          <button class="secondary-button" type="button" @click="handleOpenFollowup">打开随访任务</button>
+          <button class="secondary-button" type="button" @click="handleOpenFollowup">进入随访</button>
           <button class="secondary-button" type="button" @click="handleBack">
             <el-icon><ArrowLeft /></el-icon>
             <span>返回工作台</span>
@@ -202,7 +204,7 @@ watch(
           </article>
 
           <article class="clinical-card data-panel">
-            <h2>检验重点</h2>
+            <h2>重点化验指标</h2>
             <dl class="metric-list lab-list">
               <div v-for="item in labStats" :key="item.label">
                 <dt>{{ item.label }}</dt>
@@ -212,19 +214,19 @@ watch(
             </dl>
           </article>
 
-          <PatientAttachmentPanel :patient-id="selectedPatient.patientId" title="电子附件" />
+          <PatientAttachmentPanel :patient-id="selectedPatient.patientId" title="电子档案附件" />
         </aside>
 
         <main class="patient-main-rail">
           <article class="clinical-card insight-panel">
             <div class="insight-header">
               <div>
-                <p class="eyebrow">模型洞察摘要</p>
-                <h2>模型洞察摘要</h2>
+                <p class="eyebrow">模型洞察</p>
+                <h2>当前患者预测与建议</h2>
               </div>
               <div class="insight-statuses">
                 <el-tag :type="riskTagType(selectedPatient.riskLevel)" effect="light">{{ selectedPatient.riskLevel }}</el-tag>
-                <el-tag :type="supportTagType(selectedPatient.dataSupport)" effect="light">数据支撑 {{ supportLabel(selectedPatient.dataSupport) }}</el-tag>
+                <el-tag :type="supportTagType(selectedPatient.dataSupport)" effect="light">数据支持 {{ supportLabel(selectedPatient.dataSupport) }}</el-tag>
                 <el-tag :type="modelStatus.type" effect="light">{{ modelStatus.label }}</el-tag>
               </div>
             </div>
@@ -246,13 +248,13 @@ watch(
                 <p class="eyebrow">证据摘要</p>
                 <p class="block-body">{{ evidence.summary }}</p>
                 <ul class="bullet-list">
-                  <li>推理链路中纳入了 {{ evidence.eventCount }} 个时间线事件。</li>
-                  <li>本次预测参考了 {{ evidence.relationCount }} 条图谱关系。</li>
+                  <li>当前病程时间线事件数：{{ evidence.eventCount }}</li>
+                  <li>图谱推理路径节点数：{{ evidence.relationCount }}</li>
                 </ul>
               </article>
 
               <article class="insight-block">
-                <p class="eyebrow">可解释路径</p>
+                <p class="eyebrow">路径说明</p>
                 <div class="path-box">
                   <p v-for="item in pathList" :key="item">
                     {{ item }}
@@ -262,15 +264,15 @@ watch(
             </section>
 
             <article class="care-advice-box">
-              <p class="eyebrow">模型建议</p>
+              <p class="eyebrow">护理建议</p>
               <p class="care-advice-body">
-                {{ adviceList[0] || '当前尚无可展示的建议内容。' }}
+                {{ adviceList[0] || '尚未生成新的建议内容。' }}
               </p>
             </article>
 
             <div v-if="workspace.loadingPredict" class="prediction-state-shell prediction-loading">
               <strong>预测中</strong>
-              <p>预测服务正在处理当前患者记录。</p>
+              <p>系统正在调用真实预测接口，请等待最新结果返回。</p>
             </div>
 
             <div v-else-if="workspace.predictionError" class="prediction-state-shell prediction-error">
@@ -282,7 +284,7 @@ watch(
               <button class="primary-button" type="button" :disabled="workspace.loadingPredict" @click="handleRunPrediction">
                 {{ predictionButtonLabel }}
               </button>
-              <button class="secondary-button" type="button" @click="handleOpenFollowup">打开随访任务</button>
+              <button class="secondary-button" type="button" @click="handleOpenFollowup">进入随访</button>
               <button class="secondary-button" type="button" @click="handleBack">返回工作台</button>
             </div>
           </article>
@@ -291,9 +293,9 @@ watch(
             <article class="clinical-card prediction-card">
               <div class="section-header">
                 <div>
-                  <h2>{{ hasLatestPrediction ? '最新预测结果' : '预测摘要' }}</h2>
+                  <h2>{{ hasLatestPrediction ? '最新预测结果' : '预置预测摘要' }}</h2>
                   <p>
-                    {{ hasLatestPrediction ? '展示当前预测源返回的主事件。' : '在生成新预测前，先展示患者预置事件摘要。' }}
+                    {{ hasLatestPrediction ? '当前区域展示的内容来自真实预测接口返回。' : '当前区域展示的是患者自带预测摘要，用于页面初始占位。' }}
                   </p>
                 </div>
               </div>
@@ -306,14 +308,14 @@ watch(
                 <el-progress :percentage="Math.round(topPrediction.score * 100)" :stroke-width="8" />
                 <p>{{ topPrediction.reason }}</p>
               </div>
-              <el-empty v-else description="暂无预测摘要。" />
+              <el-empty v-else description="当前没有可展示的预测结果。" />
             </article>
 
             <article class="clinical-card timeline-card">
               <div class="section-header">
                 <div>
-                  <h2>近期时间线</h2>
-                  <p>当前病案共记录 {{ selectedPatient.timeline.length }} 条关键事件。</p>
+                  <h2>病程时间线</h2>
+                  <p>当前患者共有 {{ selectedPatient.timeline.length }} 条病程事件。</p>
                 </div>
               </div>
               <el-timeline v-if="selectedPatient.timeline.length">
@@ -327,7 +329,7 @@ watch(
                   <p class="timeline-detail">{{ item.detail }}</p>
                 </el-timeline-item>
               </el-timeline>
-              <el-empty v-else description="暂无时间线事件。" />
+              <el-empty v-else description="当前没有病程时间线数据。" />
             </article>
           </section>
 

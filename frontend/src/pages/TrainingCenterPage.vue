@@ -103,9 +103,9 @@ async function handleImportDataset() {
     selectedDatasetId.value = record.datasetId
     datasetName.value = ''
     selectedFile.value = null
-    importSuccess.value = `数据集“${record.datasetName}”已导入，共识别 ${record.rowCount} 行。`
+    importSuccess.value = `数据集 ${record.datasetName} 已导入，共 ${record.rowCount} 行。`
   } catch (error) {
-    importError.value = error instanceof Error ? error.message : '数据集导入失败，请稍后重试。'
+    importError.value = error instanceof Error ? error.message : '数据集导入失败。'
   } finally {
     isImporting.value = false
   }
@@ -113,7 +113,7 @@ async function handleImportDataset() {
 
 async function handleLaunchTraining() {
   if (!selectedDataset.value) {
-    trainingError.value = '请先选择一个可用数据集。'
+    trainingError.value = '请先选择一个用于训练的数据集。'
     return
   }
 
@@ -129,7 +129,7 @@ async function handleLaunchTraining() {
     })
     refreshTrainingCenter()
   } catch (error) {
-    trainingError.value = error instanceof Error ? error.message : '训练任务发起失败，请稍后重试。'
+    trainingError.value = error instanceof Error ? error.message : '训练任务创建失败。'
   } finally {
     isLaunching.value = false
   }
@@ -156,29 +156,29 @@ onBeforeUnmount(() => {
       <div>
         <p class="eyebrow">模型中心</p>
         <h1>训练中心</h1>
-        <p>在模型中心域内完成数据集导入、训练任务发起与任务状态跟踪，不把训练操作混入医生主工作台。</p>
+        <p>训练中心只处理数据集导入和模型训练任务，不进入医生首页，也不混入患者详情。</p>
       </div>
       <div class="header-actions">
-        <el-button @click="refreshTrainingCenter">刷新状态</el-button>
-        <el-button type="primary" @click="handleBackToModelDashboard">返回模型看板</el-button>
+        <button class="secondary-button" type="button" @click="refreshTrainingCenter">刷新</button>
+        <button class="primary-button" type="button" @click="handleBackToModelDashboard">返回模型看板</button>
       </div>
     </header>
 
     <section class="metric-grid three">
       <article class="metric-card">
-        <span>已导入数据集</span>
+        <span>数据集数量</span>
         <strong>{{ datasets.length }}</strong>
-        <p>仅作为当前项目前端训练台的暂存数据源</p>
+        <p>当前本地可用训练数据集数量</p>
       </article>
       <article class="metric-card">
         <span>运行中任务</span>
         <strong>{{ runningTaskCount }}</strong>
-        <p>用于观察训练调度与进度，不进入医生主流程</p>
+        <p>当前正在执行中的训练任务</p>
       </article>
       <article class="metric-card">
         <span>最近任务状态</span>
         <strong>{{ latestTask ? statusLabel(latestTask.status) : '暂无任务' }}</strong>
-        <p>{{ latestTask ? `${latestTask.modelName} / ${latestTask.datasetName}` : '等待创建新的训练任务' }}</p>
+        <p>{{ latestTask ? `${latestTask.modelName} / ${latestTask.datasetName}` : '尚未发起新的训练任务' }}</p>
       </article>
     </section>
 
@@ -186,8 +186,8 @@ onBeforeUnmount(() => {
       <article class="clinical-card form-card">
         <div class="section-header">
           <div>
-            <h2>数据集导入</h2>
-            <p>训练 CSV 只进入训练中心暂存区，不直接进入正式患者业务表。</p>
+            <h2>导入训练数据集</h2>
+            <p>训练数据文件先导入训练中心，再进入后续训练流程，不进入患者正式档案表。</p>
           </div>
         </div>
 
@@ -211,15 +211,17 @@ onBeforeUnmount(() => {
         </div>
 
         <div class="action-row">
-          <el-button type="primary" :loading="isImporting" @click="handleImportDataset">导入数据集</el-button>
+          <button class="primary-button" type="button" :disabled="isImporting" @click="handleImportDataset">
+            {{ isImporting ? '导入中...' : '导入数据集' }}
+          </button>
         </div>
       </article>
 
       <article class="clinical-card form-card">
         <div class="section-header">
           <div>
-            <h2>发起训练</h2>
-            <p>基于已导入数据集创建训练任务，当前实现复用现有本地训练适配层。</p>
+            <h2>发起训练任务</h2>
+            <p>从已导入的数据集中选择训练样本，配置参数后发起新训练任务。</p>
           </div>
         </div>
 
@@ -240,7 +242,7 @@ onBeforeUnmount(() => {
             <input
               :value="modelName"
               class="training-input"
-              placeholder="例如：CTpath Temporal KG"
+              placeholder="例如 CTpath Temporal KG"
               @input="modelName = ($event.target as HTMLInputElement).value"
             />
           </label>
@@ -300,7 +302,9 @@ onBeforeUnmount(() => {
         </div>
 
         <div class="action-row">
-          <el-button type="primary" :loading="isLaunching" @click="handleLaunchTraining">发起训练</el-button>
+          <button class="primary-button" type="button" :disabled="isLaunching" @click="handleLaunchTraining">
+            {{ isLaunching ? '创建中...' : '发起训练' }}
+          </button>
         </div>
       </article>
     </section>
@@ -309,8 +313,8 @@ onBeforeUnmount(() => {
       <article class="clinical-card">
         <div class="section-header">
           <div>
-            <h2>数据集列表</h2>
-            <p>显示导入暂存区中的训练数据集。</p>
+            <h2>数据集记录</h2>
+            <p>展示已导入的数据集和导入元信息。</p>
           </div>
         </div>
 
@@ -326,14 +330,14 @@ onBeforeUnmount(() => {
             <small>{{ formatDateTime(item.uploadedAt) }}</small>
           </li>
         </ul>
-        <p v-else class="empty-inline">当前还没有导入训练数据集。</p>
+        <p v-else class="empty-inline">当前还没有导入任何训练数据集。</p>
       </article>
 
       <article class="clinical-card">
         <div class="section-header">
           <div>
-            <h2>训练任务列表</h2>
-            <p>追踪模型训练任务状态、关键指标与日志摘要。</p>
+            <h2>训练任务记录</h2>
+            <p>展示最近发起的训练任务、状态和关键指标。</p>
           </div>
         </div>
 
@@ -352,7 +356,7 @@ onBeforeUnmount(() => {
             <small>{{ task.logs[task.logs.length - 1] }}</small>
           </li>
         </ul>
-        <p v-else class="empty-inline">当前还没有训练任务。</p>
+        <p v-else class="empty-inline">当前还没有训练任务记录。</p>
       </article>
     </section>
   </section>

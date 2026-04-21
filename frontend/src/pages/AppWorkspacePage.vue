@@ -18,11 +18,19 @@ const redirectingToLogin = ref(false)
 
 const splitRouteSections: Record<
   string,
-  'insights' | 'model-dashboard' | 'training-center' | 'governance' | 'drug-management' | 'drug-permission-management' | 'tasks'
+  | 'insights'
+  | 'model-dashboard'
+  | 'model-operations'
+  | 'training-center'
+  | 'governance'
+  | 'drug-management'
+  | 'drug-permission-management'
+  | 'tasks'
 > = {
   'nurse-followups': 'tasks',
   'model-insight': 'insights',
   'model-dashboard': 'model-dashboard',
+  'model-operations': 'model-operations',
   'training-center': 'training-center',
   governance: 'governance',
   'drug-management': 'drug-management',
@@ -35,6 +43,7 @@ const sectionToRouteName: Partial<Record<string, string>> = {
   flow: 'nurse-followups',
   insights: 'model-insight',
   'model-dashboard': 'model-dashboard',
+  'model-operations': 'model-operations',
   'training-center': 'training-center',
   governance: 'governance',
   'drug-management': 'drug-management',
@@ -49,6 +58,7 @@ const isSplitWorkspaceRoute = computed(() => {
     routeName === 'nurse-followups' ||
     workspace.currentWorkspace === 'model-insight' ||
     workspace.currentWorkspace === 'model-dashboard' ||
+    workspace.currentWorkspace === 'model-operations' ||
     workspace.currentWorkspace === 'training-center' ||
     workspace.currentWorkspace === 'governance' ||
     workspace.currentWorkspace === 'followup' ||
@@ -298,8 +308,8 @@ watch(
       />
 
       <section v-else class="empty-state-card">
-        <h3>当前模块暂未开放</h3>
-        <p>该导航项还没有接入独立工作页，请返回其他模块继续完成慢病辅助诊疗主流程。</p>
+        <h3>当前模块暂未接入独立页面</h3>
+        <p>请从左侧导航重新选择工作台模块，或回到医生工作台继续当前业务闭环。</p>
       </section>
     </template>
   </AppShell>
