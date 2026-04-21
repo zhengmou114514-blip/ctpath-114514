@@ -12,7 +12,7 @@ const evidence = computed(() => {
       eventCount: workspace.predictionResult.evidence.eventCount,
       relationCount: workspace.predictionResult.evidence.relationCount,
       supportLevel: workspace.predictionResult.evidence.supportLevel,
-      summary: workspace.predictionResult.supportSummary || '已加载当前患者证据摘要。',
+      summary: workspace.predictionResult.supportSummary || '已加载当前患者的证据摘要。',
     }
   }
 
@@ -94,10 +94,10 @@ onMounted(() => {
       <div>
         <p class="eyebrow">Model insight</p>
         <h1>模型洞察</h1>
-        <p>当前患者预测结果、Top-K 风险事件、证据摘要、建议来源和下一步动作。</p>
+        <p>只面向当前患者，展示预测结果、证据摘要和建议来源，不承载训练或全局模型治理。</p>
       </div>
       <div class="header-actions">
-        <el-button @click="handleRefresh">刷新上下文</el-button>
+        <el-button @click="handleRefresh">刷新状态</el-button>
         <el-button type="primary" :disabled="!hasPatient || workspace.loadingPredict" :loading="workspace.loadingPredict" @click="handleRunPrediction">
           运行预测
         </el-button>
@@ -106,7 +106,7 @@ onMounted(() => {
 
     <section v-if="!hasPatient" class="empty-state-card">
       <h3>未选择患者</h3>
-      <p>请先从医生工作台选择患者，再查看当前患者模型洞察。</p>
+      <p>请先在医生工作台或患者详情页选择患者，再查看模型洞察。</p>
     </section>
 
     <template v-else>
@@ -119,7 +119,7 @@ onMounted(() => {
         <article class="metric-card">
           <span>模型状态</span>
           <strong>{{ modelStatus }}</strong>
-          <p>运行模式 {{ workspace.health?.mode ?? '--' }}</p>
+          <p>数据源 {{ workspace.health?.mode ?? '--' }}</p>
         </article>
         <article class="metric-card">
           <span>证据支持</span>
@@ -133,7 +133,7 @@ onMounted(() => {
           <div class="section-header">
             <div>
               <h2>Top-K 风险事件</h2>
-              <p>当前患者相关预测。</p>
+              <p>当前患者相关预测结果。</p>
             </div>
           </div>
           <div v-if="topK.length" class="risk-list">
@@ -152,7 +152,7 @@ onMounted(() => {
           <div class="section-header">
             <div>
               <h2>证据摘要</h2>
-              <p>模型可解释证据和当前数据支持水平。</p>
+              <p>模型判断所依赖的患者结构化信息。</p>
             </div>
           </div>
           <ul class="kv-list">
@@ -167,7 +167,7 @@ onMounted(() => {
           <div class="section-header">
             <div>
               <h2>建议来源</h2>
-              <p>区分模型、相似病例和回退来源。</p>
+              <p>区分模型、相似病例或回退来源。</p>
             </div>
           </div>
           <ul class="kv-list">
@@ -182,7 +182,7 @@ onMounted(() => {
           <div class="section-header">
             <div>
               <h2>建议摘要</h2>
-              <p>{{ adviceList.length }} 条</p>
+              <p>{{ adviceList.length }} 条建议</p>
             </div>
           </div>
           <ol v-if="adviceList.length" class="advice-list">
@@ -196,7 +196,7 @@ onMounted(() => {
         <div class="section-header">
           <div>
             <h2>下一步动作</h2>
-            <p>进入当前患者详情或随访闭环。</p>
+            <p>回到患者详情或随访工作流处理。</p>
           </div>
         </div>
         <div class="action-row">

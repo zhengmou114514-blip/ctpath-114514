@@ -77,6 +77,13 @@ cd E:\CTpath-master\frontend
 npm run build
 ```
 
+前端最小闭环测试：
+
+```powershell
+cd E:\CTpath-master\frontend
+npm test -- src/pages/__tests__/PatientDetailPage.spec.ts src/pages/__tests__/AppWorkspacePage.spec.ts
+```
+
 ## 当前后端技术栈
 
 - FastAPI
@@ -249,6 +256,38 @@ Get-Content .\app\mysql_seed_demo.sql | mysql -u root -p ctpath
 - 治理中心基础视图
 - demo/mysql 模式
 - JWT、trace_id、全局异常、限流、审计基础能力
+
+## 当前最小业务闭环状态
+
+当前仓库已经补通并验证了最小主闭环：
+
+- 登录：`/login` 登录成功后进入工作台
+- 工作台：从医生工作台打开患者详情
+- 患者详情：在 `frontend/src/pages/PatientDetailPage.vue` 内点击 `Run Prediction` 或 `Refresh Prediction`
+- 真实预测：前端通过 `workspace.runPrediction()` 调用真实 `POST /api/predict`
+- 结果展示：页面优先展示 `workspace.predictionResult`，未触发前仅展示预置摘要
+- 退出登录：从业务壳层退出后立即 `router.replace('/login')`
+
+当前患者预测的真实行为说明：
+
+- 页面初始可能显示 `Preloaded Summary`
+- 这表示当前展示的是 `selectedPatient.predictions / careAdvice` 预置摘要
+- 只有点击 `Run Prediction` 后，页面才会切到 `Latest Prediction`
+- 若接口失败，页面会显示 `Prediction Failed`
+
+当前测试与验收现状：
+
+- 前端构建已通过：`cd frontend && npm run build`
+- 后端合同测试已通过：`python E:\CTpath-master\test_closure_contract.py`
+- 前端 P0 用例已可执行：
+  - `src/pages/__tests__/PatientDetailPage.spec.ts`
+  - `src/pages/__tests__/AppWorkspacePage.spec.ts`
+
+本轮明确未处理：
+
+- `/api/me`
+- 未挂载的 `AuthStateMiddleware` / `RBACMiddleware` dead code
+- 与系统中心相关的额外链路
 
 部分完成 / 正在收口：
 

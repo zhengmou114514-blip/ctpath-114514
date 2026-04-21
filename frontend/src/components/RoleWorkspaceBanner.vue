@@ -17,7 +17,7 @@ const sectionLabels: Record<AppSection, string> = {
   'drug-permission-management': '药品权限管理',
   tasks: '护士随访工作台',
   contacts: '联系记录',
-  flow: '随访流转',
+  flow: '随访流程',
   insights: '模型洞察',
   'model-dashboard': '模型看板',
   governance: '治理中心',
@@ -30,7 +30,7 @@ const bannerConfig = computed(() => {
     return {
       eyebrow: '随访闭环',
       title: '护士随访工作台',
-      description: '随访任务、联系记录、随访状态和下一次计划集中处理。',
+      description: '聚焦今日随访、未接通记录、任务状态和下一次联系计划。',
       role: '护士',
     }
   }
@@ -39,15 +39,15 @@ const bannerConfig = computed(() => {
     return {
       eyebrow: '档案治理',
       title: '患者档案与治理工作区',
-      description: '聚焦患者身份信息、建档状态、电子档案入口、缺失字段与冲突记录。',
+      description: '聚焦患者主索引、档案完整性、附件资料和治理线索。',
       role: '档案员',
     }
   }
 
   return {
     eyebrow: '临床工作',
-    title: '医生慢病辅助诊疗工作台',
-    description: '待处理患者、风险摘要和主要临床动作集中处理。',
+    title: '医生慢病工作台',
+    description: '聚焦待处理患者、风险提醒、患者详情和随访入口。',
     role: '医生',
   }
 })

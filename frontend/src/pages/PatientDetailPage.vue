@@ -15,10 +15,15 @@ const routePatientId = computed(() => {
 })
 
 const selectedPatient = computed(() => workspace.selectedPatient)
-const topPrediction = computed(() => workspace.predictionResult?.topk?.[0] ?? selectedPatient.value?.predictions?.[0] ?? null)
-const adviceList = computed(() => workspace.predictionResult?.advice ?? selectedPatient.value?.careAdvice ?? [])
+const latestPrediction = computed(() => {
+  if (!selectedPatient.value || !workspace.predictionResult) return null
+  return workspace.predictionResult.patientId === selectedPatient.value.patientId ? workspace.predictionResult : null
+})
+const hasLatestPrediction = computed(() => Boolean(latestPrediction.value))
+const topPrediction = computed(() => latestPrediction.value?.topk?.[0] ?? selectedPatient.value?.predictions?.[0] ?? null)
+const adviceList = computed(() => latestPrediction.value?.advice ?? selectedPatient.value?.careAdvice ?? [])
 const evidence = computed(() => {
-  const prediction = workspace.predictionResult
+  const prediction = latestPrediction.value
   if (prediction?.evidence) {
     return {
       eventCount: prediction.evidence.eventCount,
@@ -39,9 +44,44 @@ const evidence = computed(() => {
 const modelStatus = computed(() => {
   if (workspace.modelUnavailable) return { label: '模型不可用', type: 'danger' as const }
   if (workspace.health?.mode === 'demo') return { label: 'Demo 模式', type: 'warning' as const }
-  if (workspace.predictionResult?.mode === 'model') return { label: '模型结果', type: 'success' as const }
-  if (workspace.predictionResult?.mode === 'similar-case') return { label: '相似病例回退', type: 'warning' as const }
+  if (latestPrediction.value?.mode === 'model') return { label: '模型结果', type: 'success' as const }
+  if (latestPrediction.value?.mode === 'similar-case') return { label: '相似病例回退', type: 'warning' as const }
   return { label: '待预测', type: 'info' as const }
+})
+
+const predictionButtonLabel = computed(() => (hasLatestPrediction.value ? 'Refresh Prediction' : 'Run Prediction'))
+const predictionSource = computed(() => {
+  if (workspace.loadingPredict) {
+    return {
+      label: 'Predicting',
+      type: 'warning' as const,
+      note: 'Calling the real /api/predict endpoint for the current patient.',
+    }
+  }
+
+  if (workspace.predictionError) {
+    return {
+      label: 'Prediction Failed',
+      type: 'danger' as const,
+      note: hasLatestPrediction.value
+        ? `${workspace.predictionError} Showing the last successful prediction below.`
+        : `${workspace.predictionError} The prediction area is still showing the preloaded summary.`,
+    }
+  }
+
+  if (hasLatestPrediction.value) {
+    return {
+      label: 'Latest Prediction',
+      type: 'success' as const,
+      note: `Latest result loaded from /api/predict via ${latestPrediction.value?.strategy ?? 'unknown'}.`,
+    }
+  }
+
+  return {
+    label: 'Preloaded Summary',
+    type: 'info' as const,
+    note: 'This page has not called /api/predict yet. Click Run Prediction to fetch the latest result.',
+  }
 })
 
 function riskTagType(level: string) {
@@ -80,6 +120,10 @@ function handleOpenFollowup() {
   void workspace.openFollowupModule(patientId, 'tasks')
 }
 
+function handleRunPrediction() {
+  void workspace.runPrediction()
+}
+
 watch(
   routePatientId,
   (value) => {
@@ -95,7 +139,7 @@ watch(
       <div>
         <p class="eyebrow">Patient detail</p>
         <h1>患者详情 / 电子档案</h1>
-        <p>档案、附件、病程时间线、用药评估和建议集中在当前患者视图。</p>
+        <p>围绕当前患者组织档案、附件、病程时间线、用药评估和模型建议。</p>
       </div>
       <div class="header-actions">
         <el-button @click="handleBack">返回医生工作台</el-button>
@@ -103,7 +147,7 @@ watch(
       </div>
     </header>
 
-    <el-empty v-if="!selectedPatient" description="请从医生工作台选择患者，或打开带患者ID的详情路由。" />
+    <el-empty v-if="!selectedPatient" description="请从医生工作台选择患者，或打开带患者 ID 的详情路由。" />
 
     <template v-else>
       <section class="patient-detail-three-column">
@@ -141,25 +185,6 @@ watch(
         </aside>
 
         <main class="detail-column center-column">
-          <article class="clinical-card prediction-card">
-            <div class="section-header">
-              <div>
-                <h2>预测摘要</h2>
-                <p>{{ modelStatus.label }}</p>
-              </div>
-              <el-tag :type="modelStatus.type">{{ modelStatus.label }}</el-tag>
-            </div>
-            <div v-if="topPrediction" class="prediction-box">
-              <div class="prediction-head">
-                <strong>{{ topPrediction.label }}</strong>
-                <span>{{ Math.round(topPrediction.score * 100) }}%</span>
-              </div>
-              <el-progress :percentage="Math.round(topPrediction.score * 100)" :stroke-width="8" />
-              <p>{{ topPrediction.reason }}</p>
-            </div>
-            <el-empty v-else description="暂无预测结果。" />
-          </article>
-
           <article class="clinical-card timeline-card">
             <div class="section-header">
               <div>
@@ -185,7 +210,7 @@ watch(
             <div class="section-header">
               <div>
                 <h2>证据摘要</h2>
-                <p>当前患者相关证据。</p>
+                <p>当前患者相关结构化证据。</p>
               </div>
               <span class="status-chip">支持 {{ supportLabel(evidence.supportLevel) }}</span>
             </div>
@@ -199,6 +224,41 @@ watch(
         </main>
 
         <aside class="detail-column right-column">
+          <article class="clinical-card prediction-card">
+            <div class="section-header">
+              <div>
+                <h2>模型建议摘要</h2>
+                <p>{{ modelStatus.label }}</p>
+              </div>
+              <div class="prediction-actions">
+                <el-tag :type="predictionSource.type">{{ predictionSource.label }}</el-tag>
+                <el-button
+                  type="primary"
+                  plain
+                  size="small"
+                  :disabled="!selectedPatient"
+                  :loading="workspace.loadingPredict"
+                  @click="handleRunPrediction"
+                >
+                  {{ predictionButtonLabel }}
+                </el-button>
+              </div>
+            </div>
+            <div class="prediction-meta-row">
+              <el-tag :type="modelStatus.type" effect="light">{{ modelStatus.label }}</el-tag>
+            </div>
+            <p class="prediction-source-note">{{ predictionSource.note }}</p>
+            <div v-if="topPrediction" class="prediction-box">
+              <div class="prediction-head">
+                <strong>{{ topPrediction.label }}</strong>
+                <span>{{ Math.round(topPrediction.score * 100) }}%</span>
+              </div>
+              <el-progress :percentage="Math.round(topPrediction.score * 100)" :stroke-width="8" />
+              <p>{{ topPrediction.reason }}</p>
+            </div>
+            <el-empty v-else description="暂无预测结果。" />
+          </article>
+
           <PatientMedicationClosurePanel :patient-id="selectedPatient.patientId" :model-advice="adviceList" />
 
           <article class="clinical-card advice-card">
@@ -212,17 +272,6 @@ watch(
             <ol v-else class="advice-list">
               <li v-for="(item, index) in adviceList.slice(0, 5)" :key="`${index}-${item}`">{{ item }}</li>
             </ol>
-          </article>
-
-          <article class="clinical-card next-actions-card">
-            <div class="section-header">
-              <div>
-                <h2>下一步动作</h2>
-                <p>进入独立工作流处理。</p>
-              </div>
-            </div>
-            <el-button type="primary" @click="handleOpenFollowup">打开随访任务</el-button>
-            <el-button @click="handleBack">返回患者队列</el-button>
           </article>
         </aside>
       </section>
@@ -253,8 +302,7 @@ watch(
 .prediction-card,
 .timeline-card,
 .evidence-card,
-.advice-card,
-.next-actions-card {
+.advice-card {
   display: grid;
   gap: 16px;
 }
@@ -336,6 +384,26 @@ watch(
   gap: 12px;
 }
 
+.prediction-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.prediction-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.prediction-source-note {
+  margin: 0;
+  color: var(--ws-text-muted);
+  line-height: 1.6;
+}
+
 .prediction-head {
   display: flex;
   justify-content: space-between;
@@ -346,18 +414,6 @@ watch(
 .prediction-head span {
   color: var(--ws-title);
   font-size: 16px;
-}
-
-.status-chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 10px;
-  border: 1px solid var(--ws-border);
-  border-radius: 999px;
-  background: var(--ws-surface-soft);
-  color: var(--ws-title);
-  font-size: 12px;
-  font-weight: 700;
 }
 
 .mini-metric-grid {
@@ -395,10 +451,6 @@ watch(
 .advice-list li {
   color: var(--ws-text);
   line-height: 1.7;
-}
-
-.next-actions-card .el-button {
-  width: 100%;
 }
 
 @media (max-width: 1320px) {

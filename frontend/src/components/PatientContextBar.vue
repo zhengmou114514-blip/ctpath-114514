@@ -55,12 +55,12 @@ function supportLabel(value: string) {
     </div>
 
     <div class="context-actions">
-      <button class="secondary-button" type="button" @click="emit('back-to-list')">返回列表</button>
+      <button class="secondary-button" type="button" @click="emit('back-to-list')">返回队列</button>
       <button class="secondary-button" type="button" @click="emit('open-archive', { patientId: patient.patientId, focus: 'overview' })">
         患者档案
       </button>
       <button class="secondary-button" type="button" @click="emit('open-archive', { patientId: patient.patientId, focus: 'events' })">
-        时间线
+        病程事件
       </button>
       <button class="primary-button" type="button" @click="emit('open-followup', { patientId: patient.patientId, section: 'tasks' })">
         随访任务

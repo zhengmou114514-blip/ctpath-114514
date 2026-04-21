@@ -16,7 +16,7 @@ const overviewCards = computed(() => {
     { label: '高风险患者', value: data.highRiskCount },
     { label: '低支持档案', value: data.lowSupportCount },
     { label: '逾期随访', value: data.overdueFollowupCount },
-    { label: '重复风险', value: data.duplicateRiskCount },
+    { label: '冲突风险', value: data.duplicateRiskCount },
   ]
 })
 
@@ -25,7 +25,7 @@ const missingFields = computed(() => {
   if (!data) return []
   return [
     { label: '缺失病案号', value: data.missingMrnCount },
-    { label: '待补知情同意', value: data.pendingConsentCount },
+    { label: '待知情同意', value: data.pendingConsentCount },
     { label: '数据支持不足', value: data.lowSupportCount },
   ]
 })
@@ -73,7 +73,7 @@ onMounted(() => {
       <div>
         <p class="eyebrow">Governance center</p>
         <h1>治理中心</h1>
-        <p>数据质量、冲突记录、待补全档案和治理动作集中处理。</p>
+        <p>只展示数据质量、冲突记录、待补全档案和治理动作，不承载患者预测或模型训练。</p>
       </div>
       <el-button type="primary" :loading="loading" @click="handleRefresh">刷新</el-button>
     </header>
@@ -94,26 +94,14 @@ onMounted(() => {
           <div class="section-header">
             <div>
               <h2>数据质量概览</h2>
-              <p>缺失字段、异常时间线、待补全档案。</p>
+              <p>缺失字段、冲突风险和逾期随访。</p>
             </div>
           </div>
           <div class="quality-grid">
-            <article>
-              <span>缺失/待补</span>
-              <strong>{{ maintenance.missingMrnCount + maintenance.pendingConsentCount + maintenance.lowSupportCount }}</strong>
-            </article>
-            <article>
-              <span>重复风险</span>
-              <strong>{{ maintenance.duplicateRiskCount }}</strong>
-            </article>
-            <article>
-              <span>高风险患者</span>
-              <strong>{{ maintenance.highRiskCount }}</strong>
-            </article>
-            <article>
-              <span>逾期随访</span>
-              <strong>{{ maintenance.overdueFollowupCount }}</strong>
-            </article>
+            <article><span>缺失/待同意</span><strong>{{ maintenance.missingMrnCount + maintenance.pendingConsentCount + maintenance.lowSupportCount }}</strong></article>
+            <article><span>冲突风险</span><strong>{{ maintenance.duplicateRiskCount }}</strong></article>
+            <article><span>高风险患者</span><strong>{{ maintenance.highRiskCount }}</strong></article>
+            <article><span>逾期随访</span><strong>{{ maintenance.overdueFollowupCount }}</strong></article>
           </div>
         </article>
 
@@ -121,7 +109,7 @@ onMounted(() => {
           <div class="section-header">
             <div>
               <h2>缺失字段</h2>
-              <p>用于档案员补录，不直接修改正式患者表结构。</p>
+              <p>档案员和治理人员需要优先补齐的字段。</p>
             </div>
           </div>
           <ul v-if="missingFields.length" class="simple-list">
@@ -130,30 +118,30 @@ onMounted(() => {
               <strong>{{ item.value }}</strong>
             </li>
           </ul>
-          <p v-else class="empty-inline">暂无缺失字段统计。</p>
+          <p v-else class="empty-inline">暂无缺失字段。</p>
         </article>
 
         <article class="clinical-card">
           <div class="section-header">
             <div>
               <h2>异常时间线</h2>
-              <p>空关系、空对象或未来时间事件。</p>
+              <p>关系缺失、对象缺失或未来时间等异常事件。</p>
             </div>
           </div>
           <ul v-if="anomalyRows.length" class="record-list">
             <li v-for="(item, index) in anomalyRows" :key="`${item.patientId}-${item.eventTime}-${index}`">
               <strong>{{ item.patientName }}</strong>
-              <p>{{ item.eventTime }} / {{ item.relationLabel || item.relation || '关系缺失' }} / {{ item.objectValue || '对象缺失' }}</p>
+              <p>{{ item.eventTime }} / {{ item.relationLabel || item.relation || '关系缺失' }} / {{ item.objectValue || '对象值缺失' }}</p>
             </li>
           </ul>
-          <p v-else class="empty-inline">暂无异常时间线记录。</p>
+          <p v-else class="empty-inline">暂无异常时间线。</p>
         </article>
 
         <article class="clinical-card">
           <div class="section-header">
             <div>
               <h2>冲突记录</h2>
-              <p>主索引或患者档案冲突。</p>
+              <p>主索引和档案一致性风险。</p>
             </div>
           </div>
           <ul v-if="conflictRows.length" class="record-list">
@@ -169,7 +157,7 @@ onMounted(() => {
           <div class="section-header">
             <div>
               <h2>待补全档案</h2>
-              <p>优先处理高风险或数据支持不足患者。</p>
+              <p>优先处理高风险或低数据支持患者。</p>
             </div>
           </div>
           <ul v-if="pendingArchiveRows.length" class="record-list">
@@ -185,7 +173,7 @@ onMounted(() => {
           <div class="section-header">
             <div>
               <h2>治理动作记录</h2>
-              <p>最近病程事件可作为治理追踪线索。</p>
+              <p>最近治理相关事件和来源。</p>
             </div>
           </div>
           <ul v-if="governanceActions.length" class="record-list">

@@ -44,8 +44,8 @@ const currentSummary = computed(() => {
   if (!patient) {
     return {
       title: '请选择患者',
-      subtitle: '从左侧待处理列表打开一个慢病患者',
-      summary: '请选择患者后查看档案、时间线、当前用药和建议摘要。',
+      subtitle: '从待处理队列打开一名慢病患者',
+      summary: '选择患者后，可进入详情查看档案、时间线、当前用药和模型建议摘要。',
       risk: '--',
       support: '--',
       stage: '--',
@@ -109,7 +109,7 @@ function handleOpenDetail() {
         <div>
           <p class="eyebrow">Doctor workstation</p>
           <h1>医生工作台</h1>
-          <p>待处理患者、风险摘要和主要临床动作。</p>
+          <p>只保留患者队列、风险摘要和主要业务入口，完整业务进入独立页面处理。</p>
         </div>
         <div class="header-metrics">
           <article>
@@ -182,7 +182,7 @@ function handleOpenDetail() {
           <div class="section-header">
             <div>
               <h2>当前患者摘要</h2>
-              <p>临床入口信息。</p>
+              <p>只展示决策入口信息。</p>
             </div>
             <span class="risk-badge" :class="riskClass(currentSummary.risk)">{{ currentSummary.risk }}</span>
           </div>
@@ -219,7 +219,7 @@ function handleOpenDetail() {
             </div>
 
             <div class="summary-note warning">
-              <strong>风险提示</strong>
+              <strong>风险提醒</strong>
               <p>{{ riskHint }}</p>
             </div>
           </template>
@@ -228,8 +228,8 @@ function handleOpenDetail() {
         <aside class="clinical-card action-panel">
           <div class="section-header">
             <div>
-              <h2>主动作</h2>
-              <p>进入独立业务页处理。</p>
+              <h2>快捷入口</h2>
+              <p>跳转到独立业务页面。</p>
             </div>
           </div>
           <button class="primary-button" :disabled="!selectedPatientId || loadingPatient" type="button" @click="handleOpenDetail">

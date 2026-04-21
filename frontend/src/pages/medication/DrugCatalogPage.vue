@@ -1,16 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import {
-  createDrugCatalogItem,
-  getDrugCatalog,
-  updateDrugCatalogItem,
-} from '../../services/api'
+import { createDrugCatalogItem, getDrugCatalog, updateDrugCatalogItem } from '../../services/api'
 import type { DrugCatalogRecord, DrugCatalogStatus, DrugCatalogUpsertRequest } from '../../services/types'
 
 const loading = ref(false)
 const saving = ref(false)
 const errorMessage = ref('')
 const successMessage = ref('')
+const editorVisible = ref(false)
 
 const keyword = ref('')
 const statusFilter = ref<'all' | DrugCatalogStatus>('all')
@@ -48,7 +45,10 @@ const filteredDrugs = computed(() => {
       drug.specification,
       drug.unit,
       drug.indication,
-    ].join(' ').toLowerCase().includes(keywordValue)
+    ]
+      .join(' ')
+      .toLowerCase()
+      .includes(keywordValue)
   })
 })
 
@@ -67,14 +67,7 @@ function createEmptyForm(): DrugCatalogUpsertRequest {
   }
 }
 
-function resetEditor() {
-  selectedDrugId.value = ''
-  form.value = createEmptyForm()
-  errorMessage.value = ''
-  successMessage.value = ''
-}
-
-function openDrug(drug: DrugCatalogRecord) {
+function fillForm(drug: DrugCatalogRecord) {
   selectedDrugId.value = drug.drug_id
   form.value = {
     drug_id: drug.drug_id,
@@ -88,8 +81,21 @@ function openDrug(drug: DrugCatalogRecord) {
     status: drug.status,
     indication: drug.indication,
   }
+}
+
+function resetEditor() {
+  selectedDrugId.value = ''
+  form.value = createEmptyForm()
   errorMessage.value = ''
   successMessage.value = ''
+  editorVisible.value = true
+}
+
+function openDrug(drug: DrugCatalogRecord) {
+  fillForm(drug)
+  errorMessage.value = ''
+  successMessage.value = ''
+  editorVisible.value = true
 }
 
 async function loadDrugs(selectDrugId = selectedDrugId.value) {
@@ -97,10 +103,10 @@ async function loadDrugs(selectDrugId = selectedDrugId.value) {
   errorMessage.value = ''
   try {
     drugs.value = await getDrugCatalog()
-    const next = drugs.value.find((item) => item.drug_id === selectDrugId) ?? drugs.value[0]
-    if (next) openDrug(next)
+    const next = drugs.value.find((item) => item.drug_id === selectDrugId)
+    if (next) fillForm(next)
   } catch (error) {
-    errorMessage.value = error instanceof Error ? error.message : 'Failed to load drug catalog.'
+    errorMessage.value = error instanceof Error ? error.message : 'Failed to load medication catalog.'
   } finally {
     loading.value = false
   }
@@ -114,15 +120,16 @@ async function saveDrug() {
     const payload = { ...form.value }
     if (selectedDrugId.value) {
       const updated = await updateDrugCatalogItem(selectedDrugId.value, payload)
-      successMessage.value = 'Drug catalog item updated. Audit log is recorded by backend.'
+      successMessage.value = 'Medication updated.'
       await loadDrugs(updated.drug_id)
     } else {
       const created = await createDrugCatalogItem(payload)
-      successMessage.value = 'Drug catalog item created. Audit log is recorded by backend.'
+      successMessage.value = 'Medication created.'
       await loadDrugs(created.drug_id)
     }
+    editorVisible.value = false
   } catch (error) {
-    errorMessage.value = error instanceof Error ? error.message : 'Failed to save drug catalog item.'
+    errorMessage.value = error instanceof Error ? error.message : 'Failed to save medication.'
   } finally {
     saving.value = false
   }
@@ -160,168 +167,138 @@ onMounted(() => {
 
 <template>
   <section class="workspace-page drug-catalog-page">
-    <el-page-header class="module-page-header" title="Medication module" content="Drug Catalog" />
+    <header class="workstation-page-header">
+      <div>
+        <p class="eyebrow">Medication management</p>
+        <h1>Medication Catalog</h1>
+        <p>Maintain the chronic-care medication dictionary, prescription flags, controlled-drug flags, and catalog status.</p>
+      </div>
+      <div class="header-actions">
+        <el-button @click="clearFilters">Reset filters</el-button>
+        <el-button type="primary" @click="resetEditor">New medication</el-button>
+      </div>
+    </header>
+
+    <section class="metric-grid three">
+      <article class="metric-card">
+        <span>Total medications</span>
+        <strong>{{ drugs.length }}</strong>
+      </article>
+      <article class="metric-card">
+        <span>Active</span>
+        <strong>{{ activeCount }}</strong>
+      </article>
+      <article class="metric-card">
+        <span>Controlled</span>
+        <strong>{{ controlledCount }}</strong>
+      </article>
+    </section>
+
+    <el-alert v-if="errorMessage" :title="errorMessage" type="error" show-icon :closable="false" />
+    <el-alert v-else-if="successMessage" :title="successMessage" type="success" show-icon :closable="false" />
 
     <el-card shadow="never" class="module-card">
       <template #header>
-        <div class="module-header">
+        <div class="section-header">
           <div>
-            <p class="eyebrow">Medication management</p>
-            <h2>Drug Catalog</h2>
-            <p>维护慢病诊疗常用药品目录、剂型规格、处方标识、管制标识和启用状态。</p>
+            <h3>Catalog Table</h3>
+            <span>{{ filteredDrugs.length }} matching records</span>
           </div>
-          <div class="header-actions">
-            <el-button @click="resetEditor">New drug</el-button>
-            <el-button type="primary" :loading="saving" @click="saveDrug">
-              {{ isEditing ? 'Save changes' : 'Create drug' }}
-            </el-button>
-          </div>
+          <el-button :loading="loading" @click="loadDrugs()">Refresh</el-button>
         </div>
       </template>
 
-      <el-row :gutter="12" class="summary-row">
-        <el-col :xs="24" :sm="8">
-          <el-statistic title="Total drugs" :value="drugs.length" />
-        </el-col>
-        <el-col :xs="24" :sm="8">
-          <el-statistic title="Active drugs" :value="activeCount" />
-        </el-col>
-        <el-col :xs="24" :sm="8">
-          <el-statistic title="Controlled drugs" :value="controlledCount" />
-        </el-col>
-      </el-row>
+      <el-form label-position="top" class="filter-form">
+        <el-row :gutter="12">
+          <el-col :xs="24" :md="8">
+            <el-form-item label="Keyword">
+              <el-input v-model="keyword" clearable placeholder="Drug ID / generic name / indication" />
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :md="8">
+            <el-form-item label="Status">
+              <el-select v-model="statusFilter" class="full-width">
+                <el-option label="All" value="all" />
+                <el-option label="Active" value="active" />
+                <el-option label="Inactive" value="inactive" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :md="8">
+            <el-form-item label="Dosage form">
+              <el-input v-model="dosageFormFilter" clearable placeholder="tablet / capsule / injection" />
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :md="8">
+            <el-form-item label="Prescription">
+              <el-select v-model="prescriptionFilter" class="full-width">
+                <el-option label="All" value="all" />
+                <el-option label="Prescription only" value="yes" />
+                <el-option label="Non-prescription" value="no" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :md="8">
+            <el-form-item label="Controlled">
+              <el-select v-model="controlledFilter" class="full-width">
+                <el-option label="All" value="all" />
+                <el-option label="Controlled only" value="yes" />
+                <el-option label="Non-controlled" value="no" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :md="8" class="filter-actions">
+            <el-button @click="clearFilters">Clear</el-button>
+          </el-col>
+        </el-row>
+      </el-form>
 
-      <el-alert
-        v-if="errorMessage"
-        :title="errorMessage"
-        type="error"
-        show-icon
-        :closable="false"
-        class="module-alert"
-      />
-      <el-alert
-        v-else-if="successMessage"
-        :title="successMessage"
-        type="success"
-        show-icon
-        :closable="false"
-        class="module-alert"
-      />
+      <el-table
+        v-loading="loading"
+        :data="filteredDrugs"
+        :row-class-name="drugRowClass"
+        border
+        stripe
+        empty-text="No medication records."
+        @row-click="openDrug"
+      >
+        <el-table-column prop="drug_id" label="Drug ID" min-width="150" />
+        <el-table-column label="Medication" min-width="240">
+          <template #default="{ row }">
+            <strong>{{ row.generic_name }}</strong>
+            <p class="table-subtitle">{{ row.brand_name || 'No brand' }} / {{ row.indication }}</p>
+          </template>
+        </el-table-column>
+        <el-table-column label="Form / Spec" min-width="170">
+          <template #default="{ row }">{{ row.dosage_form }} / {{ row.specification }}</template>
+        </el-table-column>
+        <el-table-column label="Flags" min-width="180">
+          <template #default="{ row }">
+            <el-tag v-if="row.is_prescription" size="small">Prescription</el-tag>
+            <el-tag v-if="row.is_controlled" size="small" type="warning" class="tag-gap">Controlled</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="Status" width="110">
+          <template #default="{ row }">
+            <el-tag :type="row.status === 'active' ? 'success' : 'danger'" effect="light">
+              {{ statusText(row.status) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+      </el-table>
     </el-card>
 
-    <section class="module-grid">
-      <el-card shadow="never" class="module-card">
-        <template #header>
-          <div class="section-header">
-            <div>
-              <h3>Catalog List</h3>
-              <span>{{ filteredDrugs.length }} visible rows</span>
-            </div>
-            <el-button :loading="loading" @click="loadDrugs()">Refresh</el-button>
-          </div>
-        </template>
-
-        <el-form label-position="top" class="filter-form">
-          <el-row :gutter="12">
-            <el-col :xs="24" :md="8">
-              <el-form-item label="Keyword">
-                <el-input v-model="keyword" clearable placeholder="Drug ID / generic / indication" />
-              </el-form-item>
-            </el-col>
-            <el-col :xs="24" :md="8">
-              <el-form-item label="Status">
-                <el-select v-model="statusFilter" class="full-width">
-                  <el-option label="All" value="all" />
-                  <el-option label="Active" value="active" />
-                  <el-option label="Inactive" value="inactive" />
-                </el-select>
-              </el-form-item>
-            </el-col>
-            <el-col :xs="24" :md="8">
-              <el-form-item label="Dosage form">
-                <el-input v-model="dosageFormFilter" clearable placeholder="tablet / capsule / injection" />
-              </el-form-item>
-            </el-col>
-            <el-col :xs="24" :md="8">
-              <el-form-item label="Prescription">
-                <el-select v-model="prescriptionFilter" class="full-width">
-                  <el-option label="All" value="all" />
-                  <el-option label="Prescription only" value="yes" />
-                  <el-option label="Non-prescription" value="no" />
-                </el-select>
-              </el-form-item>
-            </el-col>
-            <el-col :xs="24" :md="8">
-              <el-form-item label="Controlled drug">
-                <el-select v-model="controlledFilter" class="full-width">
-                  <el-option label="All" value="all" />
-                  <el-option label="Controlled only" value="yes" />
-                  <el-option label="Non-controlled" value="no" />
-                </el-select>
-              </el-form-item>
-            </el-col>
-            <el-col :xs="24" :md="8" class="filter-actions">
-              <el-button @click="clearFilters">Clear filters</el-button>
-            </el-col>
-          </el-row>
-        </el-form>
-
-        <el-table
-          v-loading="loading"
-          :data="filteredDrugs"
-          :row-class-name="drugRowClass"
-          border
-          stripe
-          empty-text="No drug matches current filters."
-          @row-click="openDrug"
-        >
-          <el-table-column prop="drug_id" label="Drug ID" min-width="150" />
-          <el-table-column label="Drug" min-width="240">
-            <template #default="{ row }">
-              <strong>{{ row.generic_name }}</strong>
-              <p class="table-subtitle">{{ row.brand_name || 'No brand name' }} / {{ row.indication }}</p>
-            </template>
-          </el-table-column>
-          <el-table-column label="Form" min-width="170">
-            <template #default="{ row }">{{ row.dosage_form }} / {{ row.specification }}</template>
-          </el-table-column>
-          <el-table-column label="Flags" min-width="170">
-            <template #default="{ row }">
-              <el-tag v-if="row.is_prescription" size="small">Rx</el-tag>
-              <el-tag v-if="row.is_controlled" size="small" type="warning" class="tag-gap">Controlled</el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column label="Status" width="110">
-            <template #default="{ row }">
-              <el-tag :type="row.status === 'active' ? 'success' : 'danger'" effect="light">
-                {{ statusText(row.status) }}
-              </el-tag>
-            </template>
-          </el-table-column>
-        </el-table>
-      </el-card>
-
-      <el-card shadow="never" class="module-card">
-        <template #header>
-          <div class="section-header">
-            <div>
-              <h3>{{ isEditing ? 'Drug Details' : 'Create Drug' }}</h3>
-              <span>Backend keeps validation, audit and controlled-drug permission checks authoritative.</span>
-            </div>
-            <el-tag :type="form.status === 'active' ? 'success' : 'danger'">{{ statusText(form.status) }}</el-tag>
-          </div>
-        </template>
-
+    <el-drawer v-model="editorVisible" :title="isEditing ? 'Medication Detail / Edit' : 'New Medication'" size="520px">
+      <div class="drawer-body">
         <el-alert
           v-if="form.is_controlled"
-          title="This action involves a controlled drug. The backend will reject it unless the current role has controlled-drug permission."
+          title="Controlled medication requires matching role permissions before use in clinical workflows."
           type="warning"
           show-icon
           :closable="false"
-          class="module-alert"
         />
 
-        <el-descriptions v-if="selectedDrug" :column="2" border class="detail-descriptions">
+        <el-descriptions v-if="selectedDrug" :column="2" border>
           <el-descriptions-item label="Updated at">{{ formatTime(selectedDrug.updated_at) }}</el-descriptions-item>
           <el-descriptions-item label="Updated by">{{ selectedDrug.updated_by || '--' }}</el-descriptions-item>
           <el-descriptions-item label="Prescription">{{ yesNo(selectedDrug.is_prescription) }}</el-descriptions-item>
@@ -331,39 +308,25 @@ onMounted(() => {
         <el-form label-position="top" class="editor-form">
           <el-row :gutter="12">
             <el-col :xs="24" :md="12">
-              <el-form-item label="Drug ID">
-                <el-input v-model="form.drug_id" :disabled="isEditing" placeholder="drug-metformin" />
-              </el-form-item>
+              <el-form-item label="Drug ID"><el-input v-model="form.drug_id" :disabled="isEditing" placeholder="drug-metformin" /></el-form-item>
             </el-col>
             <el-col :xs="24" :md="12">
-              <el-form-item label="Generic name">
-                <el-input v-model="form.generic_name" />
-              </el-form-item>
+              <el-form-item label="Generic name"><el-input v-model="form.generic_name" /></el-form-item>
             </el-col>
             <el-col :xs="24" :md="12">
-              <el-form-item label="Brand name">
-                <el-input v-model="form.brand_name" />
-              </el-form-item>
+              <el-form-item label="Brand name"><el-input v-model="form.brand_name" /></el-form-item>
             </el-col>
             <el-col :xs="24" :md="12">
-              <el-form-item label="Dosage form">
-                <el-input v-model="form.dosage_form" />
-              </el-form-item>
+              <el-form-item label="Dosage form"><el-input v-model="form.dosage_form" /></el-form-item>
             </el-col>
             <el-col :xs="24" :md="12">
-              <el-form-item label="Specification">
-                <el-input v-model="form.specification" />
-              </el-form-item>
+              <el-form-item label="Specification"><el-input v-model="form.specification" /></el-form-item>
             </el-col>
             <el-col :xs="24" :md="12">
-              <el-form-item label="Unit">
-                <el-input v-model="form.unit" />
-              </el-form-item>
+              <el-form-item label="Unit"><el-input v-model="form.unit" /></el-form-item>
             </el-col>
             <el-col :xs="24">
-              <el-form-item label="Indication">
-                <el-input v-model="form.indication" />
-              </el-form-item>
+              <el-form-item label="Indication"><el-input v-model="form.indication" /></el-form-item>
             </el-col>
             <el-col :xs="24" :md="8">
               <el-form-item label="Status">
@@ -374,44 +337,36 @@ onMounted(() => {
               </el-form-item>
             </el-col>
             <el-col :xs="24" :md="8">
-              <el-form-item label="Prescription drug">
-                <el-switch v-model="form.is_prescription" active-text="Yes" inactive-text="No" />
-              </el-form-item>
+              <el-form-item label="Prescription"><el-switch v-model="form.is_prescription" active-text="Yes" inactive-text="No" /></el-form-item>
             </el-col>
             <el-col :xs="24" :md="8">
-              <el-form-item label="Controlled drug">
-                <el-switch v-model="form.is_controlled" active-text="Yes" inactive-text="No" />
-              </el-form-item>
+              <el-form-item label="Controlled"><el-switch v-model="form.is_controlled" active-text="Yes" inactive-text="No" /></el-form-item>
             </el-col>
           </el-row>
         </el-form>
 
         <div class="editor-actions">
-          <el-button @click="resetEditor">Reset</el-button>
+          <el-button @click="editorVisible = false">Cancel</el-button>
           <el-button type="primary" :loading="saving" @click="saveDrug">
-            {{ isEditing ? 'Save changes' : 'Create drug' }}
+            {{ isEditing ? 'Save changes' : 'Create medication' }}
           </el-button>
         </div>
-      </el-card>
-    </section>
+      </div>
+    </el-drawer>
   </section>
 </template>
 
 <style scoped>
-.drug-catalog-page {
+.drug-catalog-page,
+.drawer-body {
   display: grid;
   gap: 24px;
-}
-
-.module-page-header {
-  padding: 4px 0;
 }
 
 .module-card {
   border-radius: 8px;
 }
 
-.module-header,
 .section-header,
 .header-actions,
 .editor-actions {
@@ -421,43 +376,21 @@ onMounted(() => {
   gap: 12px;
 }
 
-.module-header h2,
-.module-header p,
 .section-header h3,
 .section-header span,
 .table-subtitle {
   margin: 0;
 }
 
-.eyebrow {
-  margin: 0 0 4px;
-  color: #2563eb;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.module-header p,
 .section-header span,
 .table-subtitle {
-  color: #64748b;
+  color: var(--ws-text-muted);
   font-size: 12px;
 }
 
-.summary-row,
-.module-alert,
 .filter-form,
-.editor-form,
-.detail-descriptions {
+.editor-form {
   margin-top: 14px;
-}
-
-.module-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(360px, 0.75fr);
-  gap: 24px;
-  align-items: start;
 }
 
 .full-width {
@@ -475,21 +408,13 @@ onMounted(() => {
 
 .editor-actions {
   justify-content: flex-end;
-  margin-top: 12px;
 }
 
 :deep(.selected-row) {
   --el-table-tr-bg-color: #eff6ff;
 }
 
-@media (max-width: 1180px) {
-  .module-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
 @media (max-width: 720px) {
-  .module-header,
   .section-header,
   .header-actions {
     display: grid;

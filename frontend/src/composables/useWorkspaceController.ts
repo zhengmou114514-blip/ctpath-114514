@@ -115,6 +115,7 @@ export function useWorkspaceController() {
   const selectedPatient = ref<PatientCase | null>(null)
   const patientQuadruples = ref<PatientQuadruple[]>([])
   const predictionResult = ref<PredictResponse | null>(null)
+  const predictionError = ref('')
   const medicationPlanResult = ref<MedicationPlanResponse | null>(null)
 
   const loadingPatients = ref(false)
@@ -426,6 +427,7 @@ export function useWorkspaceController() {
     selectedPatient.value = null
     patientQuadruples.value = []
     predictionResult.value = null
+    predictionError.value = ''
     medicationPlanResult.value = null
     patientForm.value = defaultPatientForm()
     eventForm.value = defaultEventForm()
@@ -704,6 +706,7 @@ export function useWorkspaceController() {
       if (resolvedTarget === 'doctor') {
         patientQuadruples.value = await getPatientQuadruples(patientId)
         predictionResult.value = null
+        predictionError.value = ''
         medicationPlanResult.value = null
         markPatientViewed(patientId)
         section.value = 'doctor'
@@ -854,6 +857,7 @@ export function useWorkspaceController() {
 
     // 清理预测结果
     predictionResult.value = null
+    predictionError.value = ''
 
     // 清理患者详情
     patientQuadruples.value = []
@@ -1004,6 +1008,7 @@ export function useWorkspaceController() {
     archiveFocusSection.value = 'overview'
     viewedPatientIds.value = []
     screenError.value = ''
+    predictionError.value = ''
     permissionHint.value = ''
     archiveSuccess.value = ''
     importResultText.value = ''
@@ -1027,6 +1032,7 @@ export function useWorkspaceController() {
     loadingPredict.value = true
     archiveSuccess.value = ''
     screenError.value = ''
+    predictionError.value = ''
 
     try {
       predictionResult.value = await predictPatient({
@@ -1052,7 +1058,8 @@ export function useWorkspaceController() {
           : 'Model unavailable, prediction fallback applied.'
       await loadOperationalBoards()
     } catch (error) {
-      screenError.value = error instanceof Error ? error.message : 'Failed to run prediction.'
+      predictionError.value = error instanceof Error ? error.message : 'Failed to run prediction.'
+      screenError.value = predictionError.value
       logAudit(
         'trigger_prediction',
         { type: 'patient', id: selectedPatient.value.patientId, label: selectedPatient.value.name },
@@ -1461,6 +1468,7 @@ export function useWorkspaceController() {
     selectedPatient,
     patientQuadruples,
     predictionResult,
+    predictionError,
     medicationPlanResult,
     loadingPatients,
     loadingPatient,

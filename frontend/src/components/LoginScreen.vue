@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import type { HealthResponse, RegisterPayload } from '../services/types'
 import { getSavedAccounts, type SavedAccount } from '../services/api'
+import type { HealthResponse, RegisterPayload } from '../services/types'
 
 const props = defineProps<{
   username: string
@@ -61,10 +61,6 @@ function updatePassword(event: Event) {
   emit('update:password', (event.target as HTMLInputElement).value)
 }
 
-function updateRegisterField(field: keyof RegisterPayload, event: Event) {
-  props.registerForm[field] = (event.target as HTMLInputElement | HTMLSelectElement).value as never
-}
-
 function selectSuggestion(account: SavedAccount) {
   emit('update:username', account.username)
   emit('update:password', '')
@@ -108,33 +104,29 @@ function handleFocus() {
 
 <template>
   <div class="login-shell">
-    <section class="login-panel">
-      <div class="login-copy-panel">
-        <p class="eyebrow">CTpath Workstation</p>
-        <h1>慢病辅助诊疗业务系统</h1>
-        <p>
-          登录后进入医生、护士或档案员工作台。系统聚焦慢病患者档案、病程时间线、模型辅助建议、随访闭环与治理能力。
-        </p>
-        <div class="login-status-grid">
-          <span>后端：{{ health?.status ?? '未连接' }}</span>
-          <span>模式：{{ health?.mode ?? 'unknown' }}</span>
-          <span>模型：{{ health?.model_available ? '可用' : '降级/不可用' }}</span>
+    <section class="login-card" aria-label="系统登录">
+      <div class="brand-side">
+        <div class="brand-mark">CT</div>
+        <div>
+          <p class="eyebrow">慢病辅助诊疗系统</p>
+          <h1>CTpath 临床工作台</h1>
+          <p>面向医生、护士与档案员的慢病患者管理入口。</p>
         </div>
       </div>
 
-      <form v-if="!registerMode" class="login-form" @submit.prevent="emit('submit-login')">
+      <form class="login-form" @submit.prevent="emit('submit-login')">
         <div class="form-heading">
-          <h2>登录工作台</h2>
-          <p>演示账号：demo_clinic / demo_nurse / demo_archivist，密码 demo123456</p>
+          <h2>账号登录</h2>
+          <p>请输入分配的工作账号进入对应业务模块。</p>
         </div>
 
         <label class="field">
-          <span>用户名</span>
+          <span>账号</span>
           <div class="autocomplete-wrapper">
             <input
               :value="username"
               type="text"
-              placeholder="demo_clinic"
+              placeholder="请输入账号"
               autocomplete="off"
               @input="updateUsername"
               @keydown="handleKeydown"
@@ -163,62 +155,15 @@ function handleFocus() {
 
         <label class="field">
           <span>密码</span>
-          <input :value="password" type="password" placeholder="demo123456" @input="updatePassword" />
+          <input :value="password" type="password" placeholder="请输入密码" @input="updatePassword" />
         </label>
 
+        <p class="login-hint">演示账号可使用 demo_clinic / demo_nurse / demo_archivist，密码 demo123456。</p>
         <p v-if="loginError" class="error-text">{{ loginError }}</p>
 
-        <div class="login-actions">
-          <button class="primary-button" type="submit" :disabled="loadingLogin">
-            {{ loadingLogin ? '登录中...' : '登录' }}
-          </button>
-          <button class="secondary-button" type="button" @click="emit('toggle-register', true)">注册账号</button>
-        </div>
-      </form>
-
-      <form v-else class="login-form" @submit.prevent="emit('submit-register')">
-        <div class="form-heading">
-          <h2>注册工作台账号</h2>
-          <p>填写信息后创建工作台账号。</p>
-        </div>
-
-        <label class="field">
-          <span>姓名</span>
-          <input :value="registerForm.name" type="text" placeholder="例如：王医生" @input="updateRegisterField('name', $event)" />
-        </label>
-        <label class="field">
-          <span>用户名</span>
-          <input :value="registerForm.username" type="text" placeholder="例如：wang_doctor" @input="updateRegisterField('username', $event)" />
-        </label>
-        <label class="field">
-          <span>密码</span>
-          <input :value="registerForm.password" type="password" placeholder="不少于 6 位" @input="updateRegisterField('password', $event)" />
-        </label>
-        <label class="field">
-          <span>职称</span>
-          <input :value="registerForm.title" type="text" placeholder="主治医师 / 护师 / 档案员" @input="updateRegisterField('title', $event)" />
-        </label>
-        <label class="field">
-          <span>科室</span>
-          <input :value="registerForm.department" type="text" placeholder="慢病管理中心" @input="updateRegisterField('department', $event)" />
-        </label>
-        <label class="field">
-          <span>角色</span>
-          <select :value="registerForm.role" @change="updateRegisterField('role', $event)">
-            <option value="doctor">医生</option>
-            <option value="nurse">护士</option>
-            <option value="archivist">档案员</option>
-          </select>
-        </label>
-
-        <p v-if="registerError" class="error-text">{{ registerError }}</p>
-
-        <div class="login-actions">
-          <button class="primary-button" type="submit" :disabled="loadingRegister">
-            {{ loadingRegister ? '注册中...' : '提交注册' }}
-          </button>
-          <button class="secondary-button" type="button" @click="emit('toggle-register', false)">返回登录</button>
-        </div>
+        <button class="primary-button login-submit" type="submit" :disabled="loadingLogin">
+          {{ loadingLogin ? '正在登录...' : '登录工作台' }}
+        </button>
       </form>
     </section>
   </div>
@@ -233,63 +178,60 @@ function handleFocus() {
   background: var(--ws-bg);
 }
 
-.login-panel {
-  width: min(980px, 100%);
+.login-card {
+  width: min(860px, 100%);
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 420px;
-  gap: 0;
+  grid-template-columns: minmax(0, 0.9fr) 400px;
+  overflow: hidden;
   border: 1px solid var(--ws-border);
   border-radius: 8px;
   background: var(--ws-surface);
   box-shadow: var(--ws-shadow);
-  overflow: hidden;
 }
 
-.login-copy-panel,
+.brand-side,
 .login-form {
-  padding: 28px;
+  padding: 32px;
 }
 
-.login-copy-panel {
+.brand-side {
   display: grid;
   align-content: center;
-  gap: 16px;
+  gap: 18px;
   background: #f3f7fb;
   border-right: 1px solid var(--ws-border);
 }
 
-.login-copy-panel h1,
-.login-copy-panel p,
+.brand-mark {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--ws-primary);
+  color: #fff;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.brand-side h1,
+.brand-side p,
 .form-heading h2,
-.form-heading p {
+.form-heading p,
+.login-hint {
   margin: 0;
 }
 
-.login-copy-panel h1 {
+.brand-side h1 {
   font-size: 24px;
   color: var(--ws-title);
 }
 
-.login-copy-panel p,
-.form-heading p {
+.brand-side p,
+.form-heading p,
+.login-hint {
   color: var(--ws-text-muted);
   line-height: 1.7;
-}
-
-.login-status-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.login-status-grid span {
-  border: 1px solid var(--ws-border);
-  border-radius: 8px;
-  background: var(--ws-surface);
-  padding: 10px;
-  color: var(--ws-title);
-  font-size: 12px;
-  font-weight: 700;
 }
 
 .login-form {
@@ -382,6 +324,10 @@ function handleFocus() {
   font-weight: 700;
 }
 
+.login-hint {
+  font-size: 12px;
+}
+
 .error-text {
   margin: 0;
   padding: 10px 12px;
@@ -393,23 +339,18 @@ function handleFocus() {
   font-weight: 700;
 }
 
-.login-actions {
-  display: flex;
-  gap: 10px;
+.login-submit {
+  width: 100%;
 }
 
-@media (max-width: 860px) {
-  .login-panel {
+@media (max-width: 820px) {
+  .login-card {
     grid-template-columns: 1fr;
   }
 
-  .login-copy-panel {
+  .brand-side {
     border-right: 0;
     border-bottom: 1px solid var(--ws-border);
-  }
-
-  .login-status-grid {
-    grid-template-columns: 1fr;
   }
 }
 </style>

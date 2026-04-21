@@ -18,18 +18,18 @@ const emit = defineEmits<{
 }>()
 
 const sectionCopy: Record<AppSection, { label: string; description: string; group: string }> = {
-  doctor: { label: '医生工作台', description: '待处理患者、风险摘要、主动作入口', group: '临床工作' },
-  archive: { label: '患者档案', description: '身份信息、建档状态、电子档案入口', group: '临床工作' },
-  'drug-management': { label: '药品管理', description: '药品目录、剂型规格、状态维护', group: '药品治理' },
-  'drug-permission-management': { label: '药品权限', description: '角色与药品权限矩阵', group: '药品治理' },
-  tasks: { label: '护士随访', description: '待随访任务与联系记录', group: '随访闭环' },
-  contacts: { label: '联系记录', description: '患者与紧急联系人触达记录', group: '随访闭环' },
-  flow: { label: '随访流转', description: '随访状态与下一步计划', group: '随访闭环' },
+  doctor: { label: '医生工作台', description: '待处理患者、风险提醒与快捷入口', group: '临床工作' },
+  archive: { label: '患者档案', description: '身份信息、电子档案与附件', group: '临床工作' },
+  tasks: { label: '护士随访', description: '待随访任务与处理状态', group: '随访闭环' },
+  contacts: { label: '联系记录', description: '电话、家属与门诊联系记录', group: '随访闭环' },
+  flow: { label: '随访流程', description: '流程状态与下一步动作', group: '随访闭环' },
+  'drug-management': { label: '药品管理', description: '药品目录、状态与管制标识', group: '药品与权限' },
+  'drug-permission-management': { label: '药品权限', description: '角色级用药权限矩阵', group: '药品与权限' },
   insights: { label: '模型洞察', description: '当前患者预测与证据摘要', group: '模型中心' },
   'model-dashboard': { label: '模型看板', description: '模型版本、指标与健康状态', group: '模型中心' },
-  governance: { label: '治理中心', description: '数据质量、冲突、审计动作', group: '治理中心' },
-  'data-quality': { label: '数据质量', description: '缺失字段与待补全档案', group: '治理中心' },
-  system: { label: '系统状态', description: '运行模式、接口状态、当前用户', group: '系统' },
+  governance: { label: '治理中心', description: '数据质量、冲突与审计线索', group: '治理中心' },
+  'data-quality': { label: '数据质量', description: '档案缺失与质量问题', group: '治理中心' },
+  system: { label: '系统状态', description: '运行模式、认证与审计状态', group: '治理中心' },
 }
 
 const roleCopy: Record<DoctorUser['role'], string> = {
@@ -62,8 +62,8 @@ function descriptionFor(section: AppSection) {
     <div class="brand-panel">
       <div class="brand-mark">CT</div>
       <div>
-        <p class="eyebrow inverse">慢病辅助诊疗</p>
-        <strong>业务工作台</strong>
+        <p class="eyebrow inverse">CTpath</p>
+        <strong>慢病辅助诊疗</strong>
       </div>
     </div>
 
@@ -75,7 +75,7 @@ function descriptionFor(section: AppSection) {
       </div>
       <div class="user-meta">
         <span class="role-tag" :class="`role-tag-${doctor.role}`">{{ roleCopy[doctor.role] }}</span>
-        <span class="current-module">当前模块：{{ labelFor(activeSection) }}</span>
+        <span class="current-module">当前：{{ labelFor(activeSection) }}</span>
       </div>
     </section>
 

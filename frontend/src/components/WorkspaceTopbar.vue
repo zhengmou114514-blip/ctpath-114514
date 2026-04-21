@@ -16,7 +16,7 @@ const sectionLabelMap: Record<AppSection, string> = {
   'drug-permission-management': '药品权限管理',
   tasks: '护士随访工作台',
   contacts: '联系记录',
-  flow: '随访流转',
+  flow: '随访流程',
   insights: '模型洞察',
   'model-dashboard': '模型看板',
   governance: '治理中心',
@@ -58,7 +58,7 @@ function modelLabel(health: HealthResponse | null) {
     <div class="workspace-topbar-status">
       <span v-if="loading" class="workspace-status-pill status-info">加载中</span>
       <span class="workspace-status-pill">服务：{{ healthLabel(health) }}</span>
-      <span class="workspace-status-pill">模式：{{ health?.mode ?? 'unknown' }}</span>
+      <span class="workspace-status-pill">数据源：{{ health?.mode ?? 'unknown' }}</span>
       <span
         class="workspace-status-pill"
         :class="{

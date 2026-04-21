@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useWorkspaceController } from '../composables/useWorkspaceController'
 import { provideWorkspaceContext } from '../composables/workspaceContext'
@@ -14,6 +14,7 @@ provideWorkspaceContext(workspace)
 
 const route = useRoute()
 const router = useRouter()
+const redirectingToLogin = ref(false)
 
 const splitRouteSections: Record<string, 'insights' | 'model-dashboard' | 'governance' | 'drug-management' | 'drug-permission-management' | 'tasks'> = {
   'nurse-followups': 'tasks',
@@ -133,6 +134,18 @@ function handleBackToList() {
   workspace.backToDoctorList()
 }
 
+async function handleLogout() {
+  redirectingToLogin.value = true
+  workspace.logout()
+
+  try {
+    await router.replace('/login')
+  } catch (error) {
+    redirectingToLogin.value = false
+    throw error
+  }
+}
+
 onMounted(async () => {
   await workspace.initialize()
 })
@@ -149,6 +162,7 @@ watch(
   () => workspace.currentDoctor,
   (doctor) => {
     if (doctor) {
+      redirectingToLogin.value = false
       syncWorkspaceFromRoute()
     }
   }
@@ -176,7 +190,7 @@ watch(
     :success-message="workspace.archiveSuccess"
     :loading="workspace.globalLoading"
     @select="handleSelectSection"
-    @logout="workspace.logout"
+    @logout="handleLogout"
     @open-archive="handleOpenArchive"
     @open-followup="handleOpenFollowup"
     @back-to-list="handleBackToList"
@@ -270,7 +284,7 @@ watch(
     </template>
   </AppShell>
 
-  <section v-else class="workspace-auth-handoff">
+  <section v-else-if="!redirectingToLogin" class="workspace-auth-handoff">
     <p>正在进入登录页...</p>
   </section>
 </template>
