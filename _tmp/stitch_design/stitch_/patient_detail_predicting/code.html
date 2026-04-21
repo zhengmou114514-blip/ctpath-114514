@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Stitch Clinical - Patient Detail Hub (Predicting)</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "primary-fixed": "#a8eff4",
+                      "surface-tint": "#19686d",
+                      "inverse-primary": "#8cd2d7",
+                      "primary-fixed-dim": "#8cd2d7",
+                      "error-container": "#ffdad6",
+                      "surface-dim": "#d7dadb",
+                      "secondary-fixed-dim": "#b4cad6",
+                      "surface-container-high": "#e5e9ea",
+                      "on-secondary": "#ffffff",
+                      "on-primary-container": "#8cd2d7",
+                      "background": "#f7fafb",
+                      "secondary": "#4c616c",
+                      "on-tertiary-fixed-variant": "#6c3a19",
+                      "on-tertiary-fixed": "#321200",
+                      "surface-container": "#ebeeef",
+                      "on-error-container": "#93000a",
+                      "on-tertiary": "#ffffff",
+                      "on-surface-variant": "#3f4849",
+                      "on-primary": "#ffffff",
+                      "tertiary-fixed-dim": "#ffb68c",
+                      "on-primary-fixed-variant": "#004f53",
+                      "primary-container": "#005c61",
+                      "outline-variant": "#bec8c9",
+                      "on-primary-fixed": "#002022",
+                      "on-surface": "#181c1d",
+                      "tertiary-fixed": "#ffdbc9",
+                      "tertiary-container": "#7a4523",
+                      "surface-container-low": "#f1f4f5",
+                      "inverse-surface": "#2d3132",
+                      "on-secondary-container": "#526772",
+                      "surface-bright": "#f7fafb",
+                      "secondary-container": "#cfe6f2",
+                      "error": "#ba1a1a",
+                      "on-background": "#181c1d",
+                      "surface-variant": "#e0e3e4",
+                      "on-tertiary-container": "#ffb68b",
+                      "primary": "#004347",
+                      "surface-container-lowest": "#ffffff",
+                      "on-secondary-fixed": "#071e27",
+                      "tertiary": "#5e2f0e",
+                      "secondary-fixed": "#cfe6f2",
+                      "surface-container-highest": "#e0e3e4",
+                      "surface": "#f7fafb",
+                      "on-secondary-fixed-variant": "#354a53",
+                      "inverse-on-surface": "#eef1f2",
+                      "on-error": "#ffffff",
+                      "outline": "#6f797a"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {},
+              "fontFamily": {
+                      "headline": [
+                              "Public Sans"
+                      ],
+                      "body": [
+                              "Inter"
+                      ],
+                      "label": [
+                              "Inter"
+                      ]
+              }
+            },
+          },
+        }
+      </script>
+<style>
+        .animate-pulse-slow {
+            animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+      </style>
+</head>
+<body class="bg-background text-on-surface font-body antialiased flex h-screen overflow-hidden">
+<!-- SideNavBar -->
+<nav class="h-screen w-72 flex-col left-0 top-0 sticky bg-[#ebeeef] dark:bg-slate-900 flex py-8 space-y-2 z-50">
+<div class="px-6 mb-8 flex items-center space-x-3">
+<span class="material-symbols-outlined text-4xl text-[#004347] dark:text-teal-400" data-weight="fill" style="font-variation-settings: 'FILL' 1;">neurology</span>
+<div>
+<h1 class="text-xl font-black text-[#004347] tracking-[0.2em] dark:text-teal-400 font-headline">STITCH</h1>
+<p class="text-[10px] font-medium text-on-surface-variant uppercase tracking-widest font-label mt-0.5">Clinical Workstation</p>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto w-full">
+<ul class="space-y-1">
+<li>
+<a class="flex items-center px-6 py-3 text-[#3f4849] font-medium opacity-80 hover:bg-[#e0e3e4] transition-colors duration-200 scale-95 active:scale-100 transition-transform" href="#">
+<span class="material-symbols-outlined mr-4">dashboard</span>
+<span class="font-label text-sm">Dashboard</span>
+</a>
+</li>
+<li>
+<a class="flex items-center px-6 py-3 text-[#004347] font-bold border-r-4 border-[#004347] bg-[#f1f4f5]/50 hover:bg-[#e0e3e4] transition-colors duration-200 scale-95 active:scale-100 transition-transform" href="#">
+<span class="material-symbols-outlined mr-4" data-weight="fill" style="font-variation-settings: 'FILL' 1;">groups</span>
+<span class="font-label text-sm">Patient Management</span>
+</a>
+</li>
+<li>
+<a class="flex items-center px-6 py-3 text-[#3f4849] font-medium opacity-80 hover:bg-[#e0e3e4] transition-colors duration-200 scale-95 active:scale-100 transition-transform" href="#">
+<span class="material-symbols-outlined mr-4">neurology</span>
+<span class="font-label text-sm">Model Center</span>
+</a>
+</li>
+<li>
+<a class="flex items-center px-6 py-3 text-[#3f4849] font-medium opacity-80 hover:bg-[#e0e3e4] transition-colors duration-200 scale-95 active:scale-100 transition-transform" href="#">
+<span class="material-symbols-outlined mr-4">admin_panel_settings</span>
+<span class="font-label text-sm">Data Governance</span>
+</a>
+</li>
+<li>
+<a class="flex items-center px-6 py-3 text-[#3f4849] font-medium opacity-80 hover:bg-[#e0e3e4] transition-colors duration-200 scale-95 active:scale-100 transition-transform" href="#">
+<span class="material-symbols-outlined mr-4">medication</span>
+<span class="font-label text-sm">Medicine Management</span>
+</a>
+</li>
+<li>
+<a class="flex items-center px-6 py-3 text-[#3f4849] font-medium opacity-80 hover:bg-[#e0e3e4] transition-colors duration-200 scale-95 active:scale-100 transition-transform" href="#">
+<span class="material-symbols-outlined mr-4">settings</span>
+<span class="font-label text-sm">System</span>
+</a>
+</li>
+</ul>
+</div>
+<div class="px-6 mt-auto">
+<div class="flex items-center p-3 rounded-lg bg-surface-container-high">
+<img alt="Clinician Profile" class="w-10 h-10 rounded-full object-cover" data-alt="Close up portrait of a professional female clinician wearing a white coat, neutral lighting, soft focus background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBJBSd1D5MnosxdMqYUttyO2EyAoab1D7K824RIPdXB1wUhslwxzHM-jyTiZAoBfG4wIymcUWkWnBo2HEqN6SwUGgunqv-VMjUsKQitLi4h-ECxjLiEVn_Hiu5zTGXJ1tLjngn_SARcZM2gbHNg7F6qauVTLtLyIWmCRVasGgQaz54ExZLrWBbWDa2AF6HJ54Jtu9PTCgloYBWz74buRLrjkRaVtmAWwKNDbMETDyNQx3KQ4l60Babn3ILW8vwgQxGwUHU4jL7JUs8"/>
+<div class="ml-3">
+<p class="text-sm font-semibold text-on-surface font-body">Dr. Sarah Jenkins</p>
+<p class="text-xs text-on-surface-variant font-label">Lead Neurologist</p>
+</div>
+</div>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col min-w-0 overflow-hidden bg-surface-container-low">
+<!-- TopAppBar -->
+<header class="w-full h-20 top-0 sticky z-40 bg-[#f7fafb] dark:bg-slate-950 flex items-center justify-between px-10 max-w-full">
+<div class="flex items-center flex-1">
+<div class="relative w-96">
+<span class="material-symbols-outlined absolute left-3 top-1/2 transform -translate-y-1/2 text-on-surface-variant text-sm">search</span>
+<input class="w-full bg-surface-container-highest border-none rounded-DEFAULT pl-10 pr-4 py-2 text-sm text-on-surface placeholder-on-surface-variant focus:ring-2 focus:ring-primary focus:bg-surface-container-lowest transition-all font-body" placeholder="Search patients, conditions, or medications..." type="text"/>
+</div>
+</div>
+<div class="flex items-center space-x-6">
+<div class="flex items-center space-x-2 text-xs font-semibold text-primary uppercase tracking-wider font-label bg-primary-fixed/30 px-3 py-1.5 rounded-DEFAULT">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+<span>Demo/MySQL Mode</span>
+</div>
+<div class="flex items-center space-x-4 text-[#3f4849]">
+<button class="hover:text-[#005c61] transition-all cursor-pointer ease-in-out duration-150">
+<span class="material-symbols-outlined">sensors</span>
+</button>
+<button class="hover:text-[#005c61] transition-all cursor-pointer ease-in-out duration-150 relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute -top-1 -right-1 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<button class="hover:text-[#005c61] transition-all cursor-pointer ease-in-out duration-150">
+<span class="material-symbols-outlined">logout</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Patient Detail Workspace -->
+<div class="flex-1 overflow-y-auto p-8">
+<div class="max-w-7xl mx-auto space-y-6">
+<!-- Patient Header (Lightweight) -->
+<div class="flex justify-between items-end mb-8">
+<div>
+<h2 class="text-3xl font-bold font-headline text-on-surface mb-1">Eleanor Vance, 68</h2>
+<div class="flex items-center space-x-4 text-sm font-label text-on-surface-variant uppercase tracking-wider">
+<span>ID: #MRN-84729-X</span>
+<span class="w-1 h-1 rounded-full bg-outline-variant"></span>
+<span>Admitted: Oct 12, 2023</span>
+<span class="w-1 h-1 rounded-full bg-outline-variant"></span>
+<span>Ward 4B</span>
+</div>
+</div>
+<div class="flex space-x-3">
+<button class="px-4 py-2 rounded-lg border border-outline/30 text-on-surface-variant hover:bg-surface-container-highest transition-colors font-label text-sm font-semibold">
+                            Download Chart
+                        </button>
+<button class="px-4 py-2 rounded-lg bg-gradient-to-b from-primary to-primary-container text-on-primary shadow-[0_4px_12px_-2px_rgba(0,67,71,0.2)] hover:shadow-[0_6px_16px_-2px_rgba(0,67,71,0.3)] transition-all font-label text-sm font-semibold flex items-center">
+<span class="material-symbols-outlined text-sm mr-2">edit_note</span>
+                            Update Vitals
+                        </button>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-12 gap-6">
+<!-- LEFT COLUMN: Clinical Vitals & Meds (Lower visual priority while AI is loading) -->
+<div class="col-span-12 lg:col-span-4 flex flex-col space-y-6">
+<!-- Vitals Card -->
+<div class="bg-surface-container-lowest rounded-xl p-5 flex flex-col h-full">
+<h3 class="text-xs font-bold font-label uppercase tracking-widest text-on-surface-variant mb-4">Current Vitals</h3>
+<div class="space-y-4 flex-1">
+<div class="flex justify-between items-center border-b border-surface-container-high pb-3 last:border-0">
+<span class="text-sm text-on-surface-variant font-body">Blood Pressure</span>
+<div class="text-right">
+<span class="text-lg font-bold font-headline text-on-surface">138/85</span>
+<span class="text-xs text-on-surface-variant ml-1">mmHg</span>
+</div>
+</div>
+<div class="flex justify-between items-center border-b border-surface-container-high pb-3 last:border-0">
+<span class="text-sm text-on-surface-variant font-body">Heart Rate</span>
+<div class="text-right">
+<span class="text-lg font-bold font-headline text-on-surface">72</span>
+<span class="text-xs text-on-surface-variant ml-1">bpm</span>
+</div>
+</div>
+<div class="flex justify-between items-center border-b border-surface-container-high pb-3 last:border-0">
+<span class="text-sm text-on-surface-variant font-body">O2 Saturation</span>
+<div class="text-right">
+<span class="text-lg font-bold font-headline text-on-surface">96</span>
+<span class="text-xs text-on-surface-variant ml-1">%</span>
+</div>
+</div>
+<div class="flex justify-between items-center pb-3">
+<span class="text-sm text-on-surface-variant font-body">Temperature</span>
+<div class="text-right">
+<span class="text-lg font-bold font-headline text-on-surface">98.4</span>
+<span class="text-xs text-on-surface-variant ml-1">°F</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Active Medications -->
+<div class="bg-surface-container-lowest rounded-xl p-5 flex flex-col flex-1">
+<h3 class="text-xs font-bold font-label uppercase tracking-widest text-on-surface-variant mb-4">Active Medications</h3>
+<div class="space-y-3">
+<div class="p-3 bg-surface-container-low rounded-lg">
+<div class="flex justify-between items-start">
+<div>
+<p class="text-sm font-semibold text-on-surface font-body">Lisinopril</p>
+<p class="text-xs text-on-surface-variant font-body mt-0.5">10mg • Oral • Daily</p>
+</div>
+<span class="material-symbols-outlined text-outline text-sm">pill</span>
+</div>
+</div>
+<div class="p-3 bg-surface-container-low rounded-lg">
+<div class="flex justify-between items-start">
+<div>
+<p class="text-sm font-semibold text-on-surface font-body">Atorvastatin</p>
+<p class="text-xs text-on-surface-variant font-body mt-0.5">20mg • Oral • Nightly</p>
+</div>
+<span class="material-symbols-outlined text-outline text-sm">pill</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- RIGHT COLUMN: AI Analysis (THE FOCUS) & Timeline -->
+<div class="col-span-12 lg:col-span-8 flex flex-col space-y-6">
+<!-- AI PREDICTION PANEL - ACTIVE STATE (Predicting) -->
+<!-- Using Glassmorphism and pulsing status to draw attention -->
+<div class="bg-surface/90 backdrop-blur-md rounded-xl p-6 relative overflow-hidden ring-1 ring-surface-tint/20 shadow-[0_12px_32px_-4px_rgba(25,104,109,0.08)]">
+<!-- Animated Background Glow -->
+<div class="absolute -top-24 -right-24 w-64 h-64 bg-surface-tint/10 rounded-full blur-3xl animate-pulse-slow"></div>
+<div class="relative z-10">
+<div class="flex items-center justify-between mb-6">
+<div class="flex items-center space-x-3">
+<div class="w-10 h-10 rounded-full bg-surface-tint/10 flex items-center justify-center relative">
+<span class="material-symbols-outlined text-surface-tint">memory</span>
+<!-- Pulse ring -->
+<span class="absolute inset-0 rounded-full border-2 border-surface-tint opacity-30 animate-ping"></span>
+</div>
+<div>
+<h3 class="text-sm font-bold font-headline text-on-surface">Stitch Inference Engine</h3>
+<p class="text-xs text-on-surface-variant font-label mt-0.5">Model: Neurological Risk v2.4</p>
+</div>
+</div>
+<!-- Status Chip: Predicting -->
+<div class="px-3 py-1.5 rounded-full bg-surface-tint/10 flex items-center space-x-2">
+<span class="w-2 h-2 rounded-full bg-surface-tint animate-pulse"></span>
+<span class="text-xs font-bold text-surface-tint uppercase tracking-wider font-label">Analyzing</span>
+</div>
+</div>
+<div class="space-y-5">
+<div class="flex items-center justify-between">
+<p class="text-sm font-medium text-on-surface font-body animate-pulse-slow">Processing clinical history and latest lab results...</p>
+<span class="text-xs font-bold font-label text-surface-tint">68%</span>
+</div>
+<!-- Progress Bar -->
+<div class="w-full h-1.5 bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-surface-tint rounded-full relative w-[68%] transition-all duration-500 ease-out">
+<!-- Shimmer effect on progress bar -->
+<div class="absolute top-0 left-0 bottom-0 w-full bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full animate-[shimmer_1.5s_infinite]"></div>
+</div>
+</div>
+<!-- Skeleton Loading Areas for expected data -->
+<div class="grid grid-cols-2 gap-4 mt-6 opacity-60">
+<div class="p-4 bg-surface-container-low rounded-lg space-y-3">
+<div class="h-2.5 bg-outline-variant/30 rounded w-1/3 animate-pulse"></div>
+<div class="h-6 bg-outline-variant/20 rounded w-1/2 animate-pulse"></div>
+</div>
+<div class="p-4 bg-surface-container-low rounded-lg space-y-3">
+<div class="h-2.5 bg-outline-variant/30 rounded w-1/3 animate-pulse"></div>
+<div class="h-6 bg-outline-variant/20 rounded w-1/2 animate-pulse"></div>
+</div>
+</div>
+<div class="h-16 bg-surface-container-low rounded-lg mt-4 animate-pulse opacity-50"></div>
+</div>
+</div>
+</div>
+<!-- Clinical Timeline (Resting State) -->
+<div class="bg-surface-container-lowest rounded-xl p-6 flex-1">
+<h3 class="text-xs font-bold font-label uppercase tracking-widest text-on-surface-variant mb-6">Recent Events</h3>
+<div class="relative pl-4 border-l-2 border-surface-container-high space-y-6">
+<!-- Timeline Item -->
+<div class="relative">
+<span class="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-outline-variant ring-4 ring-surface-container-lowest"></span>
+<div class="flex justify-between items-start mb-1">
+<p class="text-sm font-semibold text-on-surface font-body">Lab Results Available</p>
+<span class="text-xs text-on-surface-variant font-label">Today, 09:30 AM</span>
+</div>
+<p class="text-sm text-on-surface-variant font-body">Comprehensive Metabolic Panel results loaded into system.</p>
+</div>
+<!-- Timeline Item -->
+<div class="relative">
+<span class="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-outline-variant ring-4 ring-surface-container-lowest"></span>
+<div class="flex justify-between items-start mb-1">
+<p class="text-sm font-semibold text-on-surface font-body">Neurology Consult</p>
+<span class="text-xs text-on-surface-variant font-label">Yesterday, 02:15 PM</span>
+</div>
+<p class="text-sm text-on-surface-variant font-body">Dr. Jenkins completed routine follow-up. No acute distress noted.</p>
+</div>
+<!-- Timeline Item -->
+<div class="relative">
+<span class="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-outline-variant ring-4 ring-surface-container-lowest"></span>
+<div class="flex justify-between items-start mb-1">
+<p class="text-sm font-semibold text-on-surface font-body">Admitted to Ward 4B</p>
+<span class="text-xs text-on-surface-variant font-label">Oct 12, 2023</span>
+</div>
+<p class="text-sm text-on-surface-variant font-body">Transferred from ER for observation.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<style>
+        @keyframes shimmer {
+            100% { transform: translateX(100%); }
+        }
+    </style>
+</body></html>

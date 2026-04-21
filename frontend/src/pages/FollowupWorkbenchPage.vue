@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import FollowupPage from './FollowupPage.vue'
 import type { ContactLogCreatePayload, DoctorUser, FlowBoardRow, FollowupTaskRow } from '../services/types'
 
@@ -25,23 +25,23 @@ const emit = defineEmits<{
 
 <template>
   <section v-if="props.noPermission" class="empty-state-card">
-    <h3>无权限</h3>
-    <p>当前账号无随访工作台访问权限。</p>
+    <h3>无权限访问</h3>
+    <p>当前账号没有随访工作台访问权限。</p>
   </section>
 
   <section v-else-if="props.loading" class="empty-state-card">
     <h3>加载中</h3>
-    <p>正在加载随访任务与流转看板。</p>
+    <p>正在加载随访任务与流程看板。</p>
   </section>
 
   <section v-else-if="!props.followupItems.length" class="empty-state-card">
-    <h3>无数据</h3>
-    <p>当前暂无随访任务。</p>
+    <h3>暂无数据</h3>
+    <p>当前没有待处理的随访任务。</p>
   </section>
 
   <section v-else-if="props.modelUnavailable" class="empty-state-card">
-    <h3>模型不可用</h3>
-    <p>模型服务当前不可用，随访任务处理不受影响。</p>
+    <h3>模型暂不可用</h3>
+    <p>模型服务当前不可用，但不影响随访任务处理。</p>
   </section>
 
   <FollowupPage
@@ -60,4 +60,3 @@ const emit = defineEmits<{
     @submit-contact-log="(patientId, payload) => emit('submit-contact-log', patientId, payload)"
   />
 </template>
-

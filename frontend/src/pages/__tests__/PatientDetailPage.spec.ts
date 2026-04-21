@@ -109,7 +109,7 @@ function createPredictionResult(): PredictResponse {
       connected: true,
       note: '',
     },
-    pathExplanation: ['近期依从性下降。'],
+    pathExplanation: ['根据近期血糖波动与病程事件生成的解释路径。'],
     similarCases: [],
   }
 }
@@ -125,6 +125,7 @@ function mountPage() {
           emits: ['click'],
           template: '<button :disabled="disabled" @click="$emit(`click`)"><slot /></button>',
         },
+        ElIcon: { template: '<span class="el-icon-stub"><slot /></span>' },
         ElTag: { template: '<span class="el-tag-stub"><slot /></span>' },
         ElProgress: { props: ['percentage'], template: '<div class="el-progress-stub">{{ percentage }}</div>' },
         ElEmpty: { props: ['description'], template: '<div class="el-empty-stub">{{ description }}</div>' },
@@ -168,13 +169,13 @@ describe('PatientDetailPage', () => {
   it('uses preloaded summary first, then switches to latest prediction after trigger', async () => {
     const wrapper = mountPage()
 
-    expect(wrapper.text()).toContain('Preloaded Summary')
+    expect(wrapper.text()).toContain('初始预置摘要')
     expect(wrapper.text()).toContain('Preloaded Risk Event')
-    expect(wrapper.text()).not.toContain('Latest Prediction')
+    expect(wrapper.text()).not.toContain('最新预测结果')
 
     const actionButton = wrapper
       .findAll('button')
-      .find((button) => button.text().includes('Run Prediction'))
+      .find((button) => button.text().includes('触发预测'))
 
     expect(actionButton).toBeTruthy()
 
@@ -182,7 +183,7 @@ describe('PatientDetailPage', () => {
     await flushPromises()
 
     expect(workspaceMock.runPrediction).toHaveBeenCalledTimes(1)
-    expect(wrapper.text()).toContain('Latest Prediction')
+    expect(wrapper.text()).toContain('最新预测结果')
     expect(wrapper.text()).toContain('Latest Risk Event')
     expect(wrapper.text()).toContain('Review in two weeks and repeat HbA1c.')
   })

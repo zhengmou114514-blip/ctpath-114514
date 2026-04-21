@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Stitch Clinical Workstation - Login</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;700;800;900&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-fixed": "#a8eff4",
+                        "surface-tint": "#19686d",
+                        "inverse-primary": "#8cd2d7",
+                        "primary-fixed-dim": "#8cd2d7",
+                        "error-container": "#ffdad6",
+                        "surface-dim": "#d7dadb",
+                        "secondary-fixed-dim": "#b4cad6",
+                        "surface-container-high": "#e5e9ea",
+                        "on-secondary": "#ffffff",
+                        "on-primary-container": "#8cd2d7",
+                        "background": "#f7fafb",
+                        "secondary": "#4c616c",
+                        "on-tertiary-fixed-variant": "#6c3a19",
+                        "on-tertiary-fixed": "#321200",
+                        "surface-container": "#ebeeef",
+                        "on-error-container": "#93000a",
+                        "on-tertiary": "#ffffff",
+                        "on-surface-variant": "#3f4849",
+                        "on-primary": "#ffffff",
+                        "tertiary-fixed-dim": "#ffb68c",
+                        "on-primary-fixed-variant": "#004f53",
+                        "primary-container": "#005c61",
+                        "outline-variant": "#bec8c9",
+                        "on-primary-fixed": "#002022",
+                        "on-surface": "#181c1d",
+                        "tertiary-fixed": "#ffdbc9",
+                        "tertiary-container": "#7a4523",
+                        "surface-container-low": "#f1f4f5",
+                        "inverse-surface": "#2d3132",
+                        "on-secondary-container": "#526772",
+                        "surface-bright": "#f7fafb",
+                        "secondary-container": "#cfe6f2",
+                        "error": "#ba1a1a",
+                        "on-background": "#181c1d",
+                        "surface-variant": "#e0e3e4",
+                        "on-tertiary-container": "#ffb68b",
+                        "primary": "#004347",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary-fixed": "#071e27",
+                        "tertiary": "#5e2f0e",
+                        "secondary-fixed": "#cfe6f2",
+                        "surface-container-highest": "#e0e3e4",
+                        "surface": "#f7fafb",
+                        "on-secondary-fixed-variant": "#354a53",
+                        "inverse-on-surface": "#eef1f2",
+                        "on-error": "#ffffff",
+                        "outline": "#6f797a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Public Sans", "sans-serif"],
+                        "body": ["Inter", "sans-serif"],
+                        "label": ["Inter", "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: theme('colors.background');
+            color: theme('colors.on-background');
+        }
+        .display-md { font-family: 'Public Sans', sans-serif; font-size: 2.75rem; line-height: 3rem; font-weight: 700; }
+        .title-lg { font-family: 'Inter', sans-serif; font-size: 1.375rem; line-height: 1.75rem; font-weight: 600; }
+        .label-md { font-family: 'Inter', sans-serif; font-size: 0.75rem; line-height: 1rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+        .body-md { font-family: 'Inter', sans-serif; font-size: 0.875rem; line-height: 1.25rem; }
+    </style>
+</head>
+<body class="h-screen w-full flex flex-col justify-between overflow-hidden relative">
+<!-- Background Texture -->
+<div class="absolute inset-0 z-0 bg-[url('https://images.unsplash.com/photo-1551076805-e1869033e561?auto=format&amp;fit=crop&amp;q=80&amp;w=2000')] bg-cover bg-center opacity-10" data-alt="Abstract subtle technical medical data visualization background with soft focus teal and white tones creating a calming depth"></div>
+<!-- Gradient Overlay for readability -->
+<div class="absolute inset-0 z-0 bg-gradient-to-b from-surface/80 to-surface-container/90"></div>
+<!-- Main Content Canvas -->
+<main class="flex-grow flex items-center justify-center relative z-10 px-4 sm:px-6 lg:px-8">
+<!-- Login Module -->
+<div class="w-full max-w-md bg-surface-container-lowest p-10 rounded-xl shadow-[0_12px_32px_-4px_rgba(24,28,29,0.06)] flex flex-col gap-8">
+<!-- Branding Header -->
+<div class="text-center flex flex-col gap-2">
+<h1 class="display-md text-primary tracking-tight">STITCH</h1>
+<p class="label-md text-on-surface-variant">Clinical Workstation</p>
+</div>
+<!-- Login Form -->
+<form class="flex flex-col gap-6">
+<div class="flex flex-col gap-2">
+<label class="label-md text-on-surface" for="username">Clinician ID</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant opacity-70">badge</span>
+<input class="w-full bg-surface-container-low border-b border-outline-variant/30 text-on-surface py-3 pl-10 pr-4 focus:outline-none focus:border-primary focus:border-b-2 transition-all font-body text-sm rounded-t-DEFAULT rounded-b-none shadow-none focus:ring-0 placeholder:text-on-surface-variant/50" id="username" name="username" placeholder="Enter ID or Email" type="text"/>
+</div>
+</div>
+<div class="flex flex-col gap-2">
+<label class="label-md text-on-surface" for="password">Access Key</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant opacity-70">key</span>
+<input class="w-full bg-surface-container-low border-b border-outline-variant/30 text-on-surface py-3 pl-10 pr-4 focus:outline-none focus:border-primary focus:border-b-2 transition-all font-body text-sm rounded-t-DEFAULT rounded-b-none shadow-none focus:ring-0 placeholder:text-on-surface-variant/50" id="password" name="password" placeholder="••••••••" type="password"/>
+</div>
+</div>
+<div class="flex items-center justify-between pt-2">
+<label class="flex items-center gap-2 cursor-pointer group">
+<input class="form-checkbox text-primary border-outline-variant/30 bg-surface-container-low rounded-DEFAULT focus:ring-primary focus:ring-offset-0" type="checkbox"/>
+<span class="body-md text-on-surface-variant group-hover:text-on-surface transition-colors">Remember credentials</span>
+</label>
+<a class="body-md text-primary hover:text-primary-container font-medium transition-colors" href="#">Recover access</a>
+</div>
+<button class="mt-4 w-full bg-gradient-to-b from-primary to-primary-container text-on-primary py-3 px-4 rounded-md font-label font-semibold tracking-wide hover:opacity-90 active:scale-[0.98] transition-all flex justify-center items-center gap-2" type="submit">
+<span>Authenticate Session</span>
+<span class="material-symbols-outlined text-lg" data-weight="fill">login</span>
+</button>
+</form>
+<!-- Legal/Secondary Info -->
+<div class="text-center pt-4 border-t border-outline-variant/10">
+<p class="text-xs text-on-surface-variant/70 font-body">Authorized personnel only. All access is logged.</p>
+</div>
+</div>
+</main>
+<!-- System Status Footer -->
+<footer class="relative z-10 w-full bg-surface-container-low py-3 px-6 flex justify-between items-center">
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+<span class="label-md text-on-surface-variant">System Online</span>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<span class="label-md text-on-surface-variant opacity-80">Demo Mode</span>
+<span class="label-md text-on-surface-variant opacity-80 border-l border-outline-variant/30 pl-6">Model: Healthy</span>
+<span class="label-md text-on-surface-variant opacity-80 border-l border-outline-variant/30 pl-6">DB: MySQL</span>
+</div>
+</footer>
+</body></html>

@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Stitch Clinical - Nurse Follow-up Workspace</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;700;900&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-fixed": "#a8eff4",
+                        "surface-tint": "#19686d",
+                        "inverse-primary": "#8cd2d7",
+                        "primary-fixed-dim": "#8cd2d7",
+                        "error-container": "#ffdad6",
+                        "surface-dim": "#d7dadb",
+                        "secondary-fixed-dim": "#b4cad6",
+                        "surface-container-high": "#e5e9ea",
+                        "on-secondary": "#ffffff",
+                        "on-primary-container": "#8cd2d7",
+                        "background": "#f7fafb",
+                        "secondary": "#4c616c",
+                        "on-tertiary-fixed-variant": "#6c3a19",
+                        "on-tertiary-fixed": "#321200",
+                        "surface-container": "#ebeeef",
+                        "on-error-container": "#93000a",
+                        "on-tertiary": "#ffffff",
+                        "on-surface-variant": "#3f4849",
+                        "on-primary": "#ffffff",
+                        "tertiary-fixed-dim": "#ffb68c",
+                        "on-primary-fixed-variant": "#004f53",
+                        "primary-container": "#005c61",
+                        "outline-variant": "#bec8c9",
+                        "on-primary-fixed": "#002022",
+                        "on-surface": "#181c1d",
+                        "tertiary-fixed": "#ffdbc9",
+                        "tertiary-container": "#7a4523",
+                        "surface-container-low": "#f1f4f5",
+                        "inverse-surface": "#2d3132",
+                        "on-secondary-container": "#526772",
+                        "surface-bright": "#f7fafb",
+                        "secondary-container": "#cfe6f2",
+                        "error": "#ba1a1a",
+                        "on-background": "#181c1d",
+                        "surface-variant": "#e0e3e4",
+                        "on-tertiary-container": "#ffb68b",
+                        "primary": "#004347",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary-fixed": "#071e27",
+                        "tertiary": "#5e2f0e",
+                        "secondary-fixed": "#cfe6f2",
+                        "surface-container-highest": "#e0e3e4",
+                        "surface": "#f7fafb",
+                        "on-secondary-fixed-variant": "#354a53",
+                        "inverse-on-surface": "#eef1f2",
+                        "on-error": "#ffffff",
+                        "outline": "#6f797a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Public Sans"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; background-color: #f7fafb; color: #181c1d; }
+        h1, h2, h3, h4, h5, h6, .font-headline { font-family: 'Public Sans', sans-serif; }
+        .glass-panel { background: rgba(247, 250, 251, 0.8); backdrop-filter: blur(20px); }
+        .btn-primary { background: linear-gradient(180deg, #004347 0%, #005c61 100%); color: #ffffff; }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden bg-background">
+<!-- SideNavBar Component -->
+<nav class="h-screen w-72 flex-col left-0 top-0 sticky bg-[#ebeeef] dark:bg-slate-900 flex py-8 space-y-2 z-50">
+<div class="px-8 mb-6 flex flex-col gap-2">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-on-primary font-bold">S</div>
+<div class="flex flex-col">
+<span class="text-xl font-black text-[#004347] tracking-[0.2em] dark:text-teal-400 font-headline">STITCH</span>
+<span class="text-[10px] text-[#004347] font-semibold uppercase tracking-wider">Clinical Workstation</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col space-y-1 w-full px-4 font-['Public_Sans'] font-bold tracking-tight uppercase text-[10px] Inter font-medium">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-[#3f4849] font-medium opacity-80 hover:bg-[#e0e3e4] transition-colors duration-200 scale-95 active:scale-100 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-[#004347] font-bold border-r-4 border-[#004347] bg-[#f1f4f5]/50 scale-95 active:scale-100 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="groups">groups</span>
+<span>Patient Management</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-[#3f4849] font-medium opacity-80 hover:bg-[#e0e3e4] transition-colors duration-200 scale-95 active:scale-100 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="neurology">neurology</span>
+<span>Model Center</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-[#3f4849] font-medium opacity-80 hover:bg-[#e0e3e4] transition-colors duration-200 scale-95 active:scale-100 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="admin_panel_settings">admin_panel_settings</span>
+<span>Data Governance</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-[#3f4849] font-medium opacity-80 hover:bg-[#e0e3e4] transition-colors duration-200 scale-95 active:scale-100 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="medication">medication</span>
+<span>Medicine Management</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-[#3f4849] font-medium opacity-80 hover:bg-[#e0e3e4] transition-colors duration-200 scale-95 active:scale-100 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span>System</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col h-screen overflow-hidden bg-surface-container-low relative">
+<!-- TopAppBar Component -->
+<header class="w-full h-20 top-0 sticky z-40 bg-[#f7fafb] dark:bg-slate-950 flex items-center justify-between px-10 w-full max-w-full font-['Public_Sans'] text-sm font-semibold Inter uppercase tracking-wider">
+<div class="flex items-center gap-6">
+<!-- Search on Left -->
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-3 text-on-surface-variant" data-icon="search">search</span>
+<input class="pl-10 pr-4 py-2 bg-surface-container rounded-full text-on-surface placeholder-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary border-none w-64 text-sm font-body normal-case" placeholder="Search Patients..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<span class="text-xs text-on-surface-variant font-bold bg-surface-container px-3 py-1 rounded-full">Demo/MySQL Mode</span>
+<div class="flex items-center gap-4 text-[#3f4849] cursor-pointer ease-in-out duration-150">
+<button class="hover:text-[#005c61] transition-all"><span class="material-symbols-outlined" data-icon="sensors">sensors</span></button>
+<button class="hover:text-[#005c61] transition-all"><span class="material-symbols-outlined" data-icon="notifications">notifications</span></button>
+<button class="hover:text-[#005c61] transition-all"><span class="material-symbols-outlined" data-icon="logout">logout</span></button>
+</div>
+<div class="w-10 h-10 rounded-full bg-surface-container-high overflow-hidden border border-outline-variant/20">
+<img alt="Clinician Profile" class="w-full h-full object-cover" data-alt="close up professional portrait of a female nurse in clinical scrubs with a soft blurred background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB4QQdd-Wh-SdPpQNEOx_sh0Tao0eije3Jj9wD8stpIhpc2qhcUec-rVThVwKgNLE2FrCsra6aPusyQ7gaPt5BJadEbzJdUeuv1Zld9G8-OPMECpZcOue_3y9FvJrUQ4MGn_kyjmbGhelOU2hY5N44dI0w2XoB0etIMkC8btUiA2LqPBdDMT6jsAqjcA-rC9BDV9pfTZsTjB4xiomFig_WTG1sEDyXYQCcentaaDZ5fkuJGq3SmBXtcug0KI9AGs1fAZkRqYwiZb54"/>
+</div>
+</div>
+</header>
+<!-- Workspace Canvas -->
+<div class="flex-1 flex overflow-hidden p-8 gap-8">
+<!-- Kanban Board Area -->
+<div class="flex-1 flex flex-col min-w-0">
+<div class="mb-6 flex justify-between items-end">
+<div>
+<h1 class="font-headline text-3xl font-bold text-primary mb-1">Follow-up Ledger</h1>
+<p class="font-body text-sm text-on-surface-variant">Manage active patient communications and tracking.</p>
+</div>
+<div class="flex gap-3">
+<button class="bg-surface-container-highest text-on-surface px-4 py-2 rounded-md font-body text-sm font-semibold hover:bg-surface-variant transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">filter_list</span> Filter
+                        </button>
+</div>
+</div>
+<!-- Kanban Columns -->
+<div class="flex-1 flex gap-6 overflow-x-auto pb-4">
+<!-- Pending Column -->
+<div class="w-80 flex-shrink-0 flex flex-col bg-surface-container/50 rounded-xl p-4">
+<div class="flex items-center justify-between mb-4 px-2">
+<h2 class="font-headline font-semibold text-primary uppercase text-xs tracking-wider flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-error"></span> Pending
+                            </h2>
+<span class="text-xs font-bold text-on-surface-variant bg-surface-container-highest px-2 py-0.5 rounded-full">3</span>
+</div>
+<div class="flex flex-col gap-3 overflow-y-auto">
+<!-- Task Card -->
+<div class="bg-surface-container-lowest rounded-lg p-4 cursor-pointer hover:bg-surface transition-colors">
+<div class="flex justify-between items-start mb-2">
+<h3 class="font-headline font-bold text-on-surface text-base">Sarah Jenkins</h3>
+<span class="bg-error-container text-error text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded-md">High Risk</span>
+</div>
+<div class="font-body text-sm text-on-surface-variant mb-4">Post-op vitals check. Missed last appointment.</div>
+<div class="flex flex-col gap-1 text-xs font-body">
+<div class="flex items-center justify-between">
+<span class="text-outline">Last Contact:</span>
+<span class="font-medium text-on-surface">3 days ago</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-outline">Next Sched:</span>
+<span class="font-bold text-error">Today, 2:00 PM</span>
+</div>
+</div>
+</div>
+<!-- Task Card -->
+<div class="bg-surface-container-lowest rounded-lg p-4 cursor-pointer hover:bg-surface transition-colors">
+<div class="flex justify-between items-start mb-2">
+<h3 class="font-headline font-bold text-on-surface text-base">Marcus Thorne</h3>
+<span class="bg-tertiary-container text-tertiary text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded-md">Med Risk</span>
+</div>
+<div class="font-body text-sm text-on-surface-variant mb-4">Medication adherence review for new prescription.</div>
+<div class="flex flex-col gap-1 text-xs font-body">
+<div class="flex items-center justify-between">
+<span class="text-outline">Last Contact:</span>
+<span class="font-medium text-on-surface">1 week ago</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-outline">Next Sched:</span>
+<span class="font-medium text-on-surface">Tomorrow</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- In Progress Column -->
+<div class="w-80 flex-shrink-0 flex flex-col bg-surface-container/50 rounded-xl p-4">
+<div class="flex items-center justify-between mb-4 px-2">
+<h2 class="font-headline font-semibold text-primary uppercase text-xs tracking-wider flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary-fixed"></span> In Progress
+                            </h2>
+<span class="text-xs font-bold text-on-surface-variant bg-surface-container-highest px-2 py-0.5 rounded-full">1</span>
+</div>
+<div class="flex flex-col gap-3 overflow-y-auto">
+<!-- Active Task Card -->
+<div class="bg-surface-container-lowest rounded-lg p-4 border-l-4 border-primary shadow-[0_12px_32px_-4px_rgba(24,28,29,0.06)] cursor-pointer relative overflow-hidden">
+<div class="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-primary-fixed/20 to-transparent rounded-bl-full pointer-events-none"></div>
+<div class="flex justify-between items-start mb-2">
+<h3 class="font-headline font-bold text-on-surface text-base">Elena Rostova</h3>
+<span class="bg-error-container text-error text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded-md">High Risk</span>
+</div>
+<div class="font-body text-sm text-on-surface-variant mb-4">Lab results discussion. Awaiting callback.</div>
+<div class="flex flex-col gap-1 text-xs font-body">
+<div class="flex items-center justify-between">
+<span class="text-outline">Last Contact:</span>
+<span class="font-medium text-on-surface">Today, 10:00 AM</span>
+</div>
+</div>
+<div class="mt-4 pt-3 border-t border-outline-variant/20 flex gap-2">
+<button class="flex-1 py-1.5 bg-surface-container-highest text-on-surface rounded text-xs font-semibold hover:bg-surface-variant transition-colors">Log Note</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Completed Column -->
+<div class="w-80 flex-shrink-0 flex flex-col bg-surface-container/30 rounded-xl p-4 opacity-80 hover:opacity-100 transition-opacity">
+<div class="flex items-center justify-between mb-4 px-2">
+<h2 class="font-headline font-semibold text-on-surface-variant uppercase text-xs tracking-wider flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-outline"></span> Completed
+                            </h2>
+<span class="text-xs font-bold text-on-surface-variant bg-surface-container-highest px-2 py-0.5 rounded-full">2</span>
+</div>
+<div class="flex flex-col gap-3 overflow-y-auto">
+<!-- Completed Task -->
+<div class="bg-surface-container-low rounded-lg p-4">
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-headline font-semibold text-on-surface-variant text-sm line-through decoration-outline">David Chen</h3>
+</div>
+<div class="font-body text-xs text-outline mb-2">Dietary plan follow-up.</div>
+<span class="text-[10px] text-outline font-medium">Completed: Today, 9:15 AM</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Contact Log Entry Sidebar -->
+<aside class="w-96 flex-shrink-0 bg-surface-container-lowest rounded-xl p-6 flex flex-col shadow-[0_12px_32px_-4px_rgba(24,28,29,0.06)] relative overflow-hidden">
+<!-- Subtle Top Gradient -->
+<div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary to-primary-container"></div>
+<h2 class="font-headline text-lg font-bold text-primary mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined" data-icon="edit_note">edit_note</span> Contact Log Entry
+                </h2>
+<form class="flex-1 flex flex-col gap-5 overflow-y-auto pr-2 font-body">
+<div class="flex flex-col gap-1.5">
+<label class="text-[10px] uppercase font-bold tracking-widest text-on-surface-variant">Patient</label>
+<select class="w-full bg-surface-container-low border-b-2 border-outline-variant/30 focus:border-primary px-3 py-2 text-sm text-on-surface outline-none rounded-t-md transition-colors appearance-none">
+<option>Elena Rostova</option>
+<option>Sarah Jenkins</option>
+<option>Marcus Thorne</option>
+</select>
+</div>
+<div class="flex flex-col gap-1.5">
+<label class="text-[10px] uppercase font-bold tracking-widest text-on-surface-variant">Contact Method</label>
+<div class="flex gap-2">
+<label class="flex-1 flex items-center justify-center gap-2 bg-primary text-on-primary py-2 rounded-md cursor-pointer text-sm font-medium transition-colors">
+<input checked="" class="hidden" name="method" type="radio"/>
+<span class="material-symbols-outlined text-sm" data-icon="call">call</span> Call
+                            </label>
+<label class="flex-1 flex items-center justify-center gap-2 bg-surface-container-highest text-on-surface-variant py-2 rounded-md cursor-pointer text-sm font-medium hover:bg-surface-variant transition-colors">
+<input class="hidden" name="method" type="radio"/>
+<span class="material-symbols-outlined text-sm" data-icon="mail">mail</span> Message
+                            </label>
+</div>
+</div>
+<div class="flex flex-col gap-1.5">
+<label class="text-[10px] uppercase font-bold tracking-widest text-on-surface-variant">Outcome</label>
+<select class="w-full bg-surface-container-low border-b-2 border-outline-variant/30 focus:border-primary px-3 py-2 text-sm text-on-surface outline-none rounded-t-md transition-colors appearance-none">
+<option>Spoke with Patient</option>
+<option>Left Voicemail</option>
+<option>No Answer</option>
+<option>Spoke with Family</option>
+</select>
+</div>
+<div class="flex flex-col gap-1.5 flex-1">
+<label class="text-[10px] uppercase font-bold tracking-widest text-on-surface-variant">Clinical Notes</label>
+<textarea class="w-full flex-1 bg-surface-container-low border-b-2 border-outline-variant/30 focus:border-primary px-3 py-2 text-sm text-on-surface outline-none rounded-t-md transition-colors resize-none" placeholder="Enter details..."></textarea>
+</div>
+</form>
+<div class="pt-6 mt-2 border-t border-surface-container-high flex gap-3">
+<button class="flex-1 py-2.5 text-primary text-sm font-semibold hover:bg-surface-container rounded-md transition-colors font-body" type="button">Cancel</button>
+<button class="flex-[2] py-2.5 btn-primary rounded-md text-sm font-bold shadow-sm transition-transform active:scale-95 font-body flex justify-center items-center gap-2" type="button">
+<span class="material-symbols-outlined text-sm" data-icon="save">save</span> Save Entry
+                    </button>
+</div>
+</aside>
+</div>
+</main>
+</body></html>

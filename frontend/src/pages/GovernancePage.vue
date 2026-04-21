@@ -11,12 +11,12 @@ const overviewCards = computed(() => {
   const data = maintenance.value
   if (!data) return []
   return [
-    { label: '患者档案', value: data.patientCount },
-    { label: '病程事件', value: data.eventCount },
+    { label: '患者总数', value: data.patientCount },
+    { label: '病程事件数', value: data.eventCount },
     { label: '高风险患者', value: data.highRiskCount },
-    { label: '低支持档案', value: data.lowSupportCount },
+    { label: '低支撑档案', value: data.lowSupportCount },
     { label: '逾期随访', value: data.overdueFollowupCount },
-    { label: '冲突风险', value: data.duplicateRiskCount },
+    { label: '主索引冲突', value: data.duplicateRiskCount },
   ]
 })
 
@@ -25,8 +25,8 @@ const missingFields = computed(() => {
   if (!data) return []
   return [
     { label: '缺失病案号', value: data.missingMrnCount },
-    { label: '待知情同意', value: data.pendingConsentCount },
-    { label: '数据支持不足', value: data.lowSupportCount },
+    { label: '待补知情同意', value: data.pendingConsentCount },
+    { label: '低支撑患者', value: data.lowSupportCount },
   ]
 })
 
@@ -71,15 +71,15 @@ onMounted(() => {
   <section class="governance-page workstation-page">
     <header class="workstation-page-header">
       <div>
-        <p class="eyebrow">Governance center</p>
-        <h1>治理中心</h1>
-        <p>只展示数据质量、冲突记录、待补全档案和治理动作，不承载患者预测或模型训练。</p>
+        <p class="eyebrow">治理中心</p>
+        <h1>治理看板</h1>
+        <p>面向数据质量、档案治理与异常巡检，不混入当前患者预测结果，也不承担训练中心职责。</p>
       </div>
-      <el-button type="primary" :loading="loading" @click="handleRefresh">刷新</el-button>
+      <el-button type="primary" :loading="loading" @click="handleRefresh">刷新治理数据</el-button>
     </header>
 
-    <section v-if="loading" class="empty-state-card">正在加载治理数据...</section>
-    <section v-else-if="!maintenance" class="empty-state-card">暂无治理数据。</section>
+    <section v-if="loading" class="empty-state-card">正在加载治理看板...</section>
+    <section v-else-if="!maintenance" class="empty-state-card">当前没有可用的治理数据。</section>
 
     <template v-else>
       <section class="metric-grid six">
@@ -94,12 +94,12 @@ onMounted(() => {
           <div class="section-header">
             <div>
               <h2>数据质量概览</h2>
-              <p>缺失字段、冲突风险和逾期随访。</p>
+              <p>集中观察主索引冲突、逾期随访、低支撑档案与高风险患者数量。</p>
             </div>
           </div>
           <div class="quality-grid">
-            <article><span>缺失/待同意</span><strong>{{ maintenance.missingMrnCount + maintenance.pendingConsentCount + maintenance.lowSupportCount }}</strong></article>
-            <article><span>冲突风险</span><strong>{{ maintenance.duplicateRiskCount }}</strong></article>
+            <article><span>缺失字段总量</span><strong>{{ maintenance.missingMrnCount + maintenance.pendingConsentCount + maintenance.lowSupportCount }}</strong></article>
+            <article><span>主索引冲突</span><strong>{{ maintenance.duplicateRiskCount }}</strong></article>
             <article><span>高风险患者</span><strong>{{ maintenance.highRiskCount }}</strong></article>
             <article><span>逾期随访</span><strong>{{ maintenance.overdueFollowupCount }}</strong></article>
           </div>
@@ -109,7 +109,7 @@ onMounted(() => {
           <div class="section-header">
             <div>
               <h2>缺失字段</h2>
-              <p>档案员和治理人员需要优先补齐的字段。</p>
+              <p>优先补齐关键字段，减少档案进入低支撑或不可用状态。</p>
             </div>
           </div>
           <ul v-if="missingFields.length" class="simple-list">
@@ -118,30 +118,30 @@ onMounted(() => {
               <strong>{{ item.value }}</strong>
             </li>
           </ul>
-          <p v-else class="empty-inline">暂无缺失字段。</p>
+          <p v-else class="empty-inline">当前没有待补齐字段。</p>
         </article>
 
         <article class="clinical-card">
           <div class="section-header">
             <div>
               <h2>异常时间线</h2>
-              <p>关系缺失、对象缺失或未来时间等异常事件。</p>
+              <p>重点查看关系为空、对象为空或时间异常的病程事件。</p>
             </div>
           </div>
           <ul v-if="anomalyRows.length" class="record-list">
             <li v-for="(item, index) in anomalyRows" :key="`${item.patientId}-${item.eventTime}-${index}`">
               <strong>{{ item.patientName }}</strong>
-              <p>{{ item.eventTime }} / {{ item.relationLabel || item.relation || '关系缺失' }} / {{ item.objectValue || '对象值缺失' }}</p>
+              <p>{{ item.eventTime }} / {{ item.relationLabel || item.relation || '关系缺失' }} / {{ item.objectValue || '对象缺失' }}</p>
             </li>
           </ul>
-          <p v-else class="empty-inline">暂无异常时间线。</p>
+          <p v-else class="empty-inline">当前没有检测到异常时间线。</p>
         </article>
 
         <article class="clinical-card">
           <div class="section-header">
             <div>
-              <h2>冲突记录</h2>
-              <p>主索引和档案一致性风险。</p>
+              <h2>主索引冲突</h2>
+              <p>展示跨来源档案冲突或重复风险，便于后续治理确认。</p>
             </div>
           </div>
           <ul v-if="conflictRows.length" class="record-list">
@@ -150,30 +150,30 @@ onMounted(() => {
               <p>{{ item.issueLabel || item.issueType }} / {{ item.detail }}</p>
             </li>
           </ul>
-          <p v-else class="empty-inline">暂无冲突记录。</p>
+          <p v-else class="empty-inline">当前没有主索引冲突记录。</p>
         </article>
 
         <article class="clinical-card">
           <div class="section-header">
             <div>
               <h2>待补全档案</h2>
-              <p>优先处理高风险或低数据支持患者。</p>
+              <p>聚焦高风险或低支撑患者档案，优先补全关键资料。</p>
             </div>
           </div>
           <ul v-if="pendingArchiveRows.length" class="record-list">
             <li v-for="item in pendingArchiveRows" :key="item.patientId">
               <strong>{{ item.name }}</strong>
-              <p>{{ item.primaryDisease }} / {{ item.riskLevel }} / 数据支持 {{ item.dataSupport }}</p>
+              <p>{{ item.primaryDisease }} / {{ item.riskLevel }} / 数据支撑 {{ item.dataSupport }}</p>
             </li>
           </ul>
-          <p v-else class="empty-inline">暂无待补全档案。</p>
+          <p v-else class="empty-inline">当前没有待补全档案。</p>
         </article>
 
         <article class="clinical-card">
           <div class="section-header">
             <div>
               <h2>治理动作记录</h2>
-              <p>最近治理相关事件和来源。</p>
+              <p>记录近期治理动作线索，为后续审计和核查提供依据。</p>
             </div>
           </div>
           <ul v-if="governanceActions.length" class="record-list">
@@ -182,7 +182,7 @@ onMounted(() => {
               <p>{{ item.relationLabel || item.relation }} / {{ item.objectValue || '--' }} / {{ item.source }}</p>
             </li>
           </ul>
-          <p v-else class="empty-inline">暂无治理动作记录。</p>
+          <p v-else class="empty-inline">当前没有治理动作记录。</p>
         </article>
       </section>
     </template>

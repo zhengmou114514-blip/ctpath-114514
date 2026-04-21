@@ -14,12 +14,12 @@ const props = defineProps<{
 }>()
 
 const attachmentTypes: Array<{ value: PatientAttachmentType; label: string; tone: 'primary' | 'success' | 'warning' | 'info' }> = [
-  { value: 'patient_photo', label: 'Patient photo', tone: 'success' },
-  { value: 'id_card', label: 'ID card', tone: 'primary' },
-  { value: 'insurance_card', label: 'Insurance card', tone: 'primary' },
-  { value: 'referral_note', label: 'Referral note', tone: 'warning' },
-  { value: 'exam_report', label: 'Exam report', tone: 'info' },
-  { value: 'informed_consent', label: 'Informed consent', tone: 'warning' },
+  { value: 'patient_photo', label: '患者照片', tone: 'success' },
+  { value: 'id_card', label: '身份证件', tone: 'primary' },
+  { value: 'insurance_card', label: '医保卡', tone: 'primary' },
+  { value: 'referral_note', label: '转诊单', tone: 'warning' },
+  { value: 'exam_report', label: '检查报告', tone: 'info' },
+  { value: 'informed_consent', label: '知情同意书', tone: 'warning' },
 ]
 
 const loading = ref(false)
@@ -67,7 +67,7 @@ async function reloadAttachments() {
   try {
     attachments.value = await getPatientAttachments(props.patientId)
   } catch (error) {
-    errorMessage.value = error instanceof Error ? error.message : 'Failed to load patient attachments.'
+    errorMessage.value = error instanceof Error ? error.message : '加载患者附件失败。'
   } finally {
     loading.value = false
   }
@@ -85,7 +85,7 @@ async function uploadRawFile(file: UploadRawFile): Promise<boolean> {
     })
     await reloadAttachments()
   } catch (error) {
-    errorMessage.value = error instanceof Error ? error.message : 'Failed to upload patient attachment.'
+    errorMessage.value = error instanceof Error ? error.message : '上传患者附件失败。'
   } finally {
     uploading.value = false
   }
@@ -103,7 +103,7 @@ async function openPreview(record: PatientAttachmentRecord) {
     previewUrl.value = URL.createObjectURL(result.blob)
     previewMimeType.value = result.mimeType
   } catch (error) {
-    errorMessage.value = error instanceof Error ? error.message : 'Failed to open attachment preview.'
+    errorMessage.value = error instanceof Error ? error.message : '打开附件预览失败。'
   }
 }
 
@@ -141,11 +141,11 @@ onBeforeUnmount(() => {
       <template #header>
         <div class="module-header">
           <div>
-            <p class="eyebrow">Electronic archive</p>
-            <h3>{{ title || 'Patient Attachments' }}</h3>
-            <p class="subtle">Patient {{ patientId || '--' }} attachment records and upload audit trail.</p>
+            <p class="eyebrow">电子档案</p>
+            <h3>{{ title || '患者附件' }}</h3>
+            <p class="subtle">患者 {{ patientId || '--' }} 的附件记录与上传审计轨迹。</p>
           </div>
-          <el-button :loading="loading" @click="reloadAttachments">Refresh</el-button>
+          <el-button :loading="loading" @click="reloadAttachments">刷新</el-button>
         </div>
       </template>
 
@@ -160,21 +160,21 @@ onBeforeUnmount(() => {
 
       <el-row :gutter="12" class="summary-row">
         <el-col :xs="24" :sm="8">
-          <el-statistic title="Attachment records" :value="attachmentCount" />
+          <el-statistic title="附件数量" :value="attachmentCount" />
         </el-col>
         <el-col :xs="24" :sm="8">
-          <el-statistic title="Supported types" :value="attachmentTypes.length" />
+          <el-statistic title="支持类型" :value="attachmentTypes.length" />
         </el-col>
         <el-col :xs="24" :sm="8">
           <div class="latest-card">
-            <span>Latest upload</span>
+            <span>最近上传</span>
             <strong>{{ formatDateTime(latestUpload) }}</strong>
           </div>
         </el-col>
       </el-row>
 
       <el-form label-position="top" class="upload-form">
-        <el-form-item label="Attachment type">
+        <el-form-item label="附件类型">
           <el-select v-model="selectedType" :disabled="uploading || loading" class="full-width">
             <el-option
               v-for="item in attachmentTypes"
@@ -185,17 +185,17 @@ onBeforeUnmount(() => {
           </el-select>
         </el-form-item>
 
-        <el-form-item label="Upload file">
+        <el-form-item label="上传文件">
           <el-upload
             :show-file-list="false"
             :before-upload="uploadRawFile"
             accept="image/*,.pdf,.doc,.docx"
           >
             <el-button type="primary" :loading="uploading" :disabled="loading || !patientId">
-              Upload attachment
+              上传附件
             </el-button>
           </el-upload>
-          <p class="form-tip">Allowed by backend validation: images, PDF and office document formats.</p>
+          <p class="form-tip">后端校验支持图片、PDF 和办公文档格式。</p>
         </el-form-item>
       </el-form>
 
@@ -205,24 +205,24 @@ onBeforeUnmount(() => {
         border
         stripe
         class="attachment-table"
-        empty-text="No attachment records yet."
+        empty-text="当前暂无附件记录。"
       >
-        <el-table-column label="Type" min-width="150">
+        <el-table-column label="类型" min-width="150">
           <template #default="{ row }">
             <el-tag :type="typeTone(row.type)" effect="light">{{ row.typeLabel }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="fileName" label="File" min-width="220" show-overflow-tooltip />
-        <el-table-column label="Uploaded at" min-width="150">
+        <el-table-column prop="fileName" label="文件名" min-width="220" show-overflow-tooltip />
+        <el-table-column label="上传时间" min-width="150">
           <template #default="{ row }">{{ formatDateTime(row.uploadedAt) }}</template>
         </el-table-column>
-        <el-table-column prop="uploadedBy" label="Uploaded by" min-width="130" />
-        <el-table-column label="Size" width="110">
+        <el-table-column prop="uploadedBy" label="上传人" min-width="130" />
+        <el-table-column label="大小" width="110">
           <template #default="{ row }">{{ formatFileSize(row.fileSize) }}</template>
         </el-table-column>
-        <el-table-column label="Action" width="110" fixed="right">
+        <el-table-column label="操作" width="110" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="openPreview(row)">Preview</el-button>
+            <el-button link type="primary" @click="openPreview(row)">预览</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -245,16 +245,16 @@ onBeforeUnmount(() => {
       <iframe
         v-else-if="previewRecord && previewMimeType === 'application/pdf'"
         :src="previewUrl"
-        title="Patient attachment preview"
+        title="患者附件预览"
         class="preview-frame"
       />
-      <el-empty v-else description="This file type cannot be embedded in the workspace preview.">
-        <el-button type="primary" @click="openPreviewInNewTab">Open file</el-button>
+      <el-empty v-else description="当前文件类型不支持直接嵌入工作台预览。">
+        <el-button type="primary" @click="openPreviewInNewTab">打开文件</el-button>
       </el-empty>
 
       <template #footer>
         <span class="preview-meta">
-          Uploaded {{ formatDateTime(previewRecord?.uploadedAt || '') }} by {{ previewRecord?.uploadedBy || '--' }}
+          上传时间 {{ formatDateTime(previewRecord?.uploadedAt || '') }} / 上传人 {{ previewRecord?.uploadedBy || '--' }}
         </span>
       </template>
     </el-dialog>

@@ -16,10 +16,14 @@ const route = useRoute()
 const router = useRouter()
 const redirectingToLogin = ref(false)
 
-const splitRouteSections: Record<string, 'insights' | 'model-dashboard' | 'governance' | 'drug-management' | 'drug-permission-management' | 'tasks'> = {
+const splitRouteSections: Record<
+  string,
+  'insights' | 'model-dashboard' | 'training-center' | 'governance' | 'drug-management' | 'drug-permission-management' | 'tasks'
+> = {
   'nurse-followups': 'tasks',
   'model-insight': 'insights',
   'model-dashboard': 'model-dashboard',
+  'training-center': 'training-center',
   governance: 'governance',
   'drug-management': 'drug-management',
   'drug-permission-management': 'drug-permission-management',
@@ -31,6 +35,7 @@ const sectionToRouteName: Partial<Record<string, string>> = {
   flow: 'nurse-followups',
   insights: 'model-insight',
   'model-dashboard': 'model-dashboard',
+  'training-center': 'training-center',
   governance: 'governance',
   'drug-management': 'drug-management',
   'drug-permission-management': 'drug-permission-management',
@@ -44,6 +49,7 @@ const isSplitWorkspaceRoute = computed(() => {
     routeName === 'nurse-followups' ||
     workspace.currentWorkspace === 'model-insight' ||
     workspace.currentWorkspace === 'model-dashboard' ||
+    workspace.currentWorkspace === 'training-center' ||
     workspace.currentWorkspace === 'governance' ||
     workspace.currentWorkspace === 'followup' ||
     workspace.currentWorkspace === 'drug-management' ||
@@ -63,12 +69,9 @@ function syncWorkspaceFromRoute() {
   }
 
   const routeName = typeof route.name === 'string' ? route.name : ''
-  if (routeName === 'patient-detail') {
-    return
-  }
+  if (routeName === 'patient-detail') return
 
   const nextSection = splitRouteSections[routeName] ?? 'doctor'
-
   if (workspace.section !== nextSection) {
     workspace.selectSection(nextSection)
   }
@@ -86,9 +89,22 @@ function syncRouteFromWorkspace() {
   }
 }
 
+function ensureLoginRoute() {
+  if (redirectingToLogin.value || workspace.currentDoctor || route.path === '/login') return
+
+  redirectingToLogin.value = true
+  void router.replace({
+    path: '/login',
+    query: {
+      redirect: route.fullPath,
+    },
+  })
+}
+
 function handleSelectSection(nextSection: Parameters<typeof workspace.selectSection>[0]) {
   const currentRouteName = typeof route.name === 'string' ? route.name : ''
   workspace.selectSection(nextSection)
+
   if (currentRouteName === 'patient-detail') {
     const targetRoute = sectionToRouteName[nextSection] ?? 'home'
     if (targetRoute) {
@@ -148,6 +164,7 @@ async function handleLogout() {
 
 onMounted(async () => {
   await workspace.initialize()
+  ensureLoginRoute()
 })
 
 watch(
@@ -164,7 +181,10 @@ watch(
     if (doctor) {
       redirectingToLogin.value = false
       syncWorkspaceFromRoute()
+      return
     }
+
+    ensureLoginRoute()
   }
 )
 
@@ -278,8 +298,8 @@ watch(
       />
 
       <section v-else class="empty-state-card">
-        <h3>模块不可用</h3>
-        <p>当前账号没有该模块权限，请从左侧选择可访问的工作区。</p>
+        <h3>当前模块暂未开放</h3>
+        <p>该导航项还没有接入独立工作页，请返回其他模块继续完成慢病辅助诊疗主流程。</p>
       </section>
     </template>
   </AppShell>

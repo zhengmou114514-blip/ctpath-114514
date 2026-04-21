@@ -4,6 +4,8 @@ import type { ContactLogCreatePayload, FlowBoardRow, FollowupTaskRow } from '../
 
 type RiskFilter = 'all' | 'high' | 'medium' | 'low'
 type DateFilter = 'all' | 'today' | 'overdue' | 'next7'
+type ContactMethod = 'call' | 'message'
+type ContactOutcome = 'reached' | 'scheduled' | 'missed' | 'urgent'
 
 interface LocalActionRecord {
   id: string
@@ -41,11 +43,11 @@ const emit = defineEmits<{
 
 const riskFilter = ref<RiskFilter>('all')
 const dateFilter = ref<DateFilter>('all')
-const filterUnreachedOnly = ref(false)
-const filterReviewOnly = ref(false)
 const keyword = ref('')
-
 const selectedTaskKey = ref('')
+const contactMethod = ref<ContactMethod>('call')
+const contactOutcome = ref<ContactOutcome>('reached')
+const clinicalNotes = ref('已在随访工作台记录本次患者联系情况。')
 const localState = reactive<Record<string, LocalTaskState>>({})
 
 function taskKey(item: FollowupTaskRow): string {
@@ -100,10 +102,10 @@ function ensureState(item: FollowupTaskRow): LocalTaskState {
       history: [
         {
           id: `${key}-init`,
-          label: 'Task Loaded',
+          label: '任务加载',
           status: item.status,
           at: initialAt,
-          note: `Source: ${item.source}`,
+          note: `来源：${item.source}`,
         },
       ],
     }
@@ -134,75 +136,35 @@ const mergedTasks = computed(() =>
 const filteredTasks = computed(() => {
   return mergedTasks.value.filter((item) => {
     if (riskFilter.value !== 'all' && item.riskKey !== riskFilter.value) return false
-
     if (dateFilter.value === 'today' && item.dueDate !== new Date().toISOString().slice(0, 10)) return false
     if (dateFilter.value === 'overdue' && !item.overdue) return false
     if (dateFilter.value === 'next7' && !inNext7Days(item.dueDate)) return false
 
-    if (filterUnreachedOnly.value && !item.unreached) return false
-    if (filterReviewOnly.value && !item.needsReview) return false
-
     const kw = keyword.value.trim().toLowerCase()
-    if (kw) {
-      const haystack = `${item.patientId} ${item.patientName} ${item.primaryDisease} ${item.taskType}`.toLowerCase()
-      if (!haystack.includes(kw)) return false
-    }
-
-    return true
+    if (!kw) return true
+    const haystack = `${item.patientId} ${item.patientName} ${item.primaryDisease} ${item.taskType}`.toLowerCase()
+    return haystack.includes(kw)
   })
 })
 
 const selectedTask = computed(() => filteredTasks.value.find((item) => taskKey(item) === selectedTaskKey.value) || null)
 
-const todaySummary = computed(() => {
-  const today = new Date().toISOString().slice(0, 10)
-  const all = mergedTasks.value
-  return {
-    todayPending: all.filter((item) => item.dueDate === today && !item.completed).length,
-    highRisk: all.filter((item) => item.riskKey === 'high' && !item.completed).length,
-    completed: all.filter((item) => item.completed).length,
-    unreached: all.filter((item) => item.unreached).length,
-  }
-})
+const boardColumns = computed(() => {
+  const pending = filteredTasks.value.filter((item) => item.localStatus.toLowerCase().includes('pending') || item.unreached)
+  const inProgress = filteredTasks.value.filter(
+    (item) =>
+      item.localStatus.toLowerCase().includes('contacted') ||
+      item.localStatus.toLowerCase().includes('review') ||
+      item.flow?.flowStatus.toLowerCase().includes('progress')
+  )
+  const completed = filteredTasks.value.filter((item) => item.completed)
 
-const recentAdvice = computed(() => {
-  if (!selectedTask.value) return []
-  const flowAdvice = selectedTask.value.flow?.nextAction || ''
   return [
-    flowAdvice,
-    `Task recommendation: ${selectedTask.value.taskType}`,
-    `Owner: ${selectedTask.value.owner}`,
-  ].filter(Boolean)
-})
-
-const predictionChange = computed(() => {
-  if (!selectedTask.value) return []
-  const row = selectedTask.value
-  return [
-    `Current flow status: ${row.flow?.flowStatus || row.localStatus}`,
-    `Risk level: ${row.riskLevel}`,
-    `Data support: ${row.dataSupport}`,
+    { key: 'pending', label: '待处理', accent: 'accent-danger', items: pending },
+    { key: 'progress', label: '处理中', accent: 'accent-info', items: inProgress },
+    { key: 'completed', label: '已完成', accent: 'accent-success', items: completed },
   ]
 })
-
-const rightPanelHistory = computed(() => {
-  if (!selectedTask.value) return []
-  return [...selectedTask.value.history].sort((a, b) => b.at.localeCompare(a.at))
-})
-
-function riskToneClass(level: string): string {
-  const key = riskLevelKey(level)
-  return `risk-${key}`
-}
-
-function statusToneClass(status: string): string {
-  const normalized = status.toLowerCase()
-  if (normalized.includes('completed')) return 'status-completed'
-  if (normalized.includes('review')) return 'status-review'
-  if (normalized.includes('unreached') || normalized.includes('missed')) return 'status-unreached'
-  if (normalized.includes('contacted')) return 'status-contacted'
-  return 'status-pending'
-}
 
 function appendHistory(item: FollowupTaskRow, label: string, nextStatus: string, note: string) {
   const state = ensureState(item)
@@ -221,7 +183,7 @@ function appendHistory(item: FollowupTaskRow, label: string, nextStatus: string,
 function submitContact(item: FollowupTaskRow, result: ContactLogCreatePayload['contactResult'], note: string, nextDate?: string) {
   const payload: ContactLogCreatePayload = {
     contactTime: nowIso().slice(0, 16),
-    contactType: 'phone',
+    contactType: contactMethod.value === 'call' ? 'phone' : 'wechat',
     contactTarget: 'patient',
     contactResult: result,
     note,
@@ -230,32 +192,31 @@ function submitContact(item: FollowupTaskRow, result: ContactLogCreatePayload['c
   emit('submit-contact-log', { patientId: item.patientId, payload })
 }
 
-function markReached(item: FollowupTaskRow) {
+function markReached(item: FollowupTaskRow, note = '本次随访已联系到患者。') {
   const state = ensureState(item)
   state.unreached = false
   state.needsReview = false
-  appendHistory(item, 'Marked Contacted', 'Contacted', 'Patient reached by phone follow-up.')
-  submitContact(item, 'reached', 'Reached during follow-up call.', state.nextFollowupDate)
+  appendHistory(item, '已联系患者', 'Contacted', note)
+  submitContact(item, 'reached', note, state.nextFollowupDate)
 }
 
-function markUnreached(item: FollowupTaskRow) {
+function markUnreached(item: FollowupTaskRow, note = '本次未接通，需再次联系。') {
   const state = ensureState(item)
   state.unreached = true
-  appendHistory(item, 'Marked Unreached', 'Unreached', 'No answer from patient contact.')
-  submitContact(item, 'missed', 'No answer. Retry needed.', state.nextFollowupDate)
+  appendHistory(item, '联系未果', 'Unreached', note)
+  submitContact(item, 'missed', note, state.nextFollowupDate)
 }
 
-function markNeedReview(item: FollowupTaskRow) {
+function markNeedReview(item: FollowupTaskRow, note = '根据随访情况需医生进一步复核。') {
   const state = ensureState(item)
   state.needsReview = true
-  appendHistory(item, 'Marked Need Review', 'Need Review', 'Nurse requested physician review.')
-  submitContact(item, 'urgent', 'Need physician review based on follow-up findings.', state.nextFollowupDate)
+  appendHistory(item, '需要医生复核', 'Need Review', note)
+  submitContact(item, 'urgent', note, state.nextFollowupDate)
 }
 
 function markCompleted(item: FollowupTaskRow) {
-  appendHistory(item, 'Marked Completed', 'Completed', 'Follow-up cycle completed.')
-  const key = taskKey(item)
-  const current = localState[key]
+  appendHistory(item, '已完成任务', 'Completed', '本轮随访已完成。')
+  const current = localState[taskKey(item)]
   if (current) {
     current.unreached = false
     current.needsReview = false
@@ -266,9 +227,8 @@ function markCompleted(item: FollowupTaskRow) {
 }
 
 function markClosed(item: FollowupTaskRow) {
-  appendHistory(item, 'Marked Closed', 'Closed', 'Task closed by follow-up operator.')
-  const key = taskKey(item)
-  const current = localState[key]
+  appendHistory(item, '已关闭任务', 'Closed', '任务已由随访人员关闭。')
+  const current = localState[taskKey(item)]
   if (current) {
     current.unreached = false
     current.needsReview = false
@@ -276,6 +236,23 @@ function markClosed(item: FollowupTaskRow) {
   if (item.source === 'outpatient-task' && item.taskId) {
     emit('close-task', { patientId: item.patientId, taskId: item.taskId })
   }
+}
+
+function saveContactEntry() {
+  if (!selectedTask.value) return
+  const note = clinicalNotes.value.trim() || '已在慢病随访工作台保存联系记录。'
+
+  if (contactOutcome.value === 'missed') {
+    markUnreached(selectedTask.value, note)
+    return
+  }
+
+  if (contactOutcome.value === 'urgent') {
+    markNeedReview(selectedTask.value, note)
+    return
+  }
+
+  markReached(selectedTask.value, note)
 }
 
 watch(
@@ -288,6 +265,7 @@ watch(
         return
       }
     }
+
     if (!selectedTask.value && filteredTasks.value.length) {
       const first = filteredTasks.value[0]
       if (first) selectedTaskKey.value = taskKey(first)
@@ -295,206 +273,145 @@ watch(
   },
   { immediate: true }
 )
+
+watch(selectedTask, (task) => {
+  if (!task) return
+  clinicalNotes.value = `${task.patientName}：${task.taskType}。`
+  contactOutcome.value = task.unreached ? 'missed' : task.needsReview ? 'urgent' : 'reached'
+})
 </script>
 
 <template>
   <section class="followup-workbench">
-    <header class="top-metrics card">
-      <article>
-        <span>Today's Pending Follow-ups</span>
-        <strong>{{ todaySummary.todayPending }}</strong>
-        <p>Tasks due today and not completed.</p>
-      </article>
-      <article class="metric-high">
-        <span>High-risk Priority</span>
-        <strong>{{ todaySummary.highRisk }}</strong>
-        <p>High-risk patients with unfinished tasks.</p>
-      </article>
-      <article class="metric-ok">
-        <span>Completed</span>
-        <strong>{{ todaySummary.completed }}</strong>
-        <p>Current status is completed or closed.</p>
-      </article>
-      <article class="metric-warn">
-        <span>Unreached</span>
-        <strong>{{ todaySummary.unreached }}</strong>
-        <p>Locally marked as not reached.</p>
-      </article>
-    </header>
+    <div class="followup-header">
+      <div>
+        <p class="eyebrow">随访工作台</p>
+        <h2>随访账本</h2>
+        <p>集中处理当前患者联系、记录与任务闭环。</p>
+      </div>
 
-    <section class="workbench-grid">
-      <aside class="left-pane card">
-        <h3>Todo Filters</h3>
-        <label class="field">
-          <span>Risk Level</span>
-          <select v-model="riskFilter">
-            <option value="all">All</option>
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
-          </select>
-        </label>
+      <div class="followup-filters">
+        <input v-model="keyword" type="text" placeholder="搜索患者姓名或主病种..." />
+        <select v-model="riskFilter">
+          <option value="all">全部风险等级</option>
+          <option value="high">高风险</option>
+          <option value="medium">中风险</option>
+          <option value="low">低风险</option>
+        </select>
+        <select v-model="dateFilter">
+          <option value="all">全部日期</option>
+          <option value="today">今日到期</option>
+          <option value="overdue">已逾期</option>
+          <option value="next7">未来 7 天</option>
+        </select>
+      </div>
+    </div>
 
-        <label class="field">
-          <span>Date</span>
-          <select v-model="dateFilter">
-            <option value="all">All dates</option>
-            <option value="today">Today</option>
-            <option value="overdue">Overdue</option>
-            <option value="next7">Next 7 days</option>
-          </select>
-        </label>
+    <div v-if="loading" class="empty-state-card">正在加载随访账本...</div>
+    <div v-else-if="!filteredTasks.length" class="empty-state-card">当前筛选条件下没有随访任务。</div>
 
-        <label class="field inline">
-          <input v-model="filterUnreachedOnly" type="checkbox" />
-          <span>Unreached only</span>
-        </label>
+    <section v-else class="followup-ledger-layout">
+      <section class="ledger-board">
+        <article v-for="column in boardColumns" :key="column.key" class="ledger-column">
+          <div class="ledger-column-head">
+            <span class="ledger-dot" :class="column.accent"></span>
+            <strong>{{ column.label }}</strong>
+            <span class="ledger-count">{{ column.items.length }}</span>
+          </div>
 
-        <label class="field inline">
-          <input v-model="filterReviewOnly" type="checkbox" />
-          <span>Needs review only</span>
-        </label>
+          <div class="ledger-stack">
+            <article
+              v-for="item in column.items"
+              :key="taskKey(item)"
+              class="clinical-card ledger-card"
+              :class="{ active: selectedTaskKey === taskKey(item) }"
+              @click="selectedTaskKey = taskKey(item)"
+            >
+              <div class="ledger-card-head">
+                <div>
+                  <strong>{{ item.patientName }}</strong>
+                  <p>{{ item.taskType }}</p>
+                </div>
+                <span class="risk-pill" :class="`risk-${item.riskKey}`">{{ item.riskLevel }}</span>
+              </div>
+              <p class="ledger-card-copy">{{ item.primaryDisease }} / {{ item.patientId }}</p>
+              <div class="ledger-card-meta">
+                <span>最近联系</span>
+                <strong>{{ item.lastActionAt ? formatDateTime(item.lastActionAt) : '暂无记录' }}</strong>
+              </div>
+              <div class="ledger-card-meta">
+                <span>下次计划</span>
+                <strong>{{ item.nextFollowupDate || item.dueDate }}</strong>
+              </div>
+            </article>
+          </div>
+        </article>
+      </section>
 
-        <label class="field">
-          <span>Search Patient</span>
-          <input v-model="keyword" type="text" placeholder="patientId/name/disease" />
-        </label>
-
-        <div class="patient-list">
-          <article
-            v-for="item in filteredTasks"
-            :key="taskKey(item)"
-            class="patient-item"
-            :class="{ active: selectedTaskKey === taskKey(item) }"
-            @click="selectedTaskKey = taskKey(item)"
-          >
-            <div>
-              <strong>{{ item.patientName }}</strong>
-              <p>{{ item.patientId }} / {{ item.primaryDisease }}</p>
-            </div>
-            <div class="patient-item-right">
-              <span class="risk-pill" :class="riskToneClass(item.riskLevel)">{{ item.riskLevel }}</span>
-              <small>{{ item.dueDate }}</small>
-            </div>
-          </article>
-
-          <p v-if="!filteredTasks.length" class="empty">No tasks under current filter.</p>
+      <aside class="clinical-card contact-entry-panel">
+        <div class="contact-entry-head">
+          <p class="eyebrow">联系记录</p>
+          <h3>联系记录录入</h3>
         </div>
-      </aside>
 
-      <main class="middle-pane card">
         <template v-if="selectedTask">
-          <header class="panel-head">
-            <div>
-              <h3>Current Follow-up Summary</h3>
-              <p>{{ selectedTask.patientName }} / {{ selectedTask.patientId }} / {{ selectedTask.primaryDisease }}</p>
-            </div>
-            <span class="status-pill" :class="statusToneClass(selectedTask.localStatus)">
-              {{ selectedTask.localStatus }}
-            </span>
-          </header>
+          <label class="entry-field">
+            <span>患者</span>
+            <input :value="selectedTask.patientName" type="text" readonly />
+          </label>
 
-          <section class="summary-grid">
-            <article>
-              <span>Task Type</span>
-              <strong>{{ selectedTask.taskType }}</strong>
-            </article>
-            <article>
-              <span>Owner</span>
-              <strong>{{ selectedTask.owner }}</strong>
-            </article>
-            <article>
-              <span>Last Updated</span>
-              <strong>{{ formatDateTime(selectedTask.localUpdatedAt) }}</strong>
-            </article>
-            <article>
-              <span>Data Support</span>
-              <strong>{{ selectedTask.dataSupport }}</strong>
-            </article>
-          </section>
-
-          <section class="middle-block">
-            <h4>Recent Advice</h4>
-            <ul>
-              <li v-for="(text, idx) in recentAdvice" :key="`advice-${idx}`">{{ text }}</li>
-              <li v-if="!recentAdvice.length">No advice available.</li>
-            </ul>
-          </section>
-
-          <section class="middle-block">
-            <h4>Recent Prediction Change</h4>
-            <ul>
-              <li v-for="(text, idx) in predictionChange" :key="`pred-${idx}`">{{ text }}</li>
-            </ul>
-            <p class="todo-note">TODO(api): currently adapted from /api/worklists/followups + flow-board snapshot only.</p>
-          </section>
-
-          <section class="middle-block">
-            <h4>Status Flow and Timestamps</h4>
-            <div class="timeline">
-              <article v-for="record in rightPanelHistory" :key="record.id" class="timeline-row">
-                <div>
-                  <strong>{{ record.label }}</strong>
-                  <p>{{ record.status }} - {{ record.note }}</p>
-                </div>
-                <span>{{ formatDateTime(record.at) }}</span>
-              </article>
-            </div>
-          </section>
-        </template>
-
-        <div v-else class="empty">Select one follow-up task on the left.</div>
-      </main>
-
-      <aside class="right-pane card">
-        <template v-if="selectedTask">
-          <section class="right-block">
-            <h4>Contact Records</h4>
-            <div class="timeline">
-              <article v-for="record in rightPanelHistory.slice(0, 5)" :key="`contact-${record.id}`" class="timeline-row">
-                <div>
-                  <strong>{{ record.status }}</strong>
-                  <p>{{ record.note }}</p>
-                </div>
-                <span>{{ formatDateTime(record.at) }}</span>
-              </article>
-            </div>
-          </section>
-
-          <section class="right-block">
-            <h4>Next Follow-up Plan</h4>
-            <label class="field">
-              <span>Planned Date</span>
-              <input
-                type="date"
-                :value="selectedTask.nextFollowupDate"
-                @input="ensureState(selectedTask).nextFollowupDate = ($event.target as HTMLInputElement).value"
-              />
-            </label>
-            <p class="plan-note">Owner: {{ selectedTask.owner }}, source: {{ selectedTask.source }}</p>
-          </section>
-
-          <section class="right-block">
-            <h4>Quick Actions</h4>
-            <div class="actions">
-              <button class="secondary-button" :disabled="props.savingContactLog || props.loadingTaskAction" @click="markReached(selectedTask)">Reached</button>
-              <button class="secondary-button" :disabled="props.savingContactLog || props.loadingTaskAction" @click="markUnreached(selectedTask)">Unreached</button>
-              <button class="secondary-button" :disabled="props.savingContactLog || props.loadingTaskAction" @click="markNeedReview(selectedTask)">Need Doctor Review</button>
-              <button class="primary-button" :disabled="props.savingContactLog || props.loadingTaskAction" @click="markCompleted(selectedTask)">
-                {{ props.loadingTaskAction ? 'Submitting...' : 'Complete' }}
+          <div class="entry-field">
+            <span>联系方式</span>
+            <div class="method-row">
+              <button
+                class="secondary-button"
+                :class="{ active: contactMethod === 'call' }"
+                type="button"
+                @click="contactMethod = 'call'"
+              >
+                电话
               </button>
-              <button class="secondary-button" :disabled="props.savingContactLog || props.loadingTaskAction" @click="markClosed(selectedTask)">
-                {{ props.loadingTaskAction ? 'Submitting...' : 'Close Task' }}
+              <button
+                class="secondary-button"
+                :class="{ active: contactMethod === 'message' }"
+                type="button"
+                @click="contactMethod = 'message'"
+              >
+                消息
               </button>
             </div>
-            <div class="actions secondary">
-              <button class="text-button" @click="emit('open-patient', selectedTask.patientId)">Open Patient Detail</button>
-              <button class="text-button" @click="emit('open-archive', selectedTask.patientId)">Open Patient Archive</button>
-            </div>
-          </section>
+          </div>
+
+          <label class="entry-field">
+            <span>联系结果</span>
+            <select v-model="contactOutcome">
+              <option value="reached">已联系患者</option>
+              <option value="scheduled">已约定随访</option>
+              <option value="missed">无人接听</option>
+              <option value="urgent">需要医生复核</option>
+            </select>
+          </label>
+
+          <label class="entry-field">
+            <span>临床备注</span>
+            <textarea v-model="clinicalNotes" placeholder="请输入联系情况、症状变化或后续安排..." />
+          </label>
+
+          <div class="contact-entry-footer">
+            <button class="secondary-button" type="button" @click="emit('open-archive', selectedTask.patientId)">打开档案</button>
+            <button class="primary-button" type="button" :disabled="savingContactLog || loadingTaskAction" @click="saveContactEntry">
+              {{ savingContactLog || loadingTaskAction ? '保存中...' : '保存记录' }}
+            </button>
+          </div>
+
+          <div class="contact-entry-actions">
+            <button class="text-link" type="button" @click="emit('open-patient', selectedTask.patientId)">打开患者详情</button>
+            <button class="text-link" type="button" @click="markCompleted(selectedTask)">完成任务</button>
+            <button class="text-link" type="button" @click="markClosed(selectedTask)">关闭任务</button>
+          </div>
         </template>
 
-        <div v-else class="empty">Select a task before action.</div>
+        <div v-else class="empty-state-card compact-empty">请选择一条随访任务后再录入联系记录。</div>
       </aside>
     </section>
   </section>
@@ -503,344 +420,213 @@ watch(
 <style scoped>
 .followup-workbench {
   display: grid;
-  gap: 12px;
+  gap: 22px;
 }
 
-.card {
-  border: 1px solid #cfd9e5;
-  border-radius: 10px;
-  background: #fff;
+.followup-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
 }
 
-.top-metrics {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-  padding: 12px;
+.followup-header p {
+  margin: 8px 0 0;
+  color: rgba(63, 72, 73, 0.84);
 }
 
-.top-metrics article {
-  border: 1px solid #d4dee9;
-  border-radius: 8px;
-  background: #f8fbff;
-  padding: 10px;
-  display: grid;
-  gap: 4px;
-}
-
-.top-metrics span {
-  color: #5b7388;
-  font-size: 0.78rem;
-}
-
-.top-metrics strong {
-  color: #10263c;
-  font-size: 1.35rem;
-}
-
-.top-metrics p {
-  margin: 0;
-  color: #6b8195;
-  font-size: 0.75rem;
-}
-
-.metric-high {
-  background: #fff4f5 !important;
-  border-color: #efc2c5 !important;
-}
-
-.metric-ok {
-  background: #eef9f3 !important;
-  border-color: #bde7d1 !important;
-}
-
-.metric-warn {
-  background: #fff8eb !important;
-  border-color: #efdbb2 !important;
-}
-
-.workbench-grid {
-  display: grid;
-  grid-template-columns: 300px minmax(0, 1fr) 360px;
-  gap: 12px;
-}
-
-.left-pane,
-.middle-pane,
-.right-pane {
-  padding: 12px;
-  display: grid;
-  gap: 10px;
-  align-content: start;
-}
-
-.left-pane h3,
-.middle-pane h3,
-.right-pane h4 {
-  margin: 0;
-  color: #10263c;
-}
-
-.field {
-  display: grid;
-  gap: 4px;
-}
-
-.field span {
-  color: #5f788d;
-  font-size: 0.76rem;
-}
-
-.field input,
-.field select {
-  border: 1px solid #cfd9e5;
-  border-radius: 8px;
-  padding: 8px;
-  font-size: 0.82rem;
-  background: #fff;
-}
-
-.field.inline {
+.followup-filters {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
-.patient-list {
+.followup-filters input {
+  min-width: 260px;
+}
+
+.followup-ledger-layout {
   display: grid;
-  gap: 8px;
+  grid-template-columns: minmax(0, 1.4fr) 480px;
+  gap: 18px;
+  align-items: start;
 }
 
-.patient-item {
-  border: 1px solid #d6e0eb;
-  border-radius: 8px;
-  padding: 8px;
+.ledger-board {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.ledger-column {
+  min-width: 0;
+  display: grid;
+  gap: 14px;
+  padding: 8px 0 0;
+}
+
+.ledger-column-head {
   display: flex;
-  justify-content: space-between;
-  gap: 8px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 8px;
+  font-family: var(--ws-font-headline);
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.ledger-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.accent-danger {
+  background: var(--ws-error);
+}
+
+.accent-info {
+  background: #8cd2d7;
+}
+
+.accent-success {
+  background: var(--ws-primary);
+}
+
+.ledger-count {
+  margin-left: auto;
+  min-width: 28px;
+  height: 28px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(224, 227, 228, 0.88);
+  font-size: 13px;
+  letter-spacing: 0;
+}
+
+.ledger-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.ledger-card {
+  display: grid;
+  gap: 12px;
   cursor: pointer;
-  background: #fbfdff;
 }
 
-.patient-item.active {
-  border-color: #8fb3d6;
-  background: #edf5fc;
+.ledger-card.active {
+  box-shadow:
+    var(--ws-shadow-card),
+    inset 4px 0 0 var(--ws-primary);
 }
 
-.patient-item p {
-  margin: 2px 0 0;
-  color: #617a8f;
-  font-size: 0.78rem;
-}
-
-.patient-item-right {
-  display: grid;
-  justify-items: end;
-  gap: 4px;
-}
-
-.patient-item-right small {
-  color: #617a8f;
-  font-size: 0.74rem;
-}
-
-.panel-head {
+.ledger-card-head {
   display: flex;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
+}
+
+.ledger-card-head p,
+.ledger-card-copy {
+  margin: 0;
+  color: rgba(63, 72, 73, 0.82);
+  line-height: 1.5;
+}
+
+.ledger-card-meta {
+  display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: rgba(63, 72, 73, 0.72);
 }
 
-.panel-head p {
-  margin: 4px 0 0;
-  color: #617a8f;
-  font-size: 0.82rem;
+.ledger-card-meta strong {
+  color: var(--ws-on-surface);
 }
 
-.summary-grid {
+.contact-entry-panel {
+  display: grid;
+  gap: 18px;
+  padding: 26px 28px;
+}
+
+.contact-entry-head {
+  display: grid;
+  gap: 10px;
+}
+
+.entry-field {
+  display: grid;
+  gap: 8px;
+}
+
+.entry-field span {
+  font-family: var(--ws-font-headline);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.method-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: 10px;
 }
 
-.summary-grid article {
-  border: 1px solid #d6e0eb;
-  border-radius: 8px;
-  padding: 8px;
-  background: #fbfdff;
-  display: grid;
-  gap: 4px;
+.method-row .secondary-button.active {
+  background: linear-gradient(135deg, var(--ws-primary), var(--ws-primary-container));
+  color: white;
+  box-shadow: 0 16px 24px rgba(0, 67, 71, 0.16);
 }
 
-.summary-grid span {
-  color: #60798d;
-  font-size: 0.76rem;
-}
-
-.summary-grid strong {
-  color: #10263c;
-  font-size: 0.86rem;
-}
-
-.middle-block,
-.right-block {
-  border: 1px solid #d6e0eb;
-  border-radius: 8px;
-  padding: 10px;
-  background: #fbfdff;
-  display: grid;
-  gap: 8px;
-}
-
-.middle-block h4,
-.right-block h4 {
-  margin: 0;
-  color: #14314a;
-}
-
-.middle-block ul {
-  margin: 0;
-  padding-left: 18px;
-  color: #24445f;
-  display: grid;
-  gap: 4px;
-  font-size: 0.82rem;
-}
-
-.todo-note {
-  margin: 0;
-  color: #8a641f;
-  font-size: 0.76rem;
-}
-
-.timeline {
-  display: grid;
-  gap: 6px;
-}
-
-.timeline-row {
-  border: 1px solid #d9e3ee;
-  border-radius: 8px;
-  padding: 8px;
-  background: #fff;
+.contact-entry-footer,
+.contact-entry-actions {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
-.timeline-row p {
-  margin: 3px 0 0;
-  color: #617a8f;
-  font-size: 0.78rem;
+.contact-entry-actions {
+  padding-top: 4px;
 }
 
-.timeline-row span {
-  color: #60798d;
-  font-size: 0.75rem;
-  white-space: nowrap;
+.compact-empty {
+  min-height: 220px;
 }
 
-.actions {
-  display: grid;
-  gap: 8px;
-}
-
-.actions.secondary {
-  grid-template-columns: 1fr 1fr;
-}
-
-.plan-note {
-  margin: 0;
-  color: #60798d;
-  font-size: 0.78rem;
-}
-
-.risk-pill,
-.status-pill {
-  display: inline-flex;
-  border-radius: 999px;
-  border: 1px solid transparent;
-  padding: 2px 8px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  width: fit-content;
-}
-
-.risk-high {
-  background: #fdeced;
-  border-color: #efc2c5;
-  color: #a4383f;
-}
-
-.risk-medium {
-  background: #fff4e2;
-  border-color: #efdbb2;
-  color: #9b6518;
-}
-
-.risk-low {
-  background: #e9f8f1;
-  border-color: #bde7d1;
-  color: #1d7b5c;
-}
-
-.status-pending {
-  background: #eef3f9;
-  border-color: #cfdae7;
-  color: #3f6283;
-}
-
-.status-contacted {
-  background: #e9f8f1;
-  border-color: #bde7d1;
-  color: #1d7b5c;
-}
-
-.status-unreached {
-  background: #fff4e2;
-  border-color: #efdbb2;
-  color: #9b6518;
-}
-
-.status-review {
-  background: #fdeced;
-  border-color: #efc2c5;
-  color: #a4383f;
-}
-
-.status-completed {
-  background: #eaf2fb;
-  border-color: #c7d8ec;
-  color: #2f5f8f;
-}
-
-.empty {
-  border: 1px dashed #c2d4e6;
-  border-radius: 8px;
-  padding: 14px;
-  color: #627b90;
-  text-align: center;
-  font-size: 0.84rem;
-}
-
-@media (max-width: 1480px) {
-  .workbench-grid {
+@media (max-width: 1320px) {
+  .followup-ledger-layout {
     grid-template-columns: 1fr;
   }
+}
 
-  .top-metrics {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+@media (max-width: 1100px) {
+  .ledger-board {
+    grid-template-columns: 1fr;
   }
 }
 
-@media (max-width: 840px) {
-  .top-metrics {
-    grid-template-columns: 1fr;
+@media (max-width: 820px) {
+  .followup-header {
+    display: grid;
   }
 
-  .summary-grid,
-  .actions.secondary {
-    grid-template-columns: 1fr;
+  .followup-filters {
+    display: grid;
+  }
+
+  .followup-filters input {
+    min-width: 0;
   }
 }
 </style>

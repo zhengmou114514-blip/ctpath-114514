@@ -6,11 +6,10 @@ import './styles/workstation-theme.css'
 import App from './App.vue'
 import './services/request'
 import router from './router'
-import { createPinia } from 'pinia'
 import { useAuthStore } from './stores/auth'
+import { pinia } from './stores/pinia'
 
 const app = createApp(App)
-const pinia = createPinia()
 
 app.use(pinia as any)
 useAuthStore(pinia).restoreSession()

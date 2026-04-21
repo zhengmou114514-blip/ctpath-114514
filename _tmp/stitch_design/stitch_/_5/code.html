@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Stitch Clinical - 患者详情</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Public+Sans:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-on-surface": "#eef1f2",
+                        "surface-dim": "#d7dadb",
+                        "on-surface": "#181c1d",
+                        "surface-container-high": "#e5e9ea",
+                        "surface-tint": "#19686d",
+                        "on-tertiary-container": "#ffb68b",
+                        "error-container": "#ffdad6",
+                        "tertiary-fixed": "#ffdbc9",
+                        "surface-container-lowest": "#ffffff",
+                        "on-surface-variant": "#3f4849",
+                        "on-secondary-fixed": "#071e27",
+                        "primary": "#004347",
+                        "surface-bright": "#f7fafb",
+                        "on-tertiary-fixed": "#321200",
+                        "on-primary": "#ffffff",
+                        "on-primary-fixed-variant": "#004f53",
+                        "surface-container-low": "#f1f4f5",
+                        "outline": "#6f797a",
+                        "surface": "#f7fafb",
+                        "surface-container": "#ebeeef",
+                        "outline-variant": "#bec8c9",
+                        "on-tertiary-fixed-variant": "#6c3a19",
+                        "on-tertiary": "#ffffff",
+                        "on-primary-fixed": "#002022",
+                        "primary-fixed": "#a8eff4",
+                        "secondary-fixed-dim": "#b4cad6",
+                        "inverse-primary": "#8cd2d7",
+                        "on-primary-container": "#8cd2d7",
+                        "error": "#ba1a1a",
+                        "secondary-container": "#cfe6f2",
+                        "on-error-container": "#93000a",
+                        "surface-variant": "#e0e3e4",
+                        "inverse-surface": "#2d3132",
+                        "tertiary-fixed-dim": "#ffb68c",
+                        "on-error": "#ffffff",
+                        "secondary": "#4c616c",
+                        "primary-fixed-dim": "#8cd2d7",
+                        "primary-container": "#005c61",
+                        "surface-container-highest": "#e0e3e4",
+                        "secondary-fixed": "#cfe6f2",
+                        "on-secondary-container": "#526772",
+                        "on-secondary": "#ffffff",
+                        "on-background": "#181c1d",
+                        "on-secondary-fixed-variant": "#354a53",
+                        "tertiary": "#5e2f0e",
+                        "background": "#f7fafb",
+                        "tertiary-container": "#7a4523"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {},
+                    "fontFamily": {
+                        "headline": ["Public Sans", "sans-serif"],
+                        "body": ["Inter", "sans-serif"],
+                        "label": ["Inter", "sans-serif"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3, .font-headline { font-family: 'Public Sans', sans-serif; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface flex h-screen overflow-hidden antialiased selection:bg-primary-fixed selection:text-on-primary-fixed">
+<!-- SideNavBar -->
+<nav class="h-screen w-72 flex-col left-0 top-0 sticky bg-[#ebeeef] dark:bg-slate-900 flex py-8 space-y-2 hidden md:flex z-50">
+<div class="px-8 mb-10 flex flex-col gap-1">
+<span class="text-xl font-black text-[#004347] tracking-[0.2em] dark:text-teal-400 font-headline">STITCH</span>
+<span class="text-[10px] font-medium text-on-surface-variant uppercase tracking-widest font-label">Clinical Workstation</span>
+</div>
+<div class="flex-1 flex flex-col gap-1">
+<a class="flex items-center px-8 py-3 text-[#3f4849] font-medium opacity-80 hover:bg-[#e0e3e4] transition-colors duration-200 group" href="#">
+<span class="material-symbols-outlined mr-4 group-hover:scale-110 transition-transform">dashboard</span>
+<span class="text-sm">Dashboard</span>
+</a>
+<a class="flex items-center px-8 py-3 text-[#004347] font-bold border-r-4 border-[#004347] bg-[#f1f4f5]/50 group" href="#">
+<span class="material-symbols-outlined mr-4" style="font-variation-settings: 'FILL' 1;">groups</span>
+<span class="text-sm">Patient Management</span>
+</a>
+<a class="flex items-center px-8 py-3 text-[#3f4849] font-medium opacity-80 hover:bg-[#e0e3e4] transition-colors duration-200 group" href="#">
+<span class="material-symbols-outlined mr-4 group-hover:scale-110 transition-transform">neurology</span>
+<span class="text-sm">Model Center</span>
+</a>
+<a class="flex items-center px-8 py-3 text-[#3f4849] font-medium opacity-80 hover:bg-[#e0e3e4] transition-colors duration-200 group" href="#">
+<span class="material-symbols-outlined mr-4 group-hover:scale-110 transition-transform">admin_panel_settings</span>
+<span class="text-sm">Data Governance</span>
+</a>
+<a class="flex items-center px-8 py-3 text-[#3f4849] font-medium opacity-80 hover:bg-[#e0e3e4] transition-colors duration-200 group" href="#">
+<span class="material-symbols-outlined mr-4 group-hover:scale-110 transition-transform">medication</span>
+<span class="text-sm">Medicine Management</span>
+</a>
+</div>
+<div class="mt-auto px-8">
+<a class="flex items-center py-3 text-[#3f4849] font-medium opacity-80 hover:bg-[#e0e3e4] transition-colors duration-200 group" href="#">
+<span class="material-symbols-outlined mr-4 group-hover:scale-110 transition-transform">settings</span>
+<span class="text-sm">System</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Wrapper -->
+<div class="flex-1 flex flex-col min-w-0 bg-surface h-screen overflow-hidden">
+<!-- TopAppBar -->
+<header class="w-full h-20 top-0 sticky z-40 bg-[#f7fafb] dark:bg-slate-950 flex items-center justify-between px-10 w-full max-w-full border-b border-surface-container-high md:border-none">
+<div class="flex items-center gap-4">
+<button class="md:hidden text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-2xl">menu</span>
+</button>
+<div class="hidden md:flex items-center bg-surface-container-low px-4 py-2 rounded-lg text-sm text-on-surface-variant gap-2 hover:bg-surface-container transition-colors w-64 focus-within:bg-surface-container focus-within:ring-1 focus-within:ring-primary/30">
+<span class="material-symbols-outlined text-lg opacity-70">search</span>
+<input class="bg-transparent border-none p-0 focus:ring-0 text-sm w-full placeholder-on-surface-variant/50" placeholder="Search patients, models..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<span class="text-xs font-semibold text-primary uppercase tracking-wider hidden lg:block bg-primary/5 px-3 py-1 rounded-full">Demo/MySQL Mode</span>
+<div class="flex items-center gap-4 text-on-surface-variant">
+<button class="hover:text-primary transition-colors relative">
+<span class="material-symbols-outlined">sensors</span>
+<span class="absolute top-0 right-0 w-2 h-2 bg-primary rounded-full"></span>
+</button>
+<button class="hover:text-primary transition-colors relative">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="hover:text-primary transition-colors">
+<span class="material-symbols-outlined">logout</span>
+</button>
+</div>
+<div class="h-8 w-8 rounded-full bg-surface-container-high overflow-hidden border border-surface-container-high cursor-pointer ml-2">
+<img alt="Clinician Profile" class="w-full h-full object-cover" data-alt="professional portrait of a medical clinician in uniform" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB_vH_-9dnYKhpKvxG7Opfno6xPDCu1513rXz6rOMdSOGEiIjJShu43JmZY-xD8CPTgEGzSdtZoYm-ir147XVKQb_Hs4SYu_0dB1wvVPd3Eq3Q1VH-gg_kjsZ-AtJdlxmQjYBV2Y53sciUSyq4A_4-t4lCULZW3SonlYR2FEl9Y83RZ16ACoqit_nS5SSEBB23Bdn-w8oZFKF7cRDx7AcZlnmeh3AZwp818RwBWPqOkOfsdRDxalSuS2ATVelNint6SbsUHdHINKXA"/>
+</div>
+</div>
+</header>
+<!-- Canvas -->
+<main class="flex-1 overflow-y-auto p-6 lg:p-10 bg-surface-container-low w-full relative">
+<!-- Patient Header & Sticky Summary -->
+<div class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-6 bg-surface-container-lowest p-6 rounded-xl relative shadow-[0_12px_32px_-4px_rgba(24,28,29,0.06)] z-10 border border-outline-variant/10">
+<div class="flex items-center gap-6">
+<div class="h-16 w-16 bg-surface-container rounded-full flex items-center justify-center text-on-surface-variant font-headline font-bold text-xl">
+                        ZW
+                    </div>
+<div>
+<div class="flex items-center gap-3 mb-1">
+<h1 class="text-3xl font-headline font-bold text-on-surface tracking-tight">Zhang, Wei</h1>
+<span class="bg-error-container text-on-error-container px-2 py-0.5 rounded text-xs font-bold font-label tracking-wide">高危人群</span>
+<span class="text-sm text-on-surface-variant">MRN: #99482-A</span>
+</div>
+<div class="text-sm text-on-surface-variant flex flex-wrap gap-x-4 gap-y-2 mt-2 font-medium">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px] opacity-70">cake</span> 68岁 (男)</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px] opacity-70">bloodtype</span> O+</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px] opacity-70">monitor_weight</span> 76kg</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px] opacity-70">calendar_month</span> 入院: 2023-10-12</span>
+</div>
+</div>
+</div>
+<div class="flex gap-3 w-full md:w-auto">
+<button class="px-5 py-2.5 rounded-lg border border-outline/30 text-primary font-medium hover:bg-surface-container transition-colors text-sm flex-1 md:flex-none text-center">
+                        查看完整病历
+                    </button>
+<button class="px-5 py-2.5 rounded-lg bg-gradient-to-b from-primary to-primary-container text-on-primary font-medium shadow-sm hover:opacity-90 transition-opacity text-sm flex items-center justify-center gap-2 flex-1 md:flex-none">
+<span class="material-symbols-outlined text-[18px]">add</span>
+                        记录笔记
+                    </button>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-6">
+<!-- Left Column: AI Clinical Insight Panel -->
+<div class="xl:col-span-8 flex flex-col gap-6">
+<!-- AI Insight Primary Card -->
+<div class="bg-surface-container-lowest rounded-xl p-0 relative overflow-hidden flex flex-col shadow-[0_12px_32px_-4px_rgba(24,28,29,0.06)] border border-outline-variant/10">
+<!-- Header Status Bar -->
+<div class="bg-primary px-6 py-3 flex items-center justify-between text-on-primary">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined animate-pulse">memory</span>
+<span class="font-bold font-headline tracking-wide">AI 临床评估系统</span>
+</div>
+<div class="flex items-center gap-2 text-xs font-medium bg-on-primary/10 px-3 py-1 rounded-full backdrop-blur-sm">
+<span class="material-symbols-outlined text-[14px]">check_circle</span>
+                                预测完成 - 刚刚
+                            </div>
+</div>
+<div class="p-6 md:p-8 flex-1">
+<!-- Top-K Risks (Bento Sub-grid) -->
+<div class="mb-8">
+<h3 class="text-xs font-label uppercase tracking-widest text-on-surface-variant mb-4 font-bold">Top-K 风险事件</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Risk 1 -->
+<div class="bg-error-container/30 border border-error-container rounded-lg p-4 flex justify-between items-center relative overflow-hidden group">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-error"></div>
+<div>
+<span class="text-error font-bold text-lg block mb-1">再入院风险</span>
+<span class="text-xs text-on-surface-variant font-medium">预测概率: 87% (置信度: 极高)</span>
+</div>
+<div class="bg-error-container text-error px-3 py-1.5 rounded-md font-bold text-sm tracking-wide">
+                                            高
+                                        </div>
+</div>
+<!-- Risk 2 -->
+<div class="bg-tertiary-container/10 border border-tertiary-container/30 rounded-lg p-4 flex justify-between items-center relative overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-tertiary"></div>
+<div>
+<span class="text-tertiary font-bold text-lg block mb-1">急性肾损伤风险</span>
+<span class="text-xs text-on-surface-variant font-medium">预测概率: 62% (置信度: 中)</span>
+</div>
+<div class="bg-tertiary-container text-on-tertiary px-3 py-1.5 rounded-md font-bold text-sm tracking-wide">
+                                            中
+                                        </div>
+</div>
+</div>
+</div>
+<!-- Explainable Path & Evidence -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+<!-- Evidence Summary -->
+<div>
+<h3 class="text-xs font-label uppercase tracking-widest text-on-surface-variant mb-4 font-bold flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">fact_check</span>
+                                        证据摘要 (Evidence Summary)
+                                    </h3>
+<div class="space-y-3">
+<div class="flex items-start gap-3 bg-surface-container-low p-3 rounded-lg border border-outline-variant/20">
+<span class="material-symbols-outlined text-error text-[18px] mt-0.5">trending_up</span>
+<div>
+<span class="text-sm font-semibold text-on-surface block">BNP 水平持续升高</span>
+<span class="text-xs text-on-surface-variant block mt-1">过去48小时从 450 升至 890 pg/mL</span>
+</div>
+</div>
+<div class="flex items-start gap-3 bg-surface-container-low p-3 rounded-lg border border-outline-variant/20">
+<span class="material-symbols-outlined text-tertiary text-[18px] mt-0.5">water_drop</span>
+<div>
+<span class="text-sm font-semibold text-on-surface block">利尿剂响应不佳</span>
+<span class="text-xs text-on-surface-variant block mt-1">24小时尿量 &lt; 800ml，伴体重增加 1.2kg</span>
+</div>
+</div>
+<div class="flex items-start gap-3 bg-surface-container-low p-3 rounded-lg border border-outline-variant/20">
+<span class="material-symbols-outlined text-primary text-[18px] mt-0.5">history</span>
+<div>
+<span class="text-sm font-semibold text-on-surface block">近期心衰入院史</span>
+<span class="text-xs text-on-surface-variant block mt-1">6个月内已有2次因急性失代偿性心衰入院</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Explainable Path -->
+<div>
+<h3 class="text-xs font-label uppercase tracking-widest text-on-surface-variant mb-4 font-bold flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">route</span>
+                                        解释路径 (Explainable Path)
+                                    </h3>
+<div class="relative pl-4 border-l-2 border-surface-container-high space-y-5 py-2">
+<div class="relative">
+<div class="absolute -left-[23px] top-1 h-3 w-3 rounded-full bg-surface-dim border-2 border-surface-container-lowest"></div>
+<span class="text-xs font-bold text-on-surface block">基础特征权重</span>
+<span class="text-xs text-on-surface-variant">高龄 (68) + 既往史 (HF) 基础风险 +25%</span>
+</div>
+<div class="relative">
+<div class="absolute -left-[23px] top-1 h-3 w-3 rounded-full bg-tertiary border-2 border-surface-container-lowest"></div>
+<span class="text-xs font-bold text-on-surface block">动态生化指标</span>
+<span class="text-xs text-on-surface-variant">BNP飙升 + 肌酐缓慢爬升 (1.2 -&gt; 1.5) 风险激增 +40%</span>
+</div>
+<div class="relative">
+<div class="absolute -left-[23px] top-1 h-3 w-3 rounded-full bg-error border-2 border-surface-container-lowest"></div>
+<span class="text-xs font-bold text-error block">容量负荷状态</span>
+<span class="text-xs text-on-surface-variant">利尿剂抵抗迹象确立 综合触发高危阈值</span>
+</div>
+</div>
+</div>
+</div>
+<!-- AI Advice & Actions -->
+<div class="bg-surface-container-low rounded-xl p-5 border border-primary/20">
+<h3 class="text-xs font-label uppercase tracking-widest text-primary mb-3 font-bold flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">lightbulb</span>
+                                    AI 临床建议 (AI-Driven Care Advice)
+                                </h3>
+<p class="text-sm text-on-surface font-medium leading-relaxed mb-5">
+                                    建议立即调整利尿剂方案（考虑静脉泵入或联合使用噻嗪类）。需在接下来的12小时内严密监测电解质与肾功能变化。建议启动出院前多学科会诊(MDT)，制定出院后7天内的早期门诊随访计划。
+                                </p>
+<div class="flex flex-wrap gap-3 mt-4 border-t border-outline-variant/20 pt-4">
+<button class="px-4 py-2 bg-gradient-to-b from-primary to-primary-container text-on-primary rounded-lg text-sm font-bold shadow-sm hover:opacity-90 transition-opacity">
+                                        确认建议
+                                    </button>
+<button class="px-4 py-2 bg-surface-container-highest text-on-surface rounded-lg text-sm font-bold hover:bg-surface-dim transition-colors border border-outline-variant/30">
+                                        开启随访任务
+                                    </button>
+<button class="px-4 py-2 text-on-surface-variant hover:text-error rounded-lg text-sm font-medium transition-colors ml-auto">
+                                        忽略
+                                    </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Vitals & Recent Labs -->
+<div class="xl:col-span-4 flex flex-col gap-6">
+<!-- Vitals Quick View -->
+<div class="bg-surface-container-lowest rounded-xl p-6 shadow-[0_12px_32px_-4px_rgba(24,28,29,0.06)] border border-outline-variant/10">
+<h3 class="text-xs font-label uppercase tracking-widest text-on-surface-variant mb-5 font-bold">最新体征 (Vitals) - 1h前</h3>
+<div class="grid grid-cols-2 gap-4">
+<!-- HR -->
+<div class="bg-surface-container-low p-3 rounded-lg border border-outline-variant/10">
+<span class="text-xs text-on-surface-variant font-medium flex items-center gap-1 mb-1"><span class="material-symbols-outlined text-[14px]">favorite</span> 心率</span>
+<div class="flex items-baseline gap-1">
+<span class="text-2xl font-headline font-bold text-on-surface tabular-nums">92</span>
+<span class="text-xs text-on-surface-variant">bpm</span>
+</div>
+</div>
+<!-- BP -->
+<div class="bg-surface-container-low p-3 rounded-lg border border-outline-variant/10">
+<span class="text-xs text-on-surface-variant font-medium flex items-center gap-1 mb-1"><span class="material-symbols-outlined text-[14px]">blood_pressure</span> 血压</span>
+<div class="flex items-baseline gap-1">
+<span class="text-2xl font-headline font-bold text-on-surface tabular-nums">145/88</span>
+</div>
+</div>
+<!-- SpO2 -->
+<div class="bg-surface-container-low p-3 rounded-lg border border-outline-variant/10">
+<span class="text-xs text-on-surface-variant font-medium flex items-center gap-1 mb-1"><span class="material-symbols-outlined text-[14px]">air</span> 血氧</span>
+<div class="flex items-baseline gap-1">
+<span class="text-2xl font-headline font-bold text-on-surface tabular-nums">94</span>
+<span class="text-xs text-on-surface-variant">%</span>
+</div>
+</div>
+<!-- RR -->
+<div class="bg-surface-container-low p-3 rounded-lg border border-outline-variant/10">
+<span class="text-xs text-on-surface-variant font-medium flex items-center gap-1 mb-1"><span class="material-symbols-outlined text-[14px]">pulmonology</span> 呼吸</span>
+<div class="flex items-baseline gap-1">
+<span class="text-2xl font-headline font-bold text-error tabular-nums">22</span>
+<span class="text-xs text-error font-medium flex items-center"><span class="material-symbols-outlined text-[14px]">arrow_upward</span></span>
+</div>
+</div>
+</div>
+</div>
+<!-- Critical Labs Ledger -->
+<div class="bg-surface-container-lowest rounded-xl p-0 shadow-[0_12px_32px_-4px_rgba(24,28,29,0.06)] border border-outline-variant/10 flex-1">
+<div class="p-6 pb-4 border-b border-outline-variant/20 flex justify-between items-center">
+<h3 class="text-xs font-label uppercase tracking-widest text-on-surface-variant font-bold">关键检验 (Critical Labs)</h3>
+<button class="text-primary text-xs font-bold hover:underline">查看趋势图</button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left text-sm whitespace-nowrap">
+<thead>
+<tr class="text-xs font-label uppercase tracking-wider text-on-surface-variant bg-surface-container-low/50">
+<th class="px-6 py-3 font-semibold">指标</th>
+<th class="px-6 py-3 font-semibold">结果</th>
+<th class="px-6 py-3 font-semibold">时间</th>
+</tr>
+</thead>
+<tbody class="font-medium text-on-surface divide-y divide-outline-variant/10">
+<tr class="hover:bg-surface-container-low/50 transition-colors">
+<td class="px-6 py-3">NT-proBNP</td>
+<td class="px-6 py-3 text-error font-bold flex items-center gap-1">890 <span class="material-symbols-outlined text-[14px]">arrow_upward</span></td>
+<td class="px-6 py-3 text-on-surface-variant text-xs">今日 08:00</td>
+</tr>
+<tr class="bg-surface-container-low/30 hover:bg-surface-container-low/80 transition-colors">
+<td class="px-6 py-3">肌酐 (Cr)</td>
+<td class="px-6 py-3 text-tertiary font-bold flex items-center gap-1">1.5 <span class="material-symbols-outlined text-[14px]">arrow_upward</span></td>
+<td class="px-6 py-3 text-on-surface-variant text-xs">今日 08:00</td>
+</tr>
+<tr class="hover:bg-surface-container-low/50 transition-colors">
+<td class="px-6 py-3">血钾 (K+)</td>
+<td class="px-6 py-3">4.2</td>
+<td class="px-6 py-3 text-on-surface-variant text-xs">今日 08:00</td>
+</tr>
+<tr class="bg-surface-container-low/30 hover:bg-surface-container-low/80 transition-colors">
+<td class="px-6 py-3">血红蛋白 (Hb)</td>
+<td class="px-6 py-3">11.2</td>
+<td class="px-6 py-3 text-on-surface-variant text-xs">昨日 14:00</td>
+</tr>
+<tr class="hover:bg-surface-container-low/50 transition-colors">
+<td class="px-6 py-3">高敏肌钙蛋白 (hs-cTn)</td>
+<td class="px-6 py-3">0.02</td>
+<td class="px-6 py-3 text-on-surface-variant text-xs">昨日 14:00</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

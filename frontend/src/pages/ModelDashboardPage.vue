@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useWorkspaceContext } from '../composables/workspaceContext'
 import { buildModelBoardSnapshot } from '../services/modelBoardAdapter'
 
 const workspace = useWorkspaceContext()
+const router = useRouter()
 
 const board = computed(() =>
   buildModelBoardSnapshot({
@@ -14,10 +16,10 @@ const board = computed(() =>
 )
 
 const modelHealth = computed(() => {
-  if (!workspace.health) return { label: '未知', type: 'info' as const }
-  if (workspace.health.model_available) return { label: '健康', type: 'success' as const }
-  if (workspace.health.model_error) return { label: '降级', type: 'warning' as const }
-  return { label: '不可用', type: 'danger' as const }
+  if (!workspace.health) return { label: '状态待确认', type: 'info' as const }
+  if (workspace.health.model_available) return { label: '模型可用', type: 'success' as const }
+  if (workspace.health.model_error) return { label: '降级运行', type: 'warning' as const }
+  return { label: '模型不可用', type: 'danger' as const }
 })
 
 const loading = computed(() =>
@@ -38,6 +40,11 @@ function handleRefresh() {
   void workspace.refreshGovernanceWorkspace()
 }
 
+function handleOpenTrainingCenter() {
+  workspace.selectSection('training-center')
+  void router.push({ name: 'training-center' })
+}
+
 onMounted(() => {
   if (!workspace.currentDoctor) return
   if (!workspace.modelMetrics || !workspace.maintenanceOverview) {
@@ -50,11 +57,14 @@ onMounted(() => {
   <section class="workspace-page model-dashboard-page">
     <header class="workstation-page-header">
       <div>
-        <p class="eyebrow">Model center</p>
+        <p class="eyebrow">模型中心</p>
         <h1>模型看板</h1>
-        <p>面向后台治理，展示模型版本、训练指标、调用量、回退比例和健康状态。</p>
+        <p>面向模型治理与监控，集中展示当前版本、最近训练、指标表现、回退比例与模型健康状态。</p>
       </div>
-      <el-button type="primary" :loading="loading" @click="handleRefresh">刷新</el-button>
+      <div class="header-actions">
+        <el-button @click="handleOpenTrainingCenter">进入训练中心</el-button>
+        <el-button type="primary" :loading="loading" @click="handleRefresh">刷新看板</el-button>
+      </div>
     </header>
 
     <el-card shadow="never" class="module-card">
@@ -69,16 +79,16 @@ onMounted(() => {
 
       <el-row :gutter="12" class="summary-row">
         <el-col :xs="24" :sm="8">
-          <el-statistic title="模型版本" :value="board.currentModelVersion" />
+          <el-statistic title="当前模型版本" :value="board.currentModelVersion" />
         </el-col>
         <el-col :xs="24" :sm="8">
-          <el-statistic title="最近训练" :value="formatDateTime(board.recentTrainingTime)" />
+          <el-statistic title="最近训练时间" :value="formatDateTime(board.recentTrainingTime)" />
         </el-col>
         <el-col :xs="24" :sm="8">
           <div class="health-card">
-            <span>模型健康</span>
+            <span>模型服务状态</span>
             <el-tag :type="modelHealth.type" effect="light">{{ modelHealth.label }}</el-tag>
-            <small>数据源：{{ workspace.health?.mode ?? '--' }}</small>
+            <small>当前运行模式：{{ workspace.health?.mode ?? '--' }}</small>
           </div>
         </el-col>
       </el-row>
@@ -91,26 +101,26 @@ onMounted(() => {
         <el-card shadow="never" class="metric-card"><span>MRR</span><strong>{{ formatPercent(board.mrr) }}</strong></el-card>
         <el-card shadow="never" class="metric-card"><span>Hits@1</span><strong>{{ formatPercent(board.hits1) }}</strong></el-card>
         <el-card shadow="never" class="metric-card"><span>Hits@10</span><strong>{{ formatPercent(board.hits10) }}</strong></el-card>
-        <el-card shadow="never" class="metric-card"><span>调用量</span><strong>{{ board.recentInferenceCalls ?? '--' }}</strong></el-card>
-        <el-card shadow="never" class="metric-card"><span>回退比例</span><strong>{{ formatPercent(board.fallbackRatio) }}</strong></el-card>
-        <el-card shadow="never" class="metric-card"><span>训练任务</span><strong>{{ board.recentTrainingTaskStatus || '--' }}</strong></el-card>
+        <el-card shadow="never" class="metric-card"><span>近七日调用量</span><strong>{{ board.recentInferenceCalls ?? '--' }}</strong></el-card>
+        <el-card shadow="never" class="metric-card"><span>模型回退比例</span><strong>{{ formatPercent(board.fallbackRatio) }}</strong></el-card>
+        <el-card shadow="never" class="metric-card"><span>最近任务状态</span><strong>{{ board.recentTrainingTaskStatus || '--' }}</strong></el-card>
       </section>
 
       <el-card shadow="never" class="module-card">
         <template #header>
           <div class="section-header">
-            <h3>版本与服务状态</h3>
+            <h3>版本与运行信息</h3>
             <el-tag :type="modelHealth.type">{{ modelHealth.label }}</el-tag>
           </div>
         </template>
 
         <el-descriptions :column="2" border>
           <el-descriptions-item label="当前模型">{{ board.currentModelName }}</el-descriptions-item>
-          <el-descriptions-item label="版本">{{ board.currentModelVersion }}</el-descriptions-item>
-          <el-descriptions-item label="数据覆盖">{{ formatPercent(board.datasetCoverage) }}</el-descriptions-item>
-          <el-descriptions-item label="最近训练">{{ formatDateTime(board.recentTrainingTime) }}</el-descriptions-item>
-          <el-descriptions-item label="服务模式">{{ workspace.health?.mode ?? '--' }}</el-descriptions-item>
-          <el-descriptions-item label="患者数">{{ workspace.allPatients.length }}</el-descriptions-item>
+          <el-descriptions-item label="版本号">{{ board.currentModelVersion }}</el-descriptions-item>
+          <el-descriptions-item label="数据覆盖率">{{ formatPercent(board.datasetCoverage) }}</el-descriptions-item>
+          <el-descriptions-item label="最近训练时间">{{ formatDateTime(board.recentTrainingTime) }}</el-descriptions-item>
+          <el-descriptions-item label="运行模式">{{ workspace.health?.mode ?? '--' }}</el-descriptions-item>
+          <el-descriptions-item label="服务患者数">{{ workspace.allPatients.length }}</el-descriptions-item>
         </el-descriptions>
       </el-card>
     </template>

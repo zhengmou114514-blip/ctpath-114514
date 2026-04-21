@@ -4,10 +4,12 @@ import LoginPage from '../pages/LoginPage.vue'
 import GovernancePage from '../pages/GovernancePage.vue'
 import ModelDashboardPage from '../pages/ModelDashboardPage.vue'
 import ModelInsightPage from '../pages/ModelInsightPage.vue'
+import TrainingCenterPage from '../pages/TrainingCenterPage.vue'
 import NurseFollowupsPage from '../pages/NurseFollowupsPage.vue'
 import DrugCatalogPage from '../pages/medication/DrugCatalogPage.vue'
 import DrugPermissionManagementPage from '../pages/medication/permissions/DrugPermissionManagementPage.vue'
 import { useAuthStore } from '../stores/auth'
+import { pinia } from '../stores/pinia'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -37,6 +39,11 @@ const routes: RouteRecordRaw[] = [
         path: 'model-dashboard',
         name: 'model-dashboard',
         component: ModelDashboardPage,
+      },
+      {
+        path: 'training-center',
+        name: 'training-center',
+        component: TrainingCenterPage,
       },
       {
         path: 'governance',
@@ -79,7 +86,7 @@ if (typeof window !== 'undefined') {
     const status = (event as CustomEvent<{ status?: number }>).detail?.status
     if (status !== 401) return
 
-    const authStore = useAuthStore()
+    const authStore = useAuthStore(pinia)
     authStore.clearSession()
 
     const current = router.currentRoute.value
@@ -95,7 +102,7 @@ if (typeof window !== 'undefined') {
 }
 
 router.beforeEach((to) => {
-  const authStore = useAuthStore()
+  const authStore = useAuthStore(pinia)
   if (!authStore.session) {
     authStore.restoreSession()
   }

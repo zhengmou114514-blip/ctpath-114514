@@ -12,7 +12,7 @@ const evidence = computed(() => {
       eventCount: workspace.predictionResult.evidence.eventCount,
       relationCount: workspace.predictionResult.evidence.relationCount,
       supportLevel: workspace.predictionResult.evidence.supportLevel,
-      summary: workspace.predictionResult.supportSummary || '已加载当前患者的证据摘要。',
+      summary: workspace.predictionResult.supportSummary || '当前模型已给出基于病程事件与关系证据的支持摘要。',
     }
   }
 
@@ -20,7 +20,7 @@ const evidence = computed(() => {
     eventCount: selectedPatient.value?.timeline.length ?? 0,
     relationCount: selectedPatient.value?.pathExplanation.length ?? 0,
     supportLevel: selectedPatient.value?.dataSupport ?? 'unknown',
-    summary: selectedPatient.value?.summary || '暂无当前患者证据摘要。',
+    summary: selectedPatient.value?.summary || '当前仅展示患者历史摘要，尚未触发新的真实预测。',
   }
 })
 
@@ -40,16 +40,16 @@ const adviceSource = computed(() => {
     provider: selectedPatient.value?.recommendationMode || '--',
     model: workspace.health?.mode || '--',
     source: workspace.modelUnavailable ? 'fallback' : 'history',
-    note: selectedPatient.value?.summary || '暂无建议来源说明。',
+    note: selectedPatient.value?.summary || '当前展示的是患者已有建议摘要，尚未触发新的建议生成。',
   }
 })
 
 const modelStatus = computed(() => {
   if (workspace.modelUnavailable) return '模型不可用'
   if (workspace.health?.mode === 'demo') return 'Demo 模式'
-  if (workspace.predictionResult?.mode === 'model') return '模型结果'
+  if (workspace.predictionResult?.mode === 'model') return '模型直推'
   if (workspace.predictionResult?.mode === 'similar-case') return '相似病例回退'
-  return '待预测'
+  return '历史摘要模式'
 })
 
 const hasPatient = computed(() => Boolean(selectedPatient.value))
@@ -92,21 +92,21 @@ onMounted(() => {
   <section class="model-insight-page workstation-page">
     <header class="workstation-page-header">
       <div>
-        <p class="eyebrow">Model insight</p>
+        <p class="eyebrow">模型中心</p>
         <h1>模型洞察</h1>
-        <p>只面向当前患者，展示预测结果、证据摘要和建议来源，不承载训练或全局模型治理。</p>
+        <p>仅面向当前患者，展示风险预测、证据支持与建议来源，不承担全局训练与治理功能。</p>
       </div>
       <div class="header-actions">
-        <el-button @click="handleRefresh">刷新状态</el-button>
+        <el-button @click="handleRefresh">刷新上下文</el-button>
         <el-button type="primary" :disabled="!hasPatient || workspace.loadingPredict" :loading="workspace.loadingPredict" @click="handleRunPrediction">
-          运行预测
+          触发预测
         </el-button>
       </div>
     </header>
 
     <section v-if="!hasPatient" class="empty-state-card">
-      <h3>未选择患者</h3>
-      <p>请先在医生工作台或患者详情页选择患者，再查看模型洞察。</p>
+      <h3>当前没有选中的患者</h3>
+      <p>请先从医生工作台或患者详情页进入一个具体患者，再查看与该患者相关的模型洞察。</p>
     </section>
 
     <template v-else>
@@ -117,14 +117,14 @@ onMounted(() => {
           <p>{{ selectedPatient?.patientId }} / {{ selectedPatient?.primaryDisease }}</p>
         </article>
         <article class="metric-card">
-          <span>模型状态</span>
+          <span>预测模式</span>
           <strong>{{ modelStatus }}</strong>
-          <p>数据源 {{ workspace.health?.mode ?? '--' }}</p>
+          <p>当前运行模式：{{ workspace.health?.mode ?? '--' }}</p>
         </article>
         <article class="metric-card">
-          <span>证据支持</span>
+          <span>证据支撑等级</span>
           <strong>{{ supportLabel(evidence.supportLevel) }}</strong>
-          <p>事件 {{ evidence.eventCount }} / 关系 {{ evidence.relationCount }}</p>
+          <p>事件数 {{ evidence.eventCount }} / 关系数 {{ evidence.relationCount }}</p>
         </article>
       </section>
 
@@ -133,7 +133,7 @@ onMounted(() => {
           <div class="section-header">
             <div>
               <h2>Top-K 风险事件</h2>
-              <p>当前患者相关预测结果。</p>
+              <p>展示当前患者最值得关注的风险事件及其分数与原因。</p>
             </div>
           </div>
           <div v-if="topK.length" class="risk-list">
@@ -145,20 +145,20 @@ onMounted(() => {
               <p>{{ item.reason }}</p>
             </div>
           </div>
-          <p v-else class="empty-inline">暂无预测结果。</p>
+          <p v-else class="empty-inline">当前没有可展示的风险预测结果。</p>
         </article>
 
         <article class="clinical-card">
           <div class="section-header">
             <div>
               <h2>证据摘要</h2>
-              <p>模型判断所依赖的患者结构化信息。</p>
+              <p>汇总病程事件、关系数量与支撑等级，帮助判断当前预测可信度。</p>
             </div>
           </div>
           <ul class="kv-list">
             <li><span>事件数</span><strong>{{ evidence.eventCount }}</strong></li>
             <li><span>关系数</span><strong>{{ evidence.relationCount }}</strong></li>
-            <li><span>支持水平</span><strong>{{ supportLabel(evidence.supportLevel) }}</strong></li>
+            <li><span>支撑等级</span><strong>{{ supportLabel(evidence.supportLevel) }}</strong></li>
           </ul>
           <p class="panel-note">{{ evidence.summary }}</p>
         </article>
@@ -167,13 +167,13 @@ onMounted(() => {
           <div class="section-header">
             <div>
               <h2>建议来源</h2>
-              <p>区分模型、相似病例或回退来源。</p>
+              <p>说明当前建议来自模型、回退逻辑还是患者历史摘要，避免误判结果来源。</p>
             </div>
           </div>
           <ul class="kv-list">
-            <li><span>Provider</span><strong>{{ adviceSource.provider }}</strong></li>
-            <li><span>Model</span><strong>{{ adviceSource.model }}</strong></li>
-            <li><span>Source</span><strong>{{ adviceSource.source }}</strong></li>
+            <li><span>提供方</span><strong>{{ adviceSource.provider }}</strong></li>
+            <li><span>模型</span><strong>{{ adviceSource.model }}</strong></li>
+            <li><span>来源</span><strong>{{ adviceSource.source }}</strong></li>
           </ul>
           <p class="panel-note">{{ adviceSource.note }}</p>
         </article>
@@ -181,14 +181,14 @@ onMounted(() => {
         <article class="clinical-card">
           <div class="section-header">
             <div>
-              <h2>建议摘要</h2>
-              <p>{{ adviceList.length }} 条建议</p>
+              <h2>建议清单</h2>
+              <p>展示当前患者的随访与诊疗建议摘要。</p>
             </div>
           </div>
           <ol v-if="adviceList.length" class="advice-list">
             <li v-for="(item, index) in adviceList.slice(0, 5)" :key="`${index}-${item}`">{{ item }}</li>
           </ol>
-          <p v-else class="empty-inline">暂无建议。</p>
+          <p v-else class="empty-inline">当前没有可展示的建议内容。</p>
         </article>
       </section>
 
@@ -196,12 +196,12 @@ onMounted(() => {
         <div class="section-header">
           <div>
             <h2>下一步动作</h2>
-            <p>回到患者详情或随访工作流处理。</p>
+            <p>从模型洞察直接回到患者详情或进入随访模块，形成业务闭环。</p>
           </div>
         </div>
         <div class="action-row">
           <el-button @click="handleOpenDetail">打开患者详情</el-button>
-          <el-button type="primary" @click="handleOpenFollowup">打开随访任务</el-button>
+          <el-button type="primary" @click="handleOpenFollowup">进入随访工作台</el-button>
         </div>
       </section>
     </template>

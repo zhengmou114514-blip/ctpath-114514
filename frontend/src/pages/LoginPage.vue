@@ -8,6 +8,10 @@ const route = useRoute()
 const router = useRouter()
 const workspace = useWorkspaceController()
 
+function updateRegisterField(field: keyof typeof workspace.registerForm, value: string) {
+  ;(workspace.registerForm as Record<string, string>)[field] = value
+}
+
 function redirectAfterLogin() {
   const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/'
   void router.replace(redirect || '/')
@@ -57,6 +61,7 @@ watch(
     :loading-register="workspace.loadingRegister"
     @update:username="workspace.username = $event"
     @update:password="workspace.password = $event"
+    @update:register-field="updateRegisterField"
     @submit-login="submitLogin"
     @toggle-register="workspace.toggleRegister"
     @submit-register="submitRegister"

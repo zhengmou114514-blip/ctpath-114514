@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Stitch Clinical - Patient Management</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;700;900&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-fixed": "#a8eff4",
+                        "surface-tint": "#19686d",
+                        "inverse-primary": "#8cd2d7",
+                        "primary-fixed-dim": "#8cd2d7",
+                        "error-container": "#ffdad6",
+                        "surface-dim": "#d7dadb",
+                        "secondary-fixed-dim": "#b4cad6",
+                        "surface-container-high": "#e5e9ea",
+                        "on-secondary": "#ffffff",
+                        "on-primary-container": "#8cd2d7",
+                        "background": "#f7fafb",
+                        "secondary": "#4c616c",
+                        "on-tertiary-fixed-variant": "#6c3a19",
+                        "on-tertiary-fixed": "#321200",
+                        "surface-container": "#ebeeef",
+                        "on-error-container": "#93000a",
+                        "on-tertiary": "#ffffff",
+                        "on-surface-variant": "#3f4849",
+                        "on-primary": "#ffffff",
+                        "tertiary-fixed-dim": "#ffb68c",
+                        "on-primary-fixed-variant": "#004f53",
+                        "primary-container": "#005c61",
+                        "outline-variant": "#bec8c9",
+                        "on-primary-fixed": "#002022",
+                        "on-surface": "#181c1d",
+                        "tertiary-fixed": "#ffdbc9",
+                        "tertiary-container": "#7a4523",
+                        "surface-container-low": "#f1f4f5",
+                        "inverse-surface": "#2d3132",
+                        "on-secondary-container": "#526772",
+                        "surface-bright": "#f7fafb",
+                        "secondary-container": "#cfe6f2",
+                        "error": "#ba1a1a",
+                        "on-background": "#181c1d",
+                        "surface-variant": "#e0e3e4",
+                        "on-tertiary-container": "#ffb68b",
+                        "primary": "#004347",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary-fixed": "#071e27",
+                        "tertiary": "#5e2f0e",
+                        "secondary-fixed": "#cfe6f2",
+                        "surface-container-highest": "#e0e3e4",
+                        "surface": "#f7fafb",
+                        "on-secondary-fixed-variant": "#354a53",
+                        "inverse-on-surface": "#eef1f2",
+                        "on-error": "#ffffff",
+                        "outline": "#6f797a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Public Sans", "sans-serif"],
+                        "body": ["Inter", "sans-serif"],
+                        "label": ["Inter", "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3, h4, h5, h6 { font-family: 'Public Sans', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex">
+<!-- SideNavBar -->
+<nav class="bg-[#ebeeef] dark:bg-slate-900 h-screen w-72 flex-col left-0 top-0 sticky hidden md:flex flex-col py-8 space-y-2 z-50">
+<div class="px-6 mb-8">
+<h1 class="text-xl font-black text-[#004347] tracking-[0.2em] dark:text-teal-400 font-headline">STITCH</h1>
+<p class="text-[10px] font-medium font-body text-on-surface-variant uppercase tracking-widest mt-1">Clinical Workstation</p>
+</div>
+<div class="flex-1 px-4 space-y-1">
+<a class="flex items-center px-4 py-3 text-[#3f4849] font-medium opacity-80 hover:bg-[#e0e3e4] transition-colors duration-200 rounded-lg group" href="#">
+<span class="material-symbols-outlined mr-4 group-hover:text-primary transition-colors">dashboard</span>
+<span class="font-label text-sm">Dashboard</span>
+</a>
+<a class="flex items-center px-4 py-3 text-[#004347] font-bold border-r-4 border-[#004347] bg-[#f1f4f5]/50 hover:bg-[#e0e3e4] transition-colors duration-200 rounded-l-lg group" href="#">
+<span class="material-symbols-outlined mr-4" style="font-variation-settings: 'FILL' 1;">groups</span>
+<span class="font-label text-sm">Patient Management</span>
+</a>
+<a class="flex items-center px-4 py-3 text-[#3f4849] font-medium opacity-80 hover:bg-[#e0e3e4] transition-colors duration-200 rounded-lg group" href="#">
+<span class="material-symbols-outlined mr-4 group-hover:text-primary transition-colors">neurology</span>
+<span class="font-label text-sm">Model Center</span>
+</a>
+<a class="flex items-center px-4 py-3 text-[#3f4849] font-medium opacity-80 hover:bg-[#e0e3e4] transition-colors duration-200 rounded-lg group" href="#">
+<span class="material-symbols-outlined mr-4 group-hover:text-primary transition-colors">admin_panel_settings</span>
+<span class="font-label text-sm">Data Governance</span>
+</a>
+<a class="flex items-center px-4 py-3 text-[#3f4849] font-medium opacity-80 hover:bg-[#e0e3e4] transition-colors duration-200 rounded-lg group" href="#">
+<span class="material-symbols-outlined mr-4 group-hover:text-primary transition-colors">medication</span>
+<span class="font-label text-sm">Medicine Management</span>
+</a>
+<a class="flex items-center px-4 py-3 text-[#3f4849] font-medium opacity-80 hover:bg-[#e0e3e4] transition-colors duration-200 rounded-lg group" href="#">
+<span class="material-symbols-outlined mr-4 group-hover:text-primary transition-colors">settings</span>
+<span class="font-label text-sm">System</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col min-w-0 bg-surface-container-low">
+<!-- TopAppBar -->
+<header class="bg-[#f7fafb] dark:bg-slate-950 w-full h-20 top-0 sticky z-40 flex items-center justify-between px-10 max-w-full">
+<div class="flex items-center space-x-6">
+<h2 class="font-['Public_Sans'] text-[2.75rem] font-semibold text-[#004347] dark:text-teal-500 tracking-tight leading-none hidden">Stitch Clinical</h2>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="pl-10 pr-4 py-2 bg-surface-container-highest border-none rounded-lg text-sm font-body w-96 focus:ring-2 focus:ring-primary focus:bg-surface-container-lowest transition-all" placeholder="Search patients, IDs, or conditions..." type="text"/>
+</div>
+</div>
+<div class="flex items-center space-x-6">
+<span class="text-xs font-label uppercase tracking-wider text-on-surface-variant bg-surface-container-highest px-3 py-1 rounded-full font-bold">Demo/MySQL Mode</span>
+<div class="flex items-center space-x-4">
+<button class="text-on-surface-variant hover:text-[#005c61] transition-all cursor-pointer ease-in-out duration-150 relative">
+<span class="material-symbols-outlined">sensors</span>
+<span class="absolute top-0 right-0 w-2 h-2 bg-primary rounded-full"></span>
+</button>
+<button class="text-on-surface-variant hover:text-[#005c61] transition-all cursor-pointer ease-in-out duration-150">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-[#005c61] transition-all cursor-pointer ease-in-out duration-150">
+<span class="material-symbols-outlined">logout</span>
+</button>
+</div>
+<div class="w-10 h-10 rounded-full bg-surface-container-highest overflow-hidden border-2 border-surface-container">
+<img alt="Clinician Profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDDeZeVkiMlLjyEncTGV1vXigBdNLyXXk6X6luRCD_syVTETVzZWtVj4Fr46Gl7JExoFt4D_-dyr6Xcjn8IUC-Rw61eRBjNY6Vr2urBxYZrWj6s4cHDMTeT7pN4fa1zAYo5-nR1GOrn_wtBruX8XpeeLjVUUVYTA7ybpEXshqEuJMRz2WpFDzJvOMnZ6ew3H4c0y3cMZSfT4SS89OVIxQIXf201OLAz0SbzABVClCJNXST-YZkcS_7g6aZKKWGcguS8B_OmmwgPaJ0"/>
+</div>
+</div>
+</header>
+<!-- Workspace Canvas -->
+<main class="flex-1 p-8 overflow-y-auto">
+<!-- Breadcrumb & Header -->
+<div class="mb-8">
+<div class="flex items-center text-xs font-label uppercase tracking-widest text-on-surface-variant mb-4 space-x-2">
+<a class="hover:text-primary transition-colors" href="#">Patients</a>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span class="text-primary font-bold">PT-8921</span>
+</div>
+<div class="flex justify-between items-end">
+<div>
+<h1 class="font-headline text-[2.75rem] font-bold text-on-surface leading-tight tracking-tight">Eleanor Rigby</h1>
+<p class="font-body text-on-surface-variant mt-1 text-sm">Admitted: Oct 12, 2023 • Attending: Dr. Harrison</p>
+</div>
+<div class="flex space-x-3">
+<button class="px-4 py-2 bg-transparent text-primary font-label text-sm uppercase tracking-wider font-semibold rounded-md hover:bg-surface-container transition-colors">
+                            Edit Profile
+                        </button>
+<button class="px-4 py-2 bg-primary text-on-primary font-label text-sm uppercase tracking-wider font-semibold rounded-md shadow-[0_12px_32px_-4px_rgba(24,28,29,0.06)] hover:bg-primary-container transition-colors flex items-center">
+<span class="material-symbols-outlined mr-2 text-[18px]">note_add</span>
+                            Add Note
+                        </button>
+</div>
+</div>
+</div>
+<div class="flex gap-8">
+<!-- Left Sidebar (Internal) -->
+<aside class="w-80 flex flex-col gap-6">
+<!-- Profile Card -->
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-[0_12px_32px_-4px_rgba(24,28,29,0.02)]">
+<div class="flex items-start justify-between mb-6">
+<div class="w-16 h-16 rounded-full bg-surface-container-high overflow-hidden border-2 border-surface">
+<img alt="Patient portrait" class="w-full h-full object-cover" data-alt="Portrait of an elderly woman with silver hair, looking directly at camera, soft neutral lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDSIhs6QGLY67k_LO8dKPKYXqpUjrwBI0ynRCjAbcywrBoMLAQKYqtYlja1FMcTMGM_dvsjm2dOBpuGBqwo6KhQs0ca9Ar0tZvPwcg38oNiVm_tconApwCA4hwZG8ryUGxDV2pjysgAm9jlp7hlAMMe6OgmNESzJoLQFA6YZ1qVUSTLYJs5yKl_ZzYqfnR5GCuAUXkkZIuAjFg8lc5VDgbBnvQATKAts1CWCl4ShCerd3GC6zcYtbZhPvLC8ec1MJB68PwBsxiB8ac"/>
+</div>
+<span class="bg-error-container text-error px-3 py-1 rounded-full text-xs font-label font-bold uppercase tracking-widest flex items-center">
+<span class="material-symbols-outlined text-[14px] mr-1">warning</span>
+                                High Risk
+                            </span>
+</div>
+<div class="space-y-4">
+<div>
+<p class="text-[10px] font-label text-on-surface-variant uppercase tracking-widest mb-1">Patient ID</p>
+<p class="font-body text-sm font-semibold text-on-surface">PT-8921</p>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div>
+<p class="text-[10px] font-label text-on-surface-variant uppercase tracking-widest mb-1">Age / DOB</p>
+<p class="font-body text-sm font-medium text-on-surface">78 • 1945-06-18</p>
+</div>
+<div>
+<p class="text-[10px] font-label text-on-surface-variant uppercase tracking-widest mb-1">Gender</p>
+<p class="font-body text-sm font-medium text-on-surface">Female</p>
+</div>
+</div>
+<div>
+<p class="text-[10px] font-label text-on-surface-variant uppercase tracking-widest mb-1">Contact</p>
+<p class="font-body text-sm font-medium text-on-surface">+1 (555) 293-4819</p>
+</div>
+<div>
+<p class="text-[10px] font-label text-on-surface-variant uppercase tracking-widest mb-1">Emergency Contact</p>
+<p class="font-body text-sm font-medium text-on-surface">Paul McCartney (Son)</p>
+<p class="font-body text-xs text-on-surface-variant mt-0.5">+1 (555) 832-9012</p>
+</div>
+</div>
+</div>
+<!-- Key Metrics Mini -->
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-[0_12px_32px_-4px_rgba(24,28,29,0.02)]">
+<h3 class="font-label text-xs uppercase tracking-widest text-on-surface-variant mb-4 font-bold">Latest Vitals Summary</h3>
+<div class="space-y-3">
+<div class="flex justify-between items-center border-b border-surface-container pb-2">
+<span class="font-body text-sm text-on-surface-variant">BP</span>
+<span class="font-body text-sm font-semibold text-on-surface tabular-nums">142/90 <span class="text-error ml-1">↑</span></span>
+</div>
+<div class="flex justify-between items-center border-b border-surface-container pb-2">
+<span class="font-body text-sm text-on-surface-variant">HR</span>
+<span class="font-body text-sm font-semibold text-on-surface tabular-nums">88 bpm</span>
+</div>
+<div class="flex justify-between items-center border-b border-surface-container pb-2">
+<span class="font-body text-sm text-on-surface-variant">SpO2</span>
+<span class="font-body text-sm font-semibold text-on-surface tabular-nums">94%</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="font-body text-sm text-on-surface-variant">Weight</span>
+<span class="font-body text-sm font-semibold text-on-surface tabular-nums">64.5 kg</span>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Section -->
+<div class="flex-1 flex flex-col min-w-0 gap-6">
+<!-- Tabs -->
+<div class="flex space-x-8 border-b border-surface-container-high px-2">
+<button class="font-label text-sm uppercase tracking-wider font-bold text-primary border-b-2 border-primary pb-3 px-1">Summary</button>
+<button class="font-label text-sm uppercase tracking-wider font-medium text-on-surface-variant hover:text-primary transition-colors pb-3 px-1">Timeline</button>
+<button class="font-label text-sm uppercase tracking-wider font-medium text-on-surface-variant hover:text-primary transition-colors pb-3 px-1">Records</button>
+<button class="font-label text-sm uppercase tracking-wider font-medium text-on-surface-variant hover:text-primary transition-colors pb-3 px-1 flex items-center">
+<span class="material-symbols-outlined text-[16px] mr-1">auto_awesome</span>
+                            AI Prediction
+                        </button>
+</div>
+<!-- Content Grid (Bento style) -->
+<div class="grid grid-cols-12 gap-6">
+<!-- EHR Summary -->
+<div class="col-span-8 bg-surface-container-lowest p-6 rounded-xl shadow-[0_12px_32px_-4px_rgba(24,28,29,0.02)]">
+<div class="flex items-center mb-4">
+<span class="material-symbols-outlined text-on-surface-variant mr-2">description</span>
+<h3 class="font-headline text-lg font-bold text-on-surface">Clinical Summary</h3>
+</div>
+<p class="font-body text-sm text-on-surface leading-relaxed mb-4">
+                                Patient presents with recurring shortness of breath and mild chest discomfort over the past 48 hours. History of Stage II Hypertension and Type 2 Diabetes. Recent echocardiogram indicates mild left ventricular hypertrophy. Patient reports adherence to current medication regimen but notes occasional dizziness upon standing.
+                            </p>
+<div class="bg-surface-container-low p-4 rounded-lg">
+<h4 class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant mb-2">Primary Diagnoses</h4>
+<div class="flex flex-wrap gap-2">
+<span class="px-2 py-1 bg-surface-container-highest text-on-surface font-body text-xs rounded">Essential Hypertension (I10)</span>
+<span class="px-2 py-1 bg-surface-container-highest text-on-surface font-body text-xs rounded">Type 2 Diabetes Mellitus (E11.9)</span>
+<span class="px-2 py-1 bg-surface-container-highest text-on-surface font-body text-xs rounded">Hyperlipidemia (E78.5)</span>
+</div>
+</div>
+</div>
+<!-- Current Medications -->
+<div class="col-span-4 bg-surface-container-lowest p-6 rounded-xl shadow-[0_12px_32px_-4px_rgba(24,28,29,0.02)] flex flex-col">
+<div class="flex items-center justify-between mb-4">
+<div class="flex items-center">
+<span class="material-symbols-outlined text-on-surface-variant mr-2">pill</span>
+<h3 class="font-headline text-lg font-bold text-on-surface">Medications</h3>
+</div>
+<span class="bg-surface-container-high text-on-surface-variant px-2 py-0.5 rounded text-xs font-label font-bold">Active (4)</span>
+</div>
+<div class="flex-1 space-y-4 overflow-y-auto pr-2">
+<div>
+<p class="font-body text-sm font-semibold text-on-surface">Lisinopril</p>
+<p class="font-body text-xs text-on-surface-variant mt-0.5">20mg • Oral • Daily</p>
+</div>
+<div>
+<p class="font-body text-sm font-semibold text-on-surface">Metformin</p>
+<p class="font-body text-xs text-on-surface-variant mt-0.5">1000mg • Oral • Twice Daily</p>
+</div>
+<div>
+<p class="font-body text-sm font-semibold text-on-surface">Atorvastatin</p>
+<p class="font-body text-xs text-on-surface-variant mt-0.5">40mg • Oral • Nightly</p>
+</div>
+<div>
+<p class="font-body text-sm font-semibold text-on-surface">Aspirin</p>
+<p class="font-body text-xs text-on-surface-variant mt-0.5">81mg • Oral • Daily</p>
+</div>
+</div>
+</div>
+<!-- AI Prediction Banner (Preloaded State) -->
+<div class="col-span-12 relative overflow-hidden rounded-xl bg-gradient-to-br from-secondary-container to-surface-container shadow-[0_12px_32px_-4px_rgba(24,28,29,0.04)]">
+<!-- Glassmorphism overlay effect -->
+<div class="absolute inset-0 bg-white/20 backdrop-blur-sm"></div>
+<div class="relative p-6 flex items-center justify-between z-10">
+<div class="flex items-start max-w-3xl">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mr-4 shrink-0">
+<span class="material-symbols-outlined text-primary">history</span>
+</div>
+<div>
+<div class="flex items-center space-x-3 mb-1">
+<h3 class="font-headline text-lg font-bold text-on-surface">Preloaded AI Summary</h3>
+<span class="font-label text-[10px] uppercase tracking-widest text-on-surface-variant bg-surface-container px-2 py-0.5 rounded">Last generated: Oct 15, 2023 - 09:41 AM</span>
+</div>
+<p class="font-body text-sm text-on-surface-variant mb-2">
+                                            Historical analysis indicated a 45% probability of readmission within 30 days due to cardiovascular complications. Recommendation was to monitor BP closely and adjust ACE inhibitor dosage.
+                                        </p>
+<p class="font-label text-xs font-semibold text-secondary uppercase tracking-wide">
+                                            This is historical data. Click Run to get latest AI insights based on current vitals.
+                                        </p>
+</div>
+</div>
+<button class="ml-6 shrink-0 bg-gradient-to-b from-primary to-primary-container text-on-primary px-6 py-3 rounded-md font-label text-sm uppercase tracking-wider font-bold shadow-lg hover:from-primary-container hover:to-[#00383b] transition-all flex items-center group">
+<span class="material-symbols-outlined mr-2 group-hover:rotate-180 transition-transform duration-500">sync</span>
+                                    Run AI Prediction
+                                </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

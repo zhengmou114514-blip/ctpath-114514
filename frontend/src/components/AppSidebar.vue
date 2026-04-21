@@ -1,5 +1,17 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import {
+  FolderOpened,
+  Grid,
+  DataAnalysis,
+  Document,
+  Memo,
+  Operation,
+  SetUp,
+  SwitchButton,
+  Tickets,
+  UserFilled,
+} from '@element-plus/icons-vue'
 import { ROLE_WORKSPACE_MENUS } from '../config/workspaceMenu'
 import type { DoctorUser, HealthResponse } from '../services/types'
 import type { AppSection } from '../types/workspace'
@@ -17,102 +29,292 @@ const emit = defineEmits<{
   (e: 'logout'): void
 }>()
 
-const sectionCopy: Record<AppSection, { label: string; description: string; group: string }> = {
-  doctor: { label: '医生工作台', description: '待处理患者、风险提醒与快捷入口', group: '临床工作' },
-  archive: { label: '患者档案', description: '身份信息、电子档案与附件', group: '临床工作' },
-  tasks: { label: '护士随访', description: '待随访任务与处理状态', group: '随访闭环' },
-  contacts: { label: '联系记录', description: '电话、家属与门诊联系记录', group: '随访闭环' },
-  flow: { label: '随访流程', description: '流程状态与下一步动作', group: '随访闭环' },
-  'drug-management': { label: '药品管理', description: '药品目录、状态与管制标识', group: '药品与权限' },
-  'drug-permission-management': { label: '药品权限', description: '角色级用药权限矩阵', group: '药品与权限' },
-  insights: { label: '模型洞察', description: '当前患者预测与证据摘要', group: '模型中心' },
-  'model-dashboard': { label: '模型看板', description: '模型版本、指标与健康状态', group: '模型中心' },
-  governance: { label: '治理中心', description: '数据质量、冲突与审计线索', group: '治理中心' },
-  'data-quality': { label: '数据质量', description: '档案缺失与质量问题', group: '治理中心' },
-  system: { label: '系统状态', description: '运行模式、认证与审计状态', group: '治理中心' },
+const menuLabelMap: Record<AppSection, string> = {
+  doctor: '医生工作台',
+  archive: '患者档案',
+  tasks: '患者管理',
+  contacts: '联系记录',
+  flow: '随访流程',
+  insights: '模型洞察',
+  'model-dashboard': '模型看板',
+  'training-center': '训练中心',
+  governance: '治理看板',
+  'data-quality': '数据质量',
+  'drug-management': '药品管理',
+  'drug-permission-management': '药品权限',
+  system: '系统中心',
 }
 
-const roleCopy: Record<DoctorUser['role'], string> = {
-  doctor: '医生',
-  nurse: '护士',
-  archivist: '档案员',
+const menuIconMap: Record<AppSection, object> = {
+  doctor: Grid,
+  archive: Document,
+  tasks: Memo,
+  contacts: Operation,
+  flow: FolderOpened,
+  insights: DataAnalysis,
+  'model-dashboard': DataAnalysis,
+  'training-center': DataAnalysis,
+  governance: FolderOpened,
+  'data-quality': Document,
+  'drug-management': Tickets,
+  'drug-permission-management': Tickets,
+  system: SetUp,
 }
 
-const menus = computed(() => ROLE_WORKSPACE_MENUS[props.doctor.role] ?? [])
-const groupedMenus = computed(() => {
-  const groups = new Map<string, typeof menus.value>()
-  for (const item of menus.value) {
-    const group = sectionCopy[item.section]?.group ?? '其他'
-    groups.set(group, [...(groups.get(group) ?? []), item])
-  }
-  return [...groups.entries()].map(([group, items]) => ({ group, items }))
+const navItems = computed(() => {
+  const items = ROLE_WORKSPACE_MENUS[props.doctor.role] ?? []
+  const seen = new Set<string>()
+  return items.filter((item) => {
+    const dedupeKey =
+      props.doctor.role === 'doctor' && item.section === 'archive'
+        ? 'patient-management'
+        : props.doctor.role === 'nurse' && (item.section === 'tasks' || item.section === 'contacts' || item.section === 'flow')
+          ? item.section
+          : item.section
+
+    if (seen.has(dedupeKey)) return false
+    seen.add(dedupeKey)
+    return true
+  })
 })
 
+const sidebarMeta = computed(() => ({
+  mode: `${(props.health?.mode ?? 'demo').toUpperCase()}/MYSQL 模式`,
+  identity: props.doctor.name,
+  department: props.doctor.department,
+}))
+
 function labelFor(section: AppSection) {
-  return sectionCopy[section]?.label ?? section
+  if (props.doctor.role === 'doctor' && section === 'archive') return '患者档案'
+  if (props.doctor.role === 'doctor' && section === 'insights') return '模型洞察'
+  return menuLabelMap[section] ?? section
 }
 
-function descriptionFor(section: AppSection) {
-  return sectionCopy[section]?.description ?? '业务模块'
+function iconFor(section: AppSection) {
+  if (props.doctor.role === 'doctor' && section === 'archive') return UserFilled
+  if (props.doctor.role === 'doctor' && section === 'insights') return DataAnalysis
+  return menuIconMap[section] ?? Grid
 }
 </script>
 
 <template>
-  <aside class="sidebar-shell workstation-sidebar">
-    <div class="brand-panel">
-      <div class="brand-mark">CT</div>
-      <div>
-        <p class="eyebrow inverse">CTpath</p>
-        <strong>慢病辅助诊疗</strong>
+  <aside class="workstation-sidebar" aria-label="主导航">
+    <div class="brand-panel sidebar-brand">
+      <div class="brand-mark">C</div>
+      <div class="brand-copy">
+        <strong>CTpath</strong>
+        <span>慢病辅助诊疗业务系统</span>
       </div>
     </div>
 
-    <section class="sidebar-user-section">
-      <div class="user-info">
-        <span class="user-department">{{ doctor.department }}</span>
-        <strong class="user-name">{{ doctor.name }}</strong>
-        <span class="user-title">{{ doctor.title }}</span>
+    <div class="sidebar-session-card">
+      <span class="workspace-status-pill">{{ sidebarMeta.mode }}</span>
+      <div class="sidebar-user">
+        <div class="sidebar-avatar">{{ doctor.name.slice(-1) }}</div>
+        <div>
+          <strong>{{ sidebarMeta.identity }}</strong>
+          <p>{{ sidebarMeta.department }}</p>
+        </div>
       </div>
-      <div class="user-meta">
-        <span class="role-tag" :class="`role-tag-${doctor.role}`">{{ roleCopy[doctor.role] }}</span>
-        <span class="current-module">当前：{{ labelFor(activeSection) }}</span>
+      <div class="sidebar-counters">
+        <article>
+          <span>在管患者</span>
+          <strong>{{ patientCount }}</strong>
+        </article>
+        <article>
+          <span>待随访</span>
+          <strong>{{ followupCount }}</strong>
+        </article>
       </div>
-    </section>
+    </div>
 
-    <section class="sidebar-stats-section" aria-label="工作台状态">
-      <div class="stat-item">
-        <span class="stat-label">患者档案</span>
-        <strong class="stat-value">{{ patientCount }}</strong>
-      </div>
-      <div class="stat-item">
-        <span class="stat-label">随访任务</span>
-        <strong class="stat-value">{{ followupCount }}</strong>
-      </div>
-      <div class="stat-item">
-        <span class="stat-label">运行模式</span>
-        <strong class="stat-mode">{{ health?.mode ?? 'unknown' }}</strong>
-      </div>
-    </section>
-
-    <nav class="sidebar-nav" aria-label="工作台导航">
-      <section v-for="group in groupedMenus" :key="group.group" class="nav-group">
-        <p class="nav-group-title">{{ group.group }}</p>
-        <button
-          v-for="item in group.items"
-          :key="item.section"
-          class="nav-item nav-item-detailed"
-          :class="{ active: item.section === activeSection }"
-          type="button"
-          @click="emit('select', item.section)"
-        >
-          <strong>{{ labelFor(item.section) }}</strong>
-          <span>{{ descriptionFor(item.section) }}</span>
-        </button>
-      </section>
+    <nav class="sidebar-nav">
+      <button
+        v-for="item in navItems"
+        :key="item.section"
+        class="nav-item stitch-nav-item"
+        :class="{ active: item.section === activeSection }"
+        type="button"
+        @click="emit('select', item.section)"
+      >
+        <span class="nav-item-icon">
+          <el-icon><component :is="iconFor(item.section)" /></el-icon>
+        </span>
+        <span>{{ labelFor(item.section) }}</span>
+      </button>
     </nav>
 
-    <div class="sidebar-actions">
-      <button class="sidebar-button ghost" type="button" @click="emit('logout')">退出登录</button>
+    <div class="sidebar-footer">
+      <button class="sidebar-button ghost sidebar-logout" type="button" @click="emit('logout')">
+        <el-icon><SwitchButton /></el-icon>
+        <span>退出登录</span>
+      </button>
     </div>
   </aside>
 </template>
+
+<style scoped>
+.sidebar-brand {
+  padding: 8px 12px 0;
+}
+
+.brand-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.brand-copy strong {
+  font-family: var(--ws-font-headline);
+  font-size: 28px;
+  letter-spacing: 0.12em;
+  color: var(--ws-primary);
+}
+
+.brand-copy span {
+  color: rgba(24, 28, 29, 0.78);
+  font-family: var(--ws-font-headline);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+}
+
+.brand-mark {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--ws-primary), var(--ws-primary-container));
+}
+
+.sidebar-session-card {
+  display: grid;
+  gap: 18px;
+  padding: 0 12px;
+}
+
+.sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sidebar-avatar {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: rgba(207, 230, 242, 0.7);
+  color: var(--ws-primary);
+  font-family: var(--ws-font-headline);
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.sidebar-user strong {
+  display: block;
+  font-family: var(--ws-font-headline);
+  font-size: 18px;
+}
+
+.sidebar-user p {
+  margin: 4px 0 0;
+  color: rgba(63, 72, 73, 0.74);
+}
+
+.sidebar-counters {
+  display: grid;
+  gap: 10px;
+}
+
+.sidebar-counters article {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.65);
+  box-shadow: inset 0 0 0 1px rgba(190, 200, 201, 0.6);
+}
+
+.sidebar-counters span {
+  color: rgba(24, 28, 29, 0.68);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.sidebar-counters strong {
+  font-family: var(--ws-font-headline);
+  font-size: 26px;
+  color: var(--ws-primary);
+}
+
+.sidebar-nav {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+
+.stitch-nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 58px;
+  padding: 0 18px;
+  border-radius: 0;
+  color: rgba(24, 28, 29, 0.62);
+  font-family: var(--ws-font-headline);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.stitch-nav-item:hover,
+.stitch-nav-item.active {
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--ws-primary);
+}
+
+.stitch-nav-item.active::after {
+  content: '';
+  position: absolute;
+  top: 8px;
+  right: 0;
+  bottom: 8px;
+  width: 4px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--ws-primary), var(--ws-primary-container));
+}
+
+.nav-item-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  color: currentColor;
+  font-size: 18px;
+}
+
+.sidebar-footer {
+  display: grid;
+  align-content: end;
+}
+
+.sidebar-logout {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 50px;
+  color: rgba(24, 28, 29, 0.72);
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(190, 200, 201, 0.72);
+}
+
+@media (max-width: 1080px) {
+  .sidebar-session-card,
+  .sidebar-footer {
+    padding: 0;
+  }
+}
+</style>

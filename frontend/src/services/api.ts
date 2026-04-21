@@ -49,6 +49,24 @@ const AUTH_STORAGE_KEY = 'ctpath.auth.session'
 const SAVED_ACCOUNTS_KEY = 'ctpath.saved.accounts'
 const MAX_SAVED_ACCOUNTS = 10
 
+function isValidStoredDoctor(value: unknown): value is AuthSession['doctor'] {
+  if (!value || typeof value !== 'object') return false
+  const doctor = value as Partial<AuthSession['doctor']>
+  return (
+    typeof doctor.username === 'string' &&
+    doctor.username.length > 0 &&
+    typeof doctor.name === 'string' &&
+    doctor.name.length > 0 &&
+    (doctor.role === 'doctor' || doctor.role === 'nurse' || doctor.role === 'archivist')
+  )
+}
+
+function isValidStoredAuthSession(value: unknown): value is AuthSession {
+  if (!value || typeof value !== 'object') return false
+  const session = value as Partial<AuthSession>
+  return typeof session.token === 'string' && session.token.length > 0 && isValidStoredDoctor(session.doctor)
+}
+
 function normalizeApiPath(path: string): string {
   if (!path) return '/'
 
@@ -937,7 +955,21 @@ export function getSavedAccounts(): SavedAccount[] { try { if (!window?.localSto
 export function saveAccount(account: SavedAccount): void { try { if (!window?.localStorage) return; const xs = getSavedAccounts().filter((x) => x.username !== account.username); xs.unshift(account); window.localStorage.setItem(SAVED_ACCOUNTS_KEY, JSON.stringify(xs.slice(0, MAX_SAVED_ACCOUNTS))) } catch {} }
 export function removeSavedAccount(username: string): void { try { if (!window?.localStorage) return; window.localStorage.setItem(SAVED_ACCOUNTS_KEY, JSON.stringify(getSavedAccounts().filter((x) => x.username !== username))) } catch {} }
 export function clearSavedAccounts(): void { try { if (!window?.localStorage) return; window.localStorage.removeItem(SAVED_ACCOUNTS_KEY) } catch {} }
-export function restoreAuthSession(): AuthSession | null { try { if (!window?.localStorage) return null; const raw = window.localStorage.getItem(AUTH_STORAGE_KEY); if (!raw) return null; return JSON.parse(raw) as AuthSession } catch { return null } }
+export function restoreAuthSession(): AuthSession | null {
+  try {
+    if (!window?.localStorage) return null
+    const raw = window.localStorage.getItem(AUTH_STORAGE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as unknown
+    if (!isValidStoredAuthSession(parsed)) {
+      window.localStorage.removeItem(AUTH_STORAGE_KEY)
+      return null
+    }
+    return parsed
+  } catch {
+    return null
+  }
+}
 export function getRoleWorkspaces(): RoleWorkspaceDefinition[] { return clone(ROLE_WORKSPACES) }
 export function getRoleWorkspace(role: BusinessWorkspaceRole): RoleWorkspaceDefinition {
   const fallback = ROLE_WORKSPACES[0]

@@ -1,4 +1,4 @@
-﻿import type {
+import type {
   ModelDatasetImportRecord,
   ModelTrainingParams,
   ModelTrainingTaskRecord,
@@ -71,7 +71,7 @@ function progressTasks(tasks: ModelTrainingTaskRecord[]): ModelTrainingTaskRecor
         ...task,
         status: 'running',
         startedAt: new Date(created + 2000).toISOString(),
-        logs: [...task.logs, '任务进入训练阶段，开始载入数据与参数。'],
+        logs: [...task.logs, '任务进入训练阶段，开始加载数据与参数。'],
       }
     }
 
@@ -115,7 +115,6 @@ export async function importModelDataset(file: File, datasetName?: string): Prom
   const datasets = [record, ...readDatasets()]
   writeDatasets(datasets)
 
-  // TODO: replace local parsing/storage with backend dataset registry and object storage upload.
   return record
 }
 
@@ -140,14 +139,12 @@ export function createTrainingTask(input: {
     createdAt: new Date().toISOString(),
     triggeredBy: getCurrentUser(),
     params: input.params,
-    logs: ['任务已创建，等待资源调度。'],
+    logs: ['任务已创建，正在等待资源调度。'],
     source: 'mock-local',
   }
 
   const tasks = [task, ...readTasks()]
   writeTasks(tasks)
-
-  // TODO: replace with backend training job orchestrator API.
   return task
 }
 
