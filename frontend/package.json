@@ -7,6 +7,9 @@
     "dev": "vite --configLoader native -c vite.config.mjs",
     "build": "vue-tsc -b && vite build --configLoader native -c vite.config.mjs",
     "preview": "vite preview --configLoader native -c vite.config.mjs",
+    "dev:model": "set CTPATH_APP_TARGET=model && vite --configLoader native -c vite.config.mjs",
+    "build:model": "set CTPATH_APP_TARGET=model && vite build --configLoader native -c vite.config.mjs",
+    "preview:model": "set CTPATH_APP_TARGET=model && vite preview --configLoader native -c vite.config.mjs",
     "test": "vitest run --config vitest.config.ts --configLoader runner"
   },
   "dependencies": {

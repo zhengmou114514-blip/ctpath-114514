@@ -1,160 +1,58 @@
+import axios from 'axios'
 import type {
   ModelDatasetImportRecord,
   ModelTrainingParams,
   ModelTrainingTaskRecord,
 } from './types'
 
-const DATASET_KEY = 'ctpath.model.datasets'
-const TASK_KEY = 'ctpath.model.training.tasks'
-const AUTH_STORAGE_KEY = 'ctpath.auth.session'
+const client = axios.create({ baseURL: 'http://127.0.0.1:8001/api' })
 
-function readDatasets(): ModelDatasetImportRecord[] {
+client.interceptors.request.use((config) => {
   try {
-    if (!window?.localStorage) return []
-    return JSON.parse(window.localStorage.getItem(DATASET_KEY) || '[]') as ModelDatasetImportRecord[]
-  } catch {
-    return []
-  }
-}
-
-function writeDatasets(value: ModelDatasetImportRecord[]) {
-  try {
-    if (!window?.localStorage) return
-    window.localStorage.setItem(DATASET_KEY, JSON.stringify(value))
-  } catch {}
-}
-
-function readTasks(): ModelTrainingTaskRecord[] {
-  try {
-    if (!window?.localStorage) return []
-    return JSON.parse(window.localStorage.getItem(TASK_KEY) || '[]') as ModelTrainingTaskRecord[]
-  } catch {
-    return []
-  }
-}
-
-function writeTasks(value: ModelTrainingTaskRecord[]) {
-  try {
-    if (!window?.localStorage) return
-    window.localStorage.setItem(TASK_KEY, JSON.stringify(value))
-  } catch {}
-}
-
-function getCurrentUser(): string {
-  try {
-    const raw = window?.localStorage?.getItem(AUTH_STORAGE_KEY)
-    if (!raw) return '当前用户'
-    const session = JSON.parse(raw) as { doctor?: { name?: string; username?: string } }
-    return session?.doctor?.name || session?.doctor?.username || '当前用户'
-  } catch {
-    return '当前用户'
-  }
-}
-
-function randomMetric(min: number, max: number): number {
-  return Number((Math.random() * (max - min) + min).toFixed(4))
-}
-
-function countCsvRows(text: string): number {
-  const lines = text.split(/\r?\n/).filter((line) => line.trim())
-  return Math.max(0, lines.length - 1)
-}
-
-function progressTasks(tasks: ModelTrainingTaskRecord[]): ModelTrainingTaskRecord[] {
-  const now = Date.now()
-  return tasks.map((task) => {
-    const created = new Date(task.createdAt).getTime()
-    const elapsed = now - created
-
-    if (task.status === 'queued' && elapsed > 2000) {
-      return {
-        ...task,
-        status: 'running',
-        startedAt: new Date(created + 2000).toISOString(),
-        logs: [...task.logs, '训练任务已进入执行阶段，开始装载数据并初始化模型参数。'],
+    const raw = window.localStorage.getItem('ctpath.model.session')
+    if (raw) {
+      const session = JSON.parse(raw) as { token?: string }
+      if (session.token) {
+        config.headers = config.headers ?? {}
+        config.headers.Authorization = `Bearer ${session.token}`
       }
     }
+  } catch {}
+  return config
+})
 
-    if (task.status === 'running' && elapsed > 8000) {
-      return {
-        ...task,
-        status: 'succeeded',
-        finishedAt: new Date().toISOString(),
-        metrics: {
-          mrr: randomMetric(0.45, 0.72),
-          hits1: randomMetric(0.28, 0.58),
-          hits10: randomMetric(0.62, 0.88),
-        },
-        logs: [...task.logs, '训练完成，指标已回写到本地训练记录。'],
-      }
-    }
-
-    return task
-  })
-}
-
-export function listModelDatasets(): ModelDatasetImportRecord[] {
-  return readDatasets().sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt))
+export async function listModelDatasets(): Promise<ModelDatasetImportRecord[]> {
+  const { data } = await client.get<ModelDatasetImportRecord[]>('/model/datasets')
+  return data
 }
 
 export async function importModelDataset(file: File, datasetName?: string): Promise<ModelDatasetImportRecord> {
-  const text = await file.text()
-  const rowCount = countCsvRows(text)
-
-  const record: ModelDatasetImportRecord = {
-    datasetId: `ds-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+  const content = await file.text()
+  const { data } = await client.post<ModelDatasetImportRecord>('/model/datasets/import', {
     datasetName: datasetName?.trim() || file.name.replace(/\.[^.]+$/, ''),
     fileName: file.name,
-    rowCount,
-    uploadedAt: new Date().toISOString(),
-    uploadedBy: getCurrentUser(),
-    status: 'ready',
-    source: 'mock-local',
-  }
-
-  const datasets = [record, ...readDatasets()]
-  writeDatasets(datasets)
-
-  return record
+    content,
+  })
+  return data
 }
 
-export function listTrainingTasks(): ModelTrainingTaskRecord[] {
-  const progressed = progressTasks(readTasks())
-  writeTasks(progressed)
-  return progressed.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+export async function listTrainingTasks(): Promise<ModelTrainingTaskRecord[]> {
+  const { data } = await client.get<ModelTrainingTaskRecord[]>('/model/training-tasks')
+  return data
 }
 
-export function createTrainingTask(input: {
+export async function createTrainingTask(input: {
   datasetId: string
   datasetName: string
   modelName: string
   params: ModelTrainingParams
-}): ModelTrainingTaskRecord {
-  const task: ModelTrainingTaskRecord = {
-    taskId: `task-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-    datasetId: input.datasetId,
-    datasetName: input.datasetName,
-    modelName: input.modelName,
-    status: 'queued',
-    createdAt: new Date().toISOString(),
-    triggeredBy: getCurrentUser(),
-    params: input.params,
-    logs: ['已创建训练任务，等待调度器启动执行。'],
-    source: 'mock-local',
-  }
-
-  const tasks = [task, ...readTasks()]
-  writeTasks(tasks)
-  return task
+}): Promise<ModelTrainingTaskRecord> {
+  const { data } = await client.post<ModelTrainingTaskRecord>('/model/training-tasks', input)
+  return data
 }
 
-export function getCurrentModelVersionFromTasks(): {
-  version: string
-  modelName: string
-  trainedAt: string
-  metrics?: { mrr: number; hits1: number; hits10: number }
-} {
-  const succeeded = listTrainingTasks().find((task) => task.status === 'succeeded' && task.metrics)
+export function getCurrentModelVersionFromTasks(tasks: ModelTrainingTaskRecord[] = []) {
+  const succeeded = tasks.find((task) => task.status === 'succeeded' && task.metrics)
   if (!succeeded) {
     return {
       version: 'v-demo-baseline',

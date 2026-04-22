@@ -12,5 +12,14 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue"],
+  "exclude": [
+    "src/pages/ModelDashboardPage.vue",
+    "src/pages/ModelInsightPage.vue",
+    "src/pages/ModelOperationsPage.vue",
+    "src/pages/TrainingCenterPage.vue",
+    "src/services/modelBoardAdapter.ts",
+    "src/services/modelTrainingAdapter.ts",
+    "src/pages/__tests__/TrainingCenterPage.spec.ts"
+  ]
 }

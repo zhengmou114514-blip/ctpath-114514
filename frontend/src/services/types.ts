@@ -794,7 +794,7 @@ export interface ModelDatasetImportRecord {
   uploadedAt: string
   uploadedBy: string
   status: 'ready' | 'processing' | 'failed'
-  source: 'mock-local'
+  source: 'mock-local' | 'api'
 }
 
 export interface ModelTrainingParams {
@@ -822,7 +822,7 @@ export interface ModelTrainingTaskRecord {
     hits10: number
   }
   logs: string[]
-  source: 'mock-local'
+  source: 'mock-local' | 'api'
 }
 
 export interface ModelBoardSnapshot {
@@ -836,7 +836,7 @@ export interface ModelBoardSnapshot {
   recentInferenceCalls: number | null
   fallbackRatio: number | null
   recentTrainingTaskStatus: string
-  source: 'mixed' | 'mock-local'
+  source: 'mixed' | 'mock-local' | 'api'
 }
 
 export type ModelCenterPanelKey = 'online' | 'offline'

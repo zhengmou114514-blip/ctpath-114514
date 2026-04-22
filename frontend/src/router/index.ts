@@ -2,10 +2,6 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import AppWorkspacePage from '../pages/AppWorkspacePage.vue'
 import LoginPage from '../pages/LoginPage.vue'
 import GovernancePage from '../pages/GovernancePage.vue'
-import ModelDashboardPage from '../pages/ModelDashboardPage.vue'
-import ModelInsightPage from '../pages/ModelInsightPage.vue'
-import ModelOperationsPage from '../pages/ModelOperationsPage.vue'
-import TrainingCenterPage from '../pages/TrainingCenterPage.vue'
 import NurseFollowupsPage from '../pages/NurseFollowupsPage.vue'
 import DrugCatalogPage from '../pages/medication/DrugCatalogPage.vue'
 import DrugPermissionManagementPage from '../pages/medication/permissions/DrugPermissionManagementPage.vue'
@@ -30,26 +26,6 @@ const routes: RouteRecordRaw[] = [
         path: 'nurse-followups',
         name: 'nurse-followups',
         component: NurseFollowupsPage,
-      },
-      {
-        path: 'model-insight',
-        name: 'model-insight',
-        component: ModelInsightPage,
-      },
-      {
-        path: 'model-dashboard',
-        name: 'model-dashboard',
-        component: ModelDashboardPage,
-      },
-      {
-        path: 'model-operations',
-        name: 'model-operations',
-        component: ModelOperationsPage,
-      },
-      {
-        path: 'training-center',
-        name: 'training-center',
-        component: TrainingCenterPage,
       },
       {
         path: 'governance',
