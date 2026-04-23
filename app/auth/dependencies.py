@@ -18,11 +18,6 @@ def get_bearer_token(authorization: Optional[str] = Header(default=None)) -> str
 def require_token(authorization: Optional[str] = Header(default=None)) -> str:
     return get_bearer_token(authorization)
 
-
-def require_token(authorization: Optional[str] = Header(default=None)) -> str:
-    return get_bearer_token(authorization)
-
-
 def get_current_doctor(
     request: Request,
     token: str = Depends(get_bearer_token),
@@ -49,10 +44,16 @@ def get_current_user(doctor: DoctorPublic = Depends(get_current_doctor)):
     }
 
 
-def require_doctor(token: str = Depends(require_token)):
+def require_doctor(request: Request, token: str = Depends(require_token)):
+    cached_user = getattr(request.state, "user", None)
+    if isinstance(cached_user, DoctorPublic):
+        return cached_user
+
     doctor = resolve_doctor_from_token(token)
     if doctor is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session")
+    request.state.user = doctor
+    request.state.user_role = doctor.role
     return doctor
 
 

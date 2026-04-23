@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>慢性病辅疗系统 - 药品目录管理</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;family=Public+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-tint": "#296767",
+                      "inverse-surface": "#2d3133",
+                      "on-error": "#ffffff",
+                      "outline": "#6f7978",
+                      "background": "#f7fafc",
+                      "error": "#ba1a1a",
+                      "outline-variant": "#bfc8c8",
+                      "surface-container-high": "#e5e9eb",
+                      "secondary-container": "#0070ea",
+                      "on-surface-variant": "#3f4848",
+                      "on-secondary-container": "#fefcff",
+                      "primary-container": "#004d4d",
+                      "on-error-container": "#93000a",
+                      "primary": "#003434",
+                      "primary-fixed-dim": "#94d1d1",
+                      "tertiary-fixed-dim": "#fcb795",
+                      "on-primary": "#ffffff",
+                      "surface-bright": "#f7fafc",
+                      "tertiary-fixed": "#ffdbcb",
+                      "on-tertiary-container": "#e5a282",
+                      "on-secondary-fixed": "#001a41",
+                      "primary-fixed": "#b0eeed",
+                      "surface": "#f7fafc",
+                      "surface-container-low": "#f1f4f6",
+                      "on-secondary": "#ffffff",
+                      "on-tertiary": "#ffffff",
+                      "on-tertiary-fixed": "#341100",
+                      "secondary-fixed-dim": "#adc7ff",
+                      "on-secondary-fixed-variant": "#004493",
+                      "inverse-on-surface": "#eef1f3",
+                      "on-surface": "#181c1e",
+                      "on-tertiary-fixed-variant": "#6a3a21",
+                      "surface-container": "#ebeef0",
+                      "surface-container-highest": "#e0e3e5",
+                      "secondary-fixed": "#d8e2ff",
+                      "on-background": "#181c1e",
+                      "error-container": "#ffdad6",
+                      "surface-variant": "#e0e3e5",
+                      "on-primary-container": "#80bdbc",
+                      "secondary": "#0059bb",
+                      "inverse-primary": "#94d1d1",
+                      "on-primary-fixed-variant": "#044f4f",
+                      "surface-dim": "#d7dadc",
+                      "on-primary-fixed": "#002020",
+                      "tertiary": "#4c230b",
+                      "surface-container-lowest": "#ffffff",
+                      "tertiary-container": "#67381f"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "margin-page": "32px",
+                      "stack-sm": "8px",
+                      "gutter": "24px",
+                      "card-padding": "20px",
+                      "baseline": "4px",
+                      "stack-md": "16px"
+              },
+              "fontFamily": {
+                      "headline-xl": [
+                              "Inter"
+                      ],
+                      "headline-md": [
+                              "Inter"
+                      ],
+                      "body-lg": [
+                              "Public Sans"
+                      ],
+                      "data-mono": [
+                              "Inter"
+                      ],
+                      "label-sm": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Public Sans"
+                      ]
+              },
+              "fontSize": {
+                      "headline-xl": [
+                              "30px",
+                              {
+                                      "lineHeight": "40px",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "data-mono": [
+                              "18px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "22px",
+                                      "fontWeight": "400"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+          font-variation-settings:
+          'FILL' 0,
+          'wght' 400,
+          'GRAD' 0,
+          'opsz' 24
+        }
+        .ambient-shadow {
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+        }
+        .ambient-shadow-hover:hover {
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md text-body-md h-screen flex overflow-hidden">
+<!-- SideNavBar -->
+<nav class="fixed left-0 top-0 h-full border-r w-64 border-slate-200 bg-slate-50 flex flex-col py-6 space-y-2 z-50">
+<div class="px-6 mb-8">
+<div class="flex items-center space-x-3">
+<img alt="医院Logo" class="w-10 h-10 rounded-lg object-cover" data-alt="minimalist abstract geometric medical cross logo in teal and white colors" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCa8fNhjcapIN9XgITaNskKCp-cO0-G1TMtp5NFdEemY8gQORJrNrgjQ1HgLafSEEfnnowZ1CWufBfX-Rj4KMi17QZQ-6aM1dzsRN_516yqmQJS_Ey_BElcCJRndY3AH0AnYGLszSDNbReVOuXbFyZnes_OE_U4wKyPCL9mLDPQhOJW0keh8GH5Gpyp336XeFZ52CP5FLJOnEgpw9RoOyHLWzD2kHKax33TtDMdw7gzrqxc6AoGViFLBDEE7O2YC3cJV0Ubtjx22Uit"/>
+<div>
+<h1 class="text-xl font-extrabold text-[#004D4D] mb-1 font-headline-md text-headline-md leading-tight">慢性病辅疗</h1>
+<p class="font-['Inter'] text-sm font-medium text-[#004D4D] opacity-80">专业·严谨·高效</p>
+</div>
+</div>
+<button class="w-full mt-6 bg-[#004D4D] text-white rounded-lg py-2.5 font-['Inter'] text-sm font-medium hover:bg-[#003434] transition-colors flex items-center justify-center space-x-2">
+<span class="material-symbols-outlined" style="font-size: 18px;">emergency</span>
+<span>紧急呼叫</span>
+</button>
+</div>
+<div class="flex-1 px-3 space-y-1">
+<a class="flex items-center space-x-3 text-slate-600 py-3 px-6 hover:bg-slate-100 hover:text-[#004D4D] scale-98 duration-200 ease-in-out rounded-lg font-['Inter'] text-sm font-medium" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span>医生工作台</span>
+</a>
+<a class="flex items-center space-x-3 text-slate-600 py-3 px-6 hover:bg-slate-100 hover:text-[#004D4D] scale-98 duration-200 ease-in-out rounded-lg font-['Inter'] text-sm font-medium" href="#">
+<span class="material-symbols-outlined">personal_injury</span>
+<span>患者档案库</span>
+</a>
+<a class="flex items-center space-x-3 bg-teal-50 text-[#004D4D] border-r-4 border-[#004D4D] rounded-l-none rounded-r-lg py-3 px-6 scale-98 duration-200 ease-in-out font-['Inter'] text-sm font-medium" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+<span>药品目录管理</span>
+</a>
+</div>
+<div class="px-3 mt-auto space-y-1">
+<a class="flex items-center space-x-3 text-slate-600 py-3 px-6 hover:bg-slate-100 hover:text-[#004D4D] scale-98 duration-200 ease-in-out rounded-lg font-['Inter'] text-sm font-medium" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span>设置中心</span>
+</a>
+<a class="flex items-center space-x-3 text-slate-600 py-3 px-6 hover:bg-slate-100 hover:text-[#004D4D] scale-98 duration-200 ease-in-out rounded-lg font-['Inter'] text-sm font-medium" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span>退出登录</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col ml-64 h-full relative">
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 border-b z-40 border-slate-200 shadow-sm bg-white/90 backdrop-blur-md flex justify-between items-center h-16 px-8 ml-64 w-[calc(100%-16rem)]">
+<div class="flex items-center">
+<h2 class="text-lg font-black text-[#004D4D] font-headline-md text-headline-md">慢性病辅疗系统</h2>
+</div>
+<div class="flex items-center space-x-2">
+<!-- Search on left of actions as per JSON -->
+<div class="relative mr-4">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+<input class="pl-10 pr-4 py-1.5 rounded-full border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#004D4D]/20 focus:border-[#004D4D] text-sm text-[#004D4D] w-64" placeholder="全局搜索..." type="text"/>
+</div>
+<button class="p-2 text-slate-500 hover:bg-slate-50 transition-all rounded-full active:opacity-80 transition-opacity">
+<span class="material-symbols-outlined text-[#004D4D]">notifications</span>
+</button>
+<button class="p-2 text-slate-500 hover:bg-slate-50 transition-all rounded-full active:opacity-80 transition-opacity">
+<span class="material-symbols-outlined text-[#004D4D]">help</span>
+</button>
+<button class="flex items-center ml-2 p-1 hover:bg-slate-50 transition-all rounded-full active:opacity-80 transition-opacity">
+<img alt="医生头像" class="w-8 h-8 rounded-full object-cover" data-alt="professional portrait of a confident middle-aged male doctor in a white coat with a stethoscope" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAz6K4O94MKCAnvQRyhe45UCkD7d-jSLVeYyOtY7neYRZy_erzsntUZfvK1Jo86_TEHnLzfvkn8eTG4exJeIcYMsd5ZQynSNBiPapKSpXHrIDJqye14sZckxhG4f9NJJlW6kEIqfM9pi5CP9Mu7p9m0VjiQSu7NNizI1ki-7b2n_9WciIvciuV9DWEOvCCqZbwC_vuCSdjFzUSfGtUOVdN1lruHoUSsvJr2ODWZ3Jzej71gzicYV7yp6xi9T52OzM1XUAvx-8T1bWwN"/>
+</button>
+</div>
+</header>
+<!-- Canvas -->
+<main class="flex-1 overflow-y-auto pt-24 px-margin-page pb-margin-page bg-background">
+<!-- Header & Actions -->
+<div class="flex justify-between items-end mb-8">
+<div>
+<h1 class="font-headline-xl text-headline-xl text-on-surface mb-2">药品目录管理</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">管理系统内所有慢性病相关药品的档案与状态。</p>
+</div>
+<div class="flex space-x-3">
+<button class="flex items-center space-x-2 px-4 py-2 rounded-lg border border-outline-variant bg-surface text-on-surface hover:bg-surface-container-low transition-colors font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-lg">download</span>
+<span>导出数据</span>
+</button>
+<button class="flex items-center space-x-2 px-4 py-2 rounded-lg bg-primary text-on-primary hover:bg-surface-tint transition-colors ambient-shadow font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-lg">add</span>
+<span>添加新药品</span>
+</button>
+</div>
+</div>
+<!-- Stats Grid -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-gutter mb-8">
+<!-- Stat Card 1 -->
+<div class="bg-surface rounded-xl p-card-padding ambient-shadow transition-transform duration-200 ambient-shadow-hover">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-primary-container/10 rounded-lg text-primary">
+<span class="material-symbols-outlined">medication</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant bg-surface-container px-2 py-1 rounded">全部类别</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mb-1">总药品数</p>
+<p class="font-headline-xl text-headline-xl text-on-surface">1,248</p>
+</div>
+<!-- Stat Card 2 -->
+<div class="bg-surface rounded-xl p-card-padding ambient-shadow transition-transform duration-200 ambient-shadow-hover">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-secondary-container/10 rounded-lg text-secondary">
+<span class="material-symbols-outlined">check_circle</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant bg-surface-container px-2 py-1 rounded">上架中</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mb-1">活跃药品</p>
+<p class="font-headline-xl text-headline-xl text-on-surface">1,102</p>
+</div>
+<!-- Stat Card 3 -->
+<div class="bg-surface rounded-xl p-card-padding ambient-shadow transition-transform duration-200 ambient-shadow-hover">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-error-container/20 rounded-lg text-error">
+<span class="material-symbols-outlined">warning</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant bg-surface-container px-2 py-1 rounded">特殊管理</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mb-1">受控药品</p>
+<p class="font-headline-xl text-headline-xl text-on-surface">146</p>
+</div>
+</div>
+<!-- Filters & Search -->
+<div class="bg-surface rounded-xl p-card-padding ambient-shadow mb-8 flex flex-col md:flex-row gap-4 items-end">
+<div class="flex-1 w-full">
+<label class="block font-label-sm text-label-sm text-on-surface-variant mb-2">关键字搜索</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
+<input class="w-full pl-10 pr-4 py-2.5 rounded-lg border border-outline-variant bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary font-body-md text-body-md" placeholder="搜索药品名称、ID或通用名..." type="text"/>
+</div>
+</div>
+<div class="w-full md:w-48">
+<label class="block font-label-sm text-label-sm text-on-surface-variant mb-2">状态</label>
+<select class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary font-body-md text-body-md appearance-none">
+<option>全部状态</option>
+<option>活跃</option>
+<option>禁用</option>
+</select>
+</div>
+<div class="w-full md:w-48">
+<label class="block font-label-sm text-label-sm text-on-surface-variant mb-2">剂型</label>
+<select class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary font-body-md text-body-md appearance-none">
+<option>全部剂型</option>
+<option>片剂</option>
+<option>胶囊</option>
+<option>注射液</option>
+<option>口服液</option>
+</select>
+</div>
+<button class="px-6 py-2.5 rounded-lg border border-outline-variant text-on-surface hover:bg-surface-container-low transition-colors font-label-sm text-label-sm h-[42px]">
+                    重置
+                </button>
+</div>
+<!-- Data Table -->
+<div class="bg-surface rounded-xl ambient-shadow overflow-hidden">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b border-surface-container-highest bg-surface-container-lowest">
+<th class="py-4 px-6 font-label-sm text-label-sm text-on-surface-variant font-medium">药品ID</th>
+<th class="py-4 px-6 font-label-sm text-label-sm text-on-surface-variant font-medium">通用名</th>
+<th class="py-4 px-6 font-label-sm text-label-sm text-on-surface-variant font-medium">规格</th>
+<th class="py-4 px-6 font-label-sm text-label-sm text-on-surface-variant font-medium">标记</th>
+<th class="py-4 px-6 font-label-sm text-label-sm text-on-surface-variant font-medium">状态</th>
+<th class="py-4 px-6 font-label-sm text-label-sm text-on-surface-variant font-medium text-right">操作</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container-highest">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="py-4 px-6 font-data-mono text-data-mono text-on-surface text-sm">MED-10042</td>
+<td class="py-4 px-6">
+<div class="font-body-md text-body-md text-on-surface font-medium">阿托伐他汀钙片</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant">降脂类</div>
+</td>
+<td class="py-4 px-6 font-body-md text-body-md text-on-surface">20mg*7片/盒</td>
+<td class="py-4 px-6">
+<span class="inline-flex items-center px-2 py-1 rounded bg-error-container/20 text-error font-label-sm text-label-sm">
+                                    处方药
+                                </span>
+</td>
+<td class="py-4 px-6">
+<div class="flex items-center space-x-2">
+<div class="w-2 h-2 rounded-full bg-primary-fixed-dim"></div>
+<span class="font-body-md text-body-md text-on-surface">活跃</span>
+</div>
+</td>
+<td class="py-4 px-6 text-right">
+<button class="text-primary hover:text-surface-tint p-1 rounded transition-colors opacity-0 group-hover:opacity-100">
+<span class="material-symbols-outlined text-lg">edit</span>
+</button>
+<button class="text-outline hover:text-on-surface p-1 rounded transition-colors opacity-0 group-hover:opacity-100 ml-2">
+<span class="material-symbols-outlined text-lg">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="py-4 px-6 font-data-mono text-data-mono text-on-surface text-sm">MED-10087</td>
+<td class="py-4 px-6">
+<div class="font-body-md text-body-md text-on-surface font-medium">二甲双胍肠溶片</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant">降糖类</div>
+</td>
+<td class="py-4 px-6 font-body-md text-body-md text-on-surface">0.25g*48片/盒</td>
+<td class="py-4 px-6">
+<span class="inline-flex items-center px-2 py-1 rounded bg-error-container/20 text-error font-label-sm text-label-sm">
+                                    处方药
+                                </span>
+</td>
+<td class="py-4 px-6">
+<div class="flex items-center space-x-2">
+<div class="w-2 h-2 rounded-full bg-primary-fixed-dim"></div>
+<span class="font-body-md text-body-md text-on-surface">活跃</span>
+</div>
+</td>
+<td class="py-4 px-6 text-right">
+<button class="text-primary hover:text-surface-tint p-1 rounded transition-colors opacity-0 group-hover:opacity-100">
+<span class="material-symbols-outlined text-lg">edit</span>
+</button>
+<button class="text-outline hover:text-on-surface p-1 rounded transition-colors opacity-0 group-hover:opacity-100 ml-2">
+<span class="material-symbols-outlined text-lg">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="py-4 px-6 font-data-mono text-data-mono text-on-surface text-sm">MED-10123</td>
+<td class="py-4 px-6">
+<div class="font-body-md text-body-md text-on-surface font-medium">氨氯地平片</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant">降压类</div>
+</td>
+<td class="py-4 px-6 font-body-md text-body-md text-on-surface">5mg*14片/盒</td>
+<td class="py-4 px-6">
+<span class="inline-flex items-center px-2 py-1 rounded bg-surface-container-highest text-on-surface-variant font-label-sm text-label-sm">
+                                    非处方
+                                </span>
+</td>
+<td class="py-4 px-6">
+<div class="flex items-center space-x-2">
+<div class="w-2 h-2 rounded-full bg-outline-variant"></div>
+<span class="font-body-md text-body-md text-on-surface-variant">禁用</span>
+</div>
+</td>
+<td class="py-4 px-6 text-right">
+<button class="text-primary hover:text-surface-tint p-1 rounded transition-colors opacity-0 group-hover:opacity-100">
+<span class="material-symbols-outlined text-lg">edit</span>
+</button>
+<button class="text-outline hover:text-on-surface p-1 rounded transition-colors opacity-0 group-hover:opacity-100 ml-2">
+<span class="material-symbols-outlined text-lg">more_vert</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+<!-- Pagination -->
+<div class="border-t border-surface-container-highest px-6 py-4 flex items-center justify-between">
+<span class="font-body-md text-body-md text-on-surface-variant">显示 1-3，共 1,248 条记录</span>
+<div class="flex space-x-1">
+<button class="p-1 rounded text-outline hover:bg-surface-container hover:text-on-surface transition-colors disabled:opacity-50" disabled="">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<button class="px-3 py-1 rounded bg-primary text-on-primary font-body-md text-body-md">1</button>
+<button class="px-3 py-1 rounded text-on-surface hover:bg-surface-container transition-colors font-body-md text-body-md">2</button>
+<button class="px-3 py-1 rounded text-on-surface hover:bg-surface-container transition-colors font-body-md text-body-md">3</button>
+<span class="px-2 py-1 text-outline">...</span>
+<button class="p-1 rounded text-outline hover:bg-surface-container hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

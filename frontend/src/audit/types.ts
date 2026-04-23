@@ -13,7 +13,7 @@ export type AuditResult = 'success' | 'failed' | 'degraded'
 export interface AuditActor {
   username: string
   name: string
-  role: 'doctor' | 'nurse' | 'archivist' | 'unknown'
+  role: 'doctor' | 'nurse' | 'pharmacist' | 'archivist' | 'admin' | 'unknown'
 }
 
 export interface AuditTarget {

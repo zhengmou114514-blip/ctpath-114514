@@ -54,9 +54,44 @@ def test_middleware_trace_and_auth_contract() -> None:
         assert response.headers["X-Trace-Id"] == payload["trace_id"]
 
 
+def test_business_health_contract() -> None:
+    with TestClient(app) as client:
+        response = client.get("/api/health")
+
+        assert response.status_code == 200, response.text
+        assert "X-Trace-Id" in response.headers
+        assert "X-Process-Time-Ms" in response.headers
+
+
+def test_model_metrics_requires_admin() -> None:
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/login",
+            json={
+                "username": "demo_clinic",
+                "password": "demo123456",
+            },
+        )
+        assert response.status_code == 200, response.text
+        token = response.json()["token"]
+
+        metrics_response = client.get(
+            "/api/model/metrics",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert metrics_response.status_code == 403, metrics_response.text
+        payload = metrics_response.json()
+        assert payload["error_code"] == "FORBIDDEN"
+        assert payload["trace_id"]
+        assert metrics_response.headers["X-Trace-Id"] == payload["trace_id"]
+
+
 def main() -> None:
     test_predict_api_contract()
     test_middleware_trace_and_auth_contract()
+    test_business_health_contract()
+    test_model_metrics_requires_admin()
     print("closure-contract-ok")
 
 

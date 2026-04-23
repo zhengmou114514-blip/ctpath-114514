@@ -61,9 +61,13 @@ const RISK_ALL_LABEL = '全部风险'
 const APP_SECTIONS: AppSection[] = [
   'doctor',
   'archive',
+  'emr',
+  'pharmacy',
+  'coordination',
   'drug-management',
   'drug-permission-management',
   'tasks',
+  'role-workspaces',
   'model-operations',
   'training-center',
   'governance',
@@ -195,7 +199,7 @@ export function useWorkspaceController() {
 
   function canUseGovernanceWorkspace() {
     const role = currentDoctor.value?.role
-    return role === 'doctor' || role === 'archivist'
+    return role === 'doctor' || role === 'archivist' || role === 'admin'
   }
 
   function setPermissionError(message: string) {
@@ -215,7 +219,7 @@ export function useWorkspaceController() {
     target: { type: string; id: string; label?: string },
     result: 'success' | 'failed' | 'degraded',
     detail: string,
-    actor?: { username?: string; name?: string; role?: 'doctor' | 'nurse' | 'archivist' | 'unknown' }
+    actor?: { username?: string; name?: string; role?: 'doctor' | 'nurse' | 'pharmacist' | 'archivist' | 'admin' | 'unknown' }
   ) {
     auditTrail.addAuditLog({
       actor: actor ?? {
@@ -357,9 +361,13 @@ export function useWorkspaceController() {
   const currentWorkspace = computed<
     | 'doctor'
     | 'archive'
+    | 'emr'
+    | 'pharmacy'
+    | 'coordination'
     | 'drug-management'
     | 'drug-permission-management'
     | 'governance'
+    | 'role-workspaces'
     | 'model-dashboard'
     | 'model-operations'
     | 'training-center'
@@ -370,9 +378,13 @@ export function useWorkspaceController() {
   >(() => {
     if (section.value === 'doctor') return 'doctor'
     if (section.value === 'archive' || section.value === 'data-quality') return 'archive'
+    if (section.value === 'emr') return 'emr'
+    if (section.value === 'pharmacy') return 'pharmacy'
+    if (section.value === 'coordination') return 'coordination'
     if (section.value === 'drug-management') return 'drug-management'
     if (section.value === 'drug-permission-management') return 'drug-permission-management'
     if (section.value === 'governance') return 'governance'
+    if (section.value === 'role-workspaces') return 'role-workspaces'
     if (section.value === 'model-dashboard') return 'model-dashboard'
     if (section.value === 'model-operations') return 'model-operations'
     if (section.value === 'training-center') return 'training-center'
@@ -517,15 +529,8 @@ export function useWorkspaceController() {
       return
     }
 
-    // 确保使用正确的 patientId
-    const targetPatientId = patientId || selectedPatientId.value || ''
-    if (!targetPatientId) {
-      screenError.value = 'Please select a patient before opening follow-up workspace.'
-      return
-    }
-
     loadingOpenFollowup.value = true
-    followupFocusPatientId.value = targetPatientId
+    followupFocusPatientId.value = patientId || selectedPatientId.value || ''
     section.value = targetSection
     clearMessages()
     updateWindowQuery(targetSection)
@@ -671,7 +676,7 @@ export function useWorkspaceController() {
       loadingMaintenance.value = false
     }
 
-    if (!canUseDoctorWorkspace()) {
+    if (!canAccessSection('model-dashboard')) {
       modelMetrics.value = null
       loadingModelMetrics.value = false
       return
@@ -702,8 +707,21 @@ export function useWorkspaceController() {
 
   async function refreshModelMetrics() {
     await refreshHealthStatus()
-    // TODO: 添加专门的模型指标加载逻辑
-    // 目前使用 health 状态中的模型信息
+    if (!canAccessSection('model-dashboard')) {
+      modelMetrics.value = null
+      loadingModelMetrics.value = false
+      return
+    }
+
+    loadingModelMetrics.value = true
+    try {
+      modelMetrics.value = await getModelMetrics()
+    } catch (error) {
+      modelMetrics.value = null
+      screenError.value = error instanceof Error ? error.message : 'Failed to load model metrics.'
+    } finally {
+      loadingModelMetrics.value = false
+    }
   }
 
   async function openPatient(
@@ -845,13 +863,19 @@ export function useWorkspaceController() {
       return
     }
 
+    if (nextSection === 'pharmacy' || nextSection === 'coordination') {
+      section.value = nextSection
+      updateWindowQuery(nextSection)
+      return
+    }
+
     if (isDrugManagementSection(nextSection)) {
       section.value = nextSection
       updateWindowQuery(nextSection)
       return
     }
 
-    if (nextSection === 'system') {
+    if (nextSection === 'system' || nextSection === 'role-workspaces') {
       section.value = nextSection
       updateWindowQuery(nextSection)
       await refreshHealthStatus()
@@ -920,6 +944,7 @@ export function useWorkspaceController() {
     viewedPatientIds.value = []
     clearMessages()
     await refreshWorkspaceData()
+    await loadSystemCenter()
 
     const url = typeof window !== 'undefined' ? new URL(window.location.href) : null
     const hasArchiveDetail = url?.searchParams.get('view') === 'archive-detail'
@@ -962,9 +987,9 @@ export function useWorkspaceController() {
         {
           username: session.doctor.username,
           name: session.doctor.name,
-          role: session.doctor.role,
-        }
-      )
+        role: session.doctor.role,
+      }
+    )
     } catch (error) {
       loginError.value = error instanceof Error ? error.message : 'Login failed.'
       logAudit(
@@ -1041,10 +1066,14 @@ export function useWorkspaceController() {
     updateWindowQuery('doctor')
   }
 
-  async function runPrediction() {
+  async function runPrediction(force = false) {
     if (!selectedPatient.value) return
     if (!canUseDoctorWorkspace()) {
       setPermissionError('Current role has no permission to run prediction.')
+      return
+    }
+
+    if (!force && predictionResult.value?.patientId === selectedPatient.value.patientId) {
       return
     }
 
@@ -1557,7 +1586,7 @@ export function useWorkspaceController() {
     nextArchivePage,
     refreshGovernanceWorkspace,
     refreshModelMetrics,
-    loadSystemCenter,
+    refreshSystemCenter: loadSystemCenter,
     taskStatusCompleted: TASK_STATUS_COMPLETED,
     taskStatusClosed: TASK_STATUS_CLOSED,
   })

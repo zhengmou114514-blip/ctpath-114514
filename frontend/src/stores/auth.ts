@@ -13,7 +13,7 @@ function isValidDoctorUser(value: unknown): value is DoctorUser {
     doctor.username.length > 0 &&
     typeof doctor.name === 'string' &&
     doctor.name.length > 0 &&
-    (doctor.role === 'doctor' || doctor.role === 'nurse' || doctor.role === 'archivist')
+    (doctor.role === 'doctor' || doctor.role === 'nurse' || doctor.role === 'pharmacist' || doctor.role === 'archivist' || doctor.role === 'admin')
   )
 }
 

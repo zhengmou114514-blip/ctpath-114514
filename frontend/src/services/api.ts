@@ -25,6 +25,16 @@ import type {
   MedicationPlanGeneratePayload,
   MedicationPlanResponse,
   ModelMetricsResponse,
+  CoordinationBoardResponse,
+  CoordinationCategory,
+  CoordinationItem,
+  CoordinationItemUpsertRequest,
+  CoordinationNoteCreateRequest,
+  CoordinationNote,
+  CoordinationParticipant,
+  CoordinationParticipantRole,
+  CoordinationStatus,
+  CoordinationStatusUpdateRequest,
   OutpatientTaskCreatePayload,
   OutpatientTaskStatusUpdatePayload,
   PatientAttachmentRecord,
@@ -36,6 +46,14 @@ import type {
   PatientQuadruple,
   PatientSummary,
   PatientUpsertPayload,
+  PharmacyDashboardResponse,
+  PharmacyInventoryRecord,
+  PharmacyInventoryStatus,
+  PharmacyInventoryUpsertRequest,
+  PharmacyReviewDecisionRequest,
+  PharmacyReviewOrder,
+  PharmacyStockAdjustRequest,
+  PharmacyTransactionRecord,
   PredictResponse,
   RegisterPayload,
   RoleWorkspaceDefinition,
@@ -57,7 +75,7 @@ function isValidStoredDoctor(value: unknown): value is AuthSession['doctor'] {
     doctor.username.length > 0 &&
     typeof doctor.name === 'string' &&
     doctor.name.length > 0 &&
-    (doctor.role === 'doctor' || doctor.role === 'nurse' || doctor.role === 'archivist')
+    (doctor.role === 'doctor' || doctor.role === 'nurse' || doctor.role === 'pharmacist' || doctor.role === 'archivist')
   )
 }
 
@@ -95,7 +113,7 @@ function normalizeApiPath(path: string): string {
   return normalized
 }
 
-type Role = 'doctor' | 'nurse' | 'archivist'
+type Role = 'doctor' | 'nurse' | 'pharmacist' | 'archivist' | 'admin'
 type Paged = { patients: PatientSummary[]; total: number; page: number; page_size: number; total_pages: number }
 
 export interface SavedAccount { username: string; name: string; title: string; department: string; role: Role; lastLoginTime: string; avatarUrl?: string }
@@ -108,7 +126,7 @@ const ROLE_WORKSPACES: RoleWorkspaceDefinition[] = [
   {
     role: 'doctor',
     title: 'Doctor workstation',
-    description: 'Owns patient review, prediction interpretation, current medication decisions and care advice.',
+    description: 'Owns chronic-care assessment, current-patient review and model insight. Training and model governance stay outside the bedside flow.',
     primaryModules: [
       {
         key: 'patient-detail',
@@ -118,17 +136,10 @@ const ROLE_WORKSPACES: RoleWorkspaceDefinition[] = [
         status: 'ready',
       },
       {
-        key: 'current-medication',
-        label: 'Current medication / assessment',
-        routeHint: '/patient-business-closure?patientId=...',
-        responsibility: 'Create and edit current medications, then consume backend medication assessment results.',
-        status: 'ready',
-      },
-      {
-        key: 'drug-catalog',
-        label: 'Drug catalog',
-        routeHint: '/drug-management',
-        responsibility: 'Maintain chronic-care drug directory with controlled-drug permission checks.',
+        key: 'patient-archive',
+        label: 'Patient archive',
+        routeHint: '/archive',
+        responsibility: 'Inspect patient identity, attachments and timeline context.',
         status: 'ready',
       },
       {
@@ -139,13 +150,13 @@ const ROLE_WORKSPACES: RoleWorkspaceDefinition[] = [
         status: 'limited',
       },
     ],
-    forbiddenModules: ['inventory', 'billing', 'inpatient workflow', 'full prescription flow', 'training center', 'model debug console'],
+    forbiddenModules: ['inventory', 'inpatient workflow', 'full prescription flow', 'training center', 'model debug console'],
     auditFocus: ['patient_attachment_upload', 'patient_medication_create', 'patient_medication_update', 'drug_catalog_create', 'drug_catalog_update'],
   },
   {
     role: 'nurse',
     title: 'Nurse workstation',
-    description: 'Owns follow-up execution, contact closure, medication execution view and care flow coordination.',
+    description: 'Owns follow-up execution, contact closure and care flow coordination.',
     primaryModules: [
       {
         key: 'followup-worklist',
@@ -162,11 +173,11 @@ const ROLE_WORKSPACES: RoleWorkspaceDefinition[] = [
         status: 'ready',
       },
       {
-        key: 'medication-execution-view',
-        label: 'Medication execution view',
-        routeHint: '/patient-business-closure?patientId=...',
-        responsibility: 'View current medications and assessment result; no prescribing by default.',
-        status: 'limited',
+        key: 'collaboration-handoff',
+        label: 'Collaboration handoff',
+        routeHint: '/coordination',
+        responsibility: 'Share contact logs and next-step notes with doctors, pharmacists and archivists.',
+        status: 'ready',
       },
     ],
     forbiddenModules: ['controlled drug grant', 'drug catalog administration', 'clinical prescribing decision', 'model dashboard', 'training center'],
@@ -174,62 +185,92 @@ const ROLE_WORKSPACES: RoleWorkspaceDefinition[] = [
   },
   {
     role: 'pharmacist',
-    title: 'Pharmacist workstation',
-    description: 'Owns medication review, controlled-drug risk visibility and drug-permission reference.',
+    title: 'Pharmacy workstation',
+    description: 'Owns pharmacy inventory, dispensing review and medication coordination support.',
     primaryModules: [
       {
-        key: 'medication-review',
-        label: 'Medication review',
-        routeHint: '/patient-business-closure?patientId=...',
-        responsibility: 'Review current medication and backend assessment results without editing patient diagnosis.',
+        key: 'pharmacy-warehouse',
+        label: 'Pharmacy / warehouse',
+        routeHint: '/pharmacy',
+        responsibility: 'Review stock, inbound/outbound records and dispense queue.',
+        status: 'ready',
+      },
+      {
+        key: 'coordination-support',
+        label: 'Care coordination',
+        routeHint: '/coordination',
+        responsibility: 'Support medication review and cross-discipline handoff notes.',
         status: 'ready',
       },
       {
         key: 'drug-catalog-reference',
         label: 'Drug catalog reference',
         routeHint: '/drug-management',
-        responsibility: 'View and maintain medication catalog fields used by chronic-care prescribing.',
+        responsibility: 'Review catalog metadata used by dispensing and review work.',
+        status: 'ready',
+      },
+    ],
+    forbiddenModules: ['patient diagnosis edit', 'training center', 'model dashboard'],
+    auditFocus: ['pharmacy inventory adjust', 'pharmacy review queue', 'coordination note add'],
+  },
+  {
+    role: 'archivist',
+    title: 'Archivist workstation',
+    description: 'Owns patient identity, attachments, archive completeness and data quality.',
+    primaryModules: [
+      {
+        key: 'patient-archive',
+        label: 'Patient archive',
+        routeHint: '/archive',
+        responsibility: 'Maintain patient identity, contacts and archive status.',
         status: 'ready',
       },
       {
-        key: 'drug-permission-reference',
-        label: 'Drug permission reference',
-        routeHint: '/drug-permissions',
-        responsibility: 'Read role permission boundaries and controlled-drug capability status.',
-        status: 'limited',
+        key: 'attachment-review',
+        label: 'Attachment review',
+        routeHint: '/archive?module=attachments',
+        responsibility: 'Review patient photos, ID cards, referral forms and consent files.',
+        status: 'ready',
+      },
+      {
+        key: 'data-quality',
+        label: 'Data quality',
+        routeHint: '/governance',
+        responsibility: 'Track missing fields, conflicts and pending archive fixes.',
+        status: 'ready',
       },
     ],
-    forbiddenModules: ['patient diagnosis edit', 'nursing follow-up execution', 'inventory', 'full prescription flow', 'training center'],
-    auditFocus: ['patient_medication_update', 'drug_catalog_create', 'drug_catalog_update', 'drug_permission_view'],
+    forbiddenModules: ['clinical diagnosis decision', 'training center', 'model dashboard'],
+    auditFocus: ['patient_attachment_upload', 'archive_import', 'archive_update', 'quality_fix'],
   },
   {
     role: 'admin',
     title: 'Admin workstation',
-    description: 'Owns business configuration boundaries, audit review and permission governance without clinical decision making.',
+    description: 'Owns business configuration boundaries, audit review, permission governance and model-center access.',
     primaryModules: [
-      {
-        key: 'drug-permissions',
-        label: 'Drug permission management',
-        routeHint: '/drug-permissions',
-        responsibility: 'Configure role-level medication permissions with controlled-drug grant audit.',
-        status: 'ready',
-      },
-      {
-        key: 'drug-catalog-governance',
-        label: 'Drug catalog governance',
-        routeHint: '/drug-management',
-        responsibility: 'Maintain catalog availability and controlled-drug metadata.',
-        status: 'ready',
-      },
       {
         key: 'role-boundary',
         label: 'Role boundary matrix',
         routeHint: '/role-workspaces',
-        responsibility: 'Review role access boundaries and operation audit focus.',
-        status: 'limited',
+        responsibility: 'Review role access boundaries, collaboration surfaces and permission scope.',
+        status: 'ready',
+      },
+      {
+        key: 'drug-permissions',
+        label: 'Drug permission management',
+        routeHint: '/drug-permission-management',
+        responsibility: 'Configure role-level medication permissions with controlled-drug grant audit.',
+        status: 'ready',
+      },
+      {
+        key: 'model-center',
+        label: 'Model center',
+        routeHint: '/model-dashboard',
+        responsibility: 'Monitor model versions, training status and deployment health.',
+        status: 'ready',
       },
     ],
-    forbiddenModules: ['clinical diagnosis decision', 'nursing execution', 'inventory', 'billing', 'inpatient workflow', 'training center'],
+    forbiddenModules: ['clinical diagnosis decision', 'nursing execution', 'inventory', 'inpatient workflow'],
     auditFocus: ['drug_permission_create', 'drug_permission_update', 'drug_catalog_create', 'drug_catalog_update', 'patient_attachment_upload'],
   },
 ]
@@ -238,6 +279,7 @@ const doctors = [
   { username: 'demo_clinic', password: 'demo123456', name: 'Dr. Lin', title: 'Attending Physician', department: 'Chronic Care Clinic', role: 'doctor' as Role },
   { username: 'demo_specialist', password: 'demo123456', name: 'Dr. Zhao', title: 'Specialist', department: 'Neurology', role: 'doctor' as Role },
   { username: 'demo_nurse', password: 'demo123456', name: 'Nurse Chen', title: 'Senior Nurse', department: 'Follow-up Center', role: 'nurse' as Role },
+  { username: 'demo_pharmacist', password: 'demo123456', name: 'Pharmacist Zhou', title: 'Pharmacist', department: 'Pharmacy', role: 'pharmacist' as Role },
   { username: 'demo_archivist', password: 'demo123456', name: 'Wang Min', title: 'Archivist', department: 'Medical Records', role: 'archivist' as Role },
 ]
 
@@ -352,9 +394,98 @@ let demoDrugPermissions: DrugPermissionRecord[] = [
 ]
 
 let demoPatientMedications: PatientMedicationRecord[] = []
+let demoPharmacyInventory: PharmacyInventoryRecord[] = []
+let demoCoordinationItems: CoordinationItem[] = []
 
 const medicationLabel = (drug: DrugCatalogRecord) =>
   [drug.generic_name, drug.brand_name ? `(${drug.brand_name})` : ''].filter(Boolean).join(' ').trim() || drug.drug_id
+
+function seedDemoPharmacyInventory(): PharmacyInventoryRecord[] {
+  return demoDrugs.map((drug, index) => {
+    const baseStock = Math.max(24, 120 - index * 18)
+    const isControlled = drug.is_controlled
+    return {
+      itemId: `stock-${drug.drug_id}`,
+      drugId: drug.drug_id,
+      drugName: medicationLabel(drug),
+      warehouse: '主药房',
+      batchNo: `BATCH-${index + 1}`,
+      lotNo: `LOT-${202604 + index}`,
+      unit: drug.unit,
+      currentStock: baseStock + (isControlled ? 18 : 0),
+      reservedStock: isControlled ? 4 : 2,
+      minStock: isControlled ? 28 : 18,
+      expiryDate: index % 2 === 0 ? '2027-12-31' : '2027-06-30',
+      status: 'active',
+      supplier: '慢病药品配送中心',
+      lastInboundAt: '2026-04-18T00:00:00+00:00',
+      lastOutboundAt: '2026-04-18T00:00:00+00:00',
+      updatedBy: 'system',
+      updatedAt: '2026-04-18T00:00:00+00:00',
+    }
+  })
+}
+
+function ensureDemoPharmacyInventory(): PharmacyInventoryRecord[] {
+  if (!demoPharmacyInventory.length) {
+    demoPharmacyInventory = seedDemoPharmacyInventory()
+  }
+  return demoPharmacyInventory
+}
+
+function seedDemoCoordinationItems(): CoordinationItem[] {
+  return demoPatients.map((patient) => {
+    const category: CoordinationCategory =
+      patient.primaryDisease === 'Diabetes' || patient.primaryDisease === 'Hypertension' ? 'medication_review' : patient.riskLevel.toLowerCase().includes('high') ? 'case_review' : 'followup'
+    const status: CoordinationStatus = patient.riskLevel.toLowerCase().includes('high') ? 'in_progress' : 'open'
+    const ownerRole: CoordinationParticipantRole = category === 'medication_review' ? 'pharmacist' : 'nurse'
+    const ownerName = category === 'medication_review' ? patient.caseManager || '药师复核' : patient.primaryDoctor || patient.caseManager || '责任人'
+    const participants: CoordinationParticipant[] = [
+      { role: 'doctor', name: patient.primaryDoctor || '责任医生', relation: '责任医生', phone: patient.phone || '' },
+      { role: 'nurse', name: patient.caseManager || '个案管理师', relation: '个案管理师', phone: patient.emergencyContactPhone || '' },
+      { role: 'pharmacist', name: '药师复核', relation: '药师复核', phone: '' },
+    ]
+    return {
+      coordinationId: `coord-${patient.patientId}`,
+      patientId: patient.patientId,
+      patientName: patient.name,
+      primaryDisease: patient.primaryDisease,
+      currentStage: patient.currentStage,
+      riskLevel: patient.riskLevel,
+      category,
+      status,
+      ownerRole,
+      ownerName,
+      nextAction:
+        category === 'medication_review'
+          ? '复核当前用药并同步药房意见'
+          : category === 'case_review'
+            ? '补齐病历信息并完成个案复核'
+            : '联系患者并更新协同备注',
+      dueDate: patient.followUps[0]?.dueDate ?? patient.lastVisit,
+      lastUpdatedAt: `${patient.lastVisit}T09:30:00+00:00`,
+      summary: `${patient.name} / ${patient.primaryDisease} / 患者电话 ${patient.phone || '待补齐'} / 紧急联系人 ${patient.emergencyContactName || '待补齐'}`,
+      participants,
+      notes: [
+        {
+          noteId: `note-${patient.patientId}-seed`,
+          createdAt: `${patient.lastVisit}T09:00:00+00:00`,
+          createdBy: ownerName,
+          createdByRole: ownerRole,
+          action: 'seed',
+          note: '已根据档案总览、联系方式和当前用药生成协同初始记录。',
+        },
+      ],
+    }
+  })
+}
+
+function ensureDemoCoordinationItems(): CoordinationItem[] {
+  if (!demoCoordinationItems.length) {
+    demoCoordinationItems = seedDemoCoordinationItems()
+  }
+  return demoCoordinationItems
+}
 
 function resolveSessionRole(): Role {
   try {
@@ -362,7 +493,7 @@ function resolveSessionRole(): Role {
     if (!raw) return 'doctor'
     const session = JSON.parse(raw) as AuthSession
     const role = session?.doctor?.role
-    return role === 'doctor' || role === 'nurse' || role === 'archivist' ? role : 'doctor'
+    return role === 'doctor' || role === 'nurse' || role === 'pharmacist' || role === 'archivist' ? role : 'doctor'
   } catch {
     return 'doctor'
   }
@@ -873,6 +1004,334 @@ async function demoRequest<T>(path: string, options: RequestInit = {}): Promise<
     } as T
   }
   if (u.pathname === '/worklists/flow-board') return { mode: 'demo', items: demoPatients.map((p) => ({ patientId: p.patientId, patientName: p.name, primaryDisease: p.primaryDisease, currentStage: p.currentStage, riskLevel: p.riskLevel, dataSupport: p.dataSupport, lastVisit: p.lastVisit, flowStatus: p.encounterStatus === 'pending_review' ? 'Pending review' : p.encounterStatus === 'in_progress' ? 'In clinic' : p.dataSupport === 'low' ? 'Need structured data' : 'Waiting', nextAction: p.followUps[0]?.title ?? 'Open patient workspace' })) } as T
+  if (u.pathname === '/pharmacy/dashboard') {
+    const inventory = ensureDemoPharmacyInventory()
+    const reviewQueue = demoPatients.flatMap((patient) =>
+      ensureDemoPatientMedications(patient.patientId).map((medication) => ({
+        patientId: patient.patientId,
+        patientName: patient.name,
+        medicationId: medication.medication_id,
+        drugId: medication.drug_id,
+        drugNameSnapshot: medication.drug_name_snapshot,
+        dosage: medication.dosage,
+        frequency: medication.frequency,
+        route: medication.route,
+        reviewStatus: medication.review_status,
+        status: medication.status,
+        prescribedBy: medication.prescribed_by,
+        note: medication.note,
+        createdAt: medication.created_at,
+        updatedAt: medication.updated_at,
+      })),
+    )
+    const transactions = inventory.slice(0, 3).map((item, index) => ({
+      transactionId: `tx-${item.itemId}-${index + 1}`,
+      itemId: item.itemId,
+      drugId: item.drugId,
+      change: index === 0 ? 12 : index === 1 ? -4 : 6,
+      direction: index === 0 ? 'inbound' : index === 1 ? 'outbound' : 'adjust',
+      note: index === 0 ? '补货入库' : index === 1 ? '门诊出库' : '库存盘点调整',
+      operatorUsername: 'demo_pharmacist',
+      operatorName: 'Pharmacist Zhou',
+      createdAt: item.updatedAt,
+    }))
+    return {
+      summary: [
+        { label: '库存条目', value: String(inventory.length), trend: '稳定' },
+        { label: '低库存', value: String(inventory.filter((item) => item.currentStock <= item.minStock).length), trend: '关注' },
+        { label: '待复核处方', value: String(reviewQueue.filter((item) => item.reviewStatus === 'pending').length), trend: '待处理' },
+        { label: '管制药库存', value: String(inventory.filter((item) => item.drugName.includes('Morphine') || item.drugName.includes('controlled')).length), trend: '受控' },
+      ],
+      inventory,
+      reviewQueue,
+      transactions,
+    } as T
+  }
+  if (u.pathname === '/pharmacy/inventory' && m === 'GET') {
+    const keyword = (u.searchParams.get('keyword') ?? '').trim().toLowerCase()
+    const warehouse = (u.searchParams.get('warehouse') ?? '').trim().toLowerCase()
+    const status = (u.searchParams.get('status') ?? '').trim().toLowerCase()
+    const lowOnly = (u.searchParams.get('low_stock_only') ?? '').toLowerCase() === 'true'
+    const inventory = ensureDemoPharmacyInventory().filter((item) => {
+      if (status && item.status !== status) return false
+      if (lowOnly && item.currentStock > item.minStock) return false
+      if (warehouse && item.warehouse.toLowerCase() !== warehouse) return false
+      if (keyword) {
+        const haystack = [item.itemId, item.drugId, item.drugName, item.warehouse, item.batchNo, item.lotNo, item.supplier].join(' ').toLowerCase()
+        return haystack.includes(keyword)
+      }
+      return true
+    })
+    return clone(inventory) as T
+  }
+  if (u.pathname === '/pharmacy/inventory' && m === 'POST') {
+    const payload = body<PharmacyInventoryUpsertRequest>(options.body)
+    const inventory = ensureDemoPharmacyInventory()
+    if (inventory.some((item) => item.itemId === payload.itemId)) throw new Error('Pharmacy inventory item already exists')
+    const record: PharmacyInventoryRecord = {
+      itemId: payload.itemId,
+      drugId: payload.drugId,
+      drugName: payload.drugName,
+      warehouse: payload.warehouse,
+      batchNo: payload.batchNo,
+      lotNo: payload.lotNo,
+      unit: payload.unit,
+      currentStock: payload.currentStock,
+      reservedStock: payload.reservedStock,
+      minStock: payload.minStock,
+      expiryDate: payload.expiryDate,
+      status: payload.status,
+      supplier: payload.supplier,
+      lastInboundAt: new Date().toISOString(),
+      lastOutboundAt: new Date().toISOString(),
+      updatedBy: 'frontend-demo',
+      updatedAt: new Date().toISOString(),
+    }
+    demoPharmacyInventory = [record, ...inventory]
+    return clone(record) as T
+  }
+  if (s[0] === 'pharmacy' && s[1] === 'inventory' && s[2] && m === 'GET') {
+    const item = ensureDemoPharmacyInventory().find((x) => x.itemId === s[2])
+    if (!item) throw new Error('Pharmacy inventory item not found')
+    return clone(item) as T
+  }
+  if (s[0] === 'pharmacy' && s[1] === 'inventory' && s[2] && m === 'PUT') {
+    const payload = body<PharmacyInventoryUpsertRequest>(options.body)
+    const inventory = ensureDemoPharmacyInventory()
+    const index = inventory.findIndex((item) => item.itemId === s[2])
+    if (index < 0) throw new Error('Pharmacy inventory item not found')
+    const current = inventory[index]
+    if (!current) throw new Error('Pharmacy inventory item not found')
+    const updated: PharmacyInventoryRecord = {
+      itemId: s[2],
+      drugId: payload.drugId,
+      drugName: payload.drugName,
+      warehouse: payload.warehouse,
+      batchNo: payload.batchNo,
+      lotNo: payload.lotNo,
+      unit: payload.unit,
+      currentStock: payload.currentStock,
+      reservedStock: payload.reservedStock,
+      minStock: payload.minStock,
+      expiryDate: payload.expiryDate,
+      status: payload.status,
+      supplier: payload.supplier,
+      lastInboundAt: current.lastInboundAt,
+      lastOutboundAt: current.lastOutboundAt,
+      updatedBy: 'frontend-demo',
+      updatedAt: new Date().toISOString(),
+    }
+    demoPharmacyInventory = inventory.map((item, itemIndex) => (itemIndex === index ? updated : item))
+    return clone(updated) as T
+  }
+  if (s[0] === 'pharmacy' && s[1] === 'inventory' && s[2] && s[3] === 'adjust' && m === 'PATCH') {
+    const payload = body<PharmacyStockAdjustRequest>(options.body)
+    const inventory = ensureDemoPharmacyInventory()
+    const index = inventory.findIndex((item) => item.itemId === s[2])
+    if (index < 0) throw new Error('Pharmacy inventory item not found')
+    const current = inventory[index]
+    if (!current) throw new Error('Pharmacy inventory item not found')
+    const delta = payload.direction === 'inbound' || payload.direction === 'transfer' ? payload.quantity : -payload.quantity
+    const updated: PharmacyInventoryRecord = {
+      ...current,
+      currentStock: Math.max(0, current.currentStock + delta),
+      status: Math.max(0, current.currentStock + delta) <= 0 ? 'out_of_stock' : Math.max(0, current.currentStock + delta) <= current.minStock ? 'low' : current.status,
+      lastInboundAt: payload.direction === 'inbound' ? new Date().toISOString() : current.lastInboundAt,
+      lastOutboundAt: payload.direction === 'inbound' ? current.lastOutboundAt : new Date().toISOString(),
+      updatedBy: payload.operatorName || 'frontend-demo',
+      updatedAt: new Date().toISOString(),
+    }
+    demoPharmacyInventory = inventory.map((item, itemIndex) => (itemIndex === index ? updated : item))
+    return clone(updated) as T
+  }
+  if (u.pathname === '/pharmacy/transactions') {
+    return clone(ensureDemoPharmacyInventory().slice(0, 10).map((item, index) => ({
+      transactionId: `tx-${item.itemId}-${index + 1}`,
+      itemId: item.itemId,
+      drugId: item.drugId,
+      change: index === 0 ? 12 : index === 1 ? -4 : 6,
+      direction: index === 0 ? 'inbound' : index === 1 ? 'outbound' : 'adjust',
+      note: index === 0 ? '补货入库' : index === 1 ? '门诊出库' : '库存盘点调整',
+      operatorUsername: 'demo_pharmacist',
+      operatorName: 'Pharmacist Zhou',
+      createdAt: item.updatedAt,
+    }))) as T
+  }
+  if (u.pathname === '/pharmacy/review-queue') {
+    const queue = demoPatients.flatMap((patient) =>
+      ensureDemoPatientMedications(patient.patientId).map((medication) => ({
+        patientId: patient.patientId,
+        patientName: patient.name,
+        medicationId: medication.medication_id,
+        drugId: medication.drug_id,
+        drugNameSnapshot: medication.drug_name_snapshot,
+        dosage: medication.dosage,
+        frequency: medication.frequency,
+        route: medication.route,
+        reviewStatus: medication.review_status,
+        status: medication.status,
+        prescribedBy: medication.prescribed_by,
+        note: medication.note,
+        createdAt: medication.created_at,
+        updatedAt: medication.updated_at,
+      })),
+    )
+    const statusFilter = (u.searchParams.get('status') ?? '').trim()
+    return clone(statusFilter ? queue.filter((item) => item.reviewStatus === statusFilter) : queue) as T
+  }
+  if (s[0] === 'pharmacy' && s[1] === 'review-queue' && s[2] && s[3] && m === 'PATCH') {
+    const payload = body<PharmacyReviewDecisionRequest>(options.body)
+    const patientId = s[2]
+    const medicationId = s[3]
+    const patient = findPatient(patientId)
+    if (!patient) throw new Error('Patient not found')
+    const records = ensureDemoPatientMedications(patientId)
+    const index = records.findIndex((item) => item.medication_id === medicationId)
+    if (index < 0) throw new Error('Patient medication not found')
+    const current = records[index]
+    if (!current) throw new Error('Patient medication not found')
+    const updated: PatientMedicationRecord = {
+      ...current,
+      review_status: payload.reviewStatus,
+      note: payload.note || current.note,
+      updated_at: new Date().toISOString(),
+    }
+    demoPatientMedications = demoPatientMedications.map((item) => (item.patient_id === patientId && item.medication_id === medicationId ? updated : item))
+    return clone({
+      patientId,
+      patientName: patient.name,
+      medicationId: updated.medication_id,
+      drugId: updated.drug_id,
+      drugNameSnapshot: updated.drug_name_snapshot,
+      dosage: updated.dosage,
+      frequency: updated.frequency,
+      route: updated.route,
+      reviewStatus: updated.review_status,
+      status: updated.status,
+      prescribedBy: updated.prescribed_by,
+      note: updated.note,
+      createdAt: updated.created_at,
+      updatedAt: updated.updated_at,
+    }) as T
+  }
+  if (u.pathname === '/coordination/board') {
+    return { summary: [
+      { label: '协同总数', value: String(ensureDemoCoordinationItems().length), trend: '稳定' },
+      { label: '待处理', value: String(ensureDemoCoordinationItems().filter((item) => item.status === 'open').length), trend: '待跟进' },
+      { label: '处理中', value: String(ensureDemoCoordinationItems().filter((item) => item.status === 'in_progress').length), trend: '推进中' },
+      { label: '阻塞', value: String(ensureDemoCoordinationItems().filter((item) => item.status === 'blocked').length), trend: '重点关注' },
+    ], items: clone(ensureDemoCoordinationItems()) } as T
+  }
+  if (u.pathname === '/coordination/items') {
+    const status = (u.searchParams.get('status') ?? '').trim()
+    const category = (u.searchParams.get('category') ?? '').trim()
+    const keyword = (u.searchParams.get('keyword') ?? '').trim().toLowerCase()
+    const items = ensureDemoCoordinationItems().filter((item) => {
+      if (status && item.status !== status) return false
+      if (category && item.category !== category) return false
+      if (keyword) {
+        const haystack = [item.coordinationId, item.patientId, item.patientName, item.primaryDisease, item.currentStage, item.ownerName, item.summary, item.nextAction].join(' ').toLowerCase()
+        return haystack.includes(keyword)
+      }
+      return true
+    })
+    return clone(items) as T
+  }
+  if (s[0] === 'coordination' && s[1] === 'items' && s[2] && m === 'GET') {
+    const item = ensureDemoCoordinationItems().find((x) => x.coordinationId === s[2])
+    if (!item) throw new Error('Coordination item not found')
+    return clone(item) as T
+  }
+  if (u.pathname === '/coordination/items' && m === 'POST') {
+    const payload = body<CoordinationItemUpsertRequest>(options.body)
+    const item: CoordinationItem = {
+      coordinationId: payload.coordinationId,
+      patientId: payload.patientId,
+      patientName: payload.patientName,
+      primaryDisease: payload.primaryDisease,
+      currentStage: payload.currentStage,
+      riskLevel: payload.riskLevel,
+      category: payload.category,
+      status: payload.status,
+      ownerRole: payload.ownerRole,
+      ownerName: payload.ownerName,
+      nextAction: payload.nextAction,
+      dueDate: payload.dueDate,
+      lastUpdatedAt: new Date().toISOString(),
+      summary: payload.summary,
+      participants: payload.participants,
+      notes: [],
+    }
+    demoCoordinationItems = [item, ...ensureDemoCoordinationItems().filter((x) => x.coordinationId !== item.coordinationId)]
+    return clone(item) as T
+  }
+  if (s[0] === 'coordination' && s[1] === 'items' && s[2] && m === 'PUT') {
+    const payload = body<CoordinationItemUpsertRequest>(options.body)
+    const items = ensureDemoCoordinationItems()
+    const index = items.findIndex((x) => x.coordinationId === s[2])
+    if (index < 0) throw new Error('Coordination item not found')
+    const item: CoordinationItem = {
+      coordinationId: s[2],
+      patientId: payload.patientId,
+      patientName: payload.patientName,
+      primaryDisease: payload.primaryDisease,
+      currentStage: payload.currentStage,
+      riskLevel: payload.riskLevel,
+      category: payload.category,
+      status: payload.status,
+      ownerRole: payload.ownerRole,
+      ownerName: payload.ownerName,
+      nextAction: payload.nextAction,
+      dueDate: payload.dueDate,
+      lastUpdatedAt: new Date().toISOString(),
+      summary: payload.summary,
+      participants: payload.participants,
+      notes: items[index]?.notes ?? [],
+    }
+    demoCoordinationItems = items.map((x, itemIndex) => (itemIndex === index ? item : x))
+    return clone(item) as T
+  }
+  if (s[0] === 'coordination' && s[1] === 'items' && s[2] && s[3] === 'status' && m === 'PATCH') {
+    const payload = body<CoordinationStatusUpdateRequest>(options.body)
+    const items = ensureDemoCoordinationItems()
+    const index = items.findIndex((x) => x.coordinationId === s[2])
+    if (index < 0) throw new Error('Coordination item not found')
+    const current = items[index]
+    if (!current) throw new Error('Coordination item not found')
+    const notes = [...current.notes]
+    if (payload.note) {
+      notes.push({
+        noteId: `note-${current.coordinationId}-${notes.length + 1}`,
+        createdAt: new Date().toISOString(),
+        createdBy: payload.operatorName || payload.operatorUsername || 'system',
+        createdByRole: payload.operatorRole || 'doctor',
+        action: 'status',
+        note: payload.note,
+      })
+    }
+    const item: CoordinationItem = { ...current, status: payload.status, notes, lastUpdatedAt: new Date().toISOString() }
+    demoCoordinationItems = items.map((x, itemIndex) => (itemIndex === index ? item : x))
+    return clone(item) as T
+  }
+  if (s[0] === 'coordination' && s[1] === 'items' && s[2] && s[3] === 'notes' && m === 'POST') {
+    const payload = body<CoordinationNoteCreateRequest>(options.body)
+    const items = ensureDemoCoordinationItems()
+    const index = items.findIndex((x) => x.coordinationId === s[2])
+    if (index < 0) throw new Error('Coordination item not found')
+    const current = items[index]
+    if (!current) throw new Error('Coordination item not found')
+    const note: CoordinationNote = {
+      noteId: `note-${current.coordinationId}-${current.notes.length + 1}`,
+      createdAt: new Date().toISOString(),
+      createdBy: payload.operatorName || payload.operatorUsername || 'system',
+      createdByRole: payload.operatorRole || 'doctor',
+      action: payload.action || 'note',
+      note: payload.note,
+    }
+    const item: CoordinationItem = { ...current, notes: [...current.notes, note], lastUpdatedAt: new Date().toISOString() }
+    demoCoordinationItems = items.map((x, itemIndex) => (itemIndex === index ? item : x))
+    return clone(item) as T
+  }
   if (u.pathname === '/patient' && m === 'POST') {
     const p = body<PatientUpsertPayload>(options.body)
     const next = mk(p.patientId || `PID${1000 + demoPatients.length + 1}`, p.name, Number(p.age), p.primaryDisease, p.currentStage, p.riskLevel, p.lastVisit, p.summary || `${p.primaryDisease} demo archive.`, p.dataSupport)
@@ -1085,6 +1544,51 @@ export async function getMaintenanceOverview(): Promise<MaintenanceOverview> { r
 export async function getGovernanceModules(): Promise<GovernanceModulesResponse> { return request('/governance/modules', { method: 'GET' }) }
 export async function getFollowupWorklist(): Promise<FollowupWorklistResponse> { return request('/worklists/followups', { method: 'GET' }) }
 export async function getFlowBoard(): Promise<FlowBoardResponse> { return request('/worklists/flow-board', { method: 'GET' }) }
+export async function getPharmacyDashboard(): Promise<PharmacyDashboardResponse> { return request('/pharmacy/dashboard', { method: 'GET' }) }
+export async function getPharmacyInventory(params: { keyword?: string; warehouse?: string; status?: PharmacyInventoryStatus; lowStockOnly?: boolean } = {}): Promise<PharmacyInventoryRecord[]> {
+  const query = new URLSearchParams()
+  if (params.keyword) query.set('keyword', params.keyword)
+  if (params.warehouse) query.set('warehouse', params.warehouse)
+  if (params.status) query.set('status', params.status)
+  if (params.lowStockOnly) query.set('low_stock_only', 'true')
+  const path = query.toString() ? `/pharmacy/inventory?${query.toString()}` : '/pharmacy/inventory'
+  return request(path, { method: 'GET' })
+}
+export async function getPharmacyInventoryItem(itemId: string): Promise<PharmacyInventoryRecord> { return request(`/pharmacy/inventory/${itemId}`, { method: 'GET' }) }
+export async function createPharmacyInventoryItem(payload: PharmacyInventoryUpsertRequest): Promise<PharmacyInventoryRecord> { return request('/pharmacy/inventory', { method: 'POST', body: JSON.stringify(payload) }) }
+export async function updatePharmacyInventoryItem(itemId: string, payload: PharmacyInventoryUpsertRequest): Promise<PharmacyInventoryRecord> { return request(`/pharmacy/inventory/${itemId}`, { method: 'PUT', body: JSON.stringify(payload) }) }
+export async function adjustPharmacyInventoryItem(itemId: string, payload: PharmacyStockAdjustRequest): Promise<PharmacyInventoryRecord> { return request(`/pharmacy/inventory/${itemId}/adjust`, { method: 'PATCH', body: JSON.stringify(payload) }) }
+export async function getPharmacyTransactions(limit = 50): Promise<PharmacyTransactionRecord[]> { return request(`/pharmacy/transactions?limit=${encodeURIComponent(String(limit))}`, { method: 'GET' }) }
+export async function getPharmacyReviewQueue(status?: string): Promise<PharmacyReviewOrder[]> {
+  const query = new URLSearchParams()
+  if (status) query.set('status', status)
+  const path = query.toString() ? `/pharmacy/review-queue?${query.toString()}` : '/pharmacy/review-queue'
+  return request(path, { method: 'GET' })
+}
+export async function reviewPharmacyOrder(patientId: string, medicationId: string, payload: PharmacyReviewDecisionRequest): Promise<PharmacyReviewOrder> {
+  return request(`/pharmacy/review-queue/${patientId}/${medicationId}`, { method: 'PATCH', body: JSON.stringify(payload) })
+}
+export async function getCoordinationBoard(params: { status?: CoordinationStatus; category?: CoordinationCategory; keyword?: string } = {}): Promise<CoordinationBoardResponse> {
+  const query = new URLSearchParams()
+  if (params.status) query.set('status', params.status)
+  if (params.category) query.set('category', params.category)
+  if (params.keyword) query.set('keyword', params.keyword)
+  const path = query.toString() ? `/coordination/board?${query.toString()}` : '/coordination/board'
+  return request(path, { method: 'GET' })
+}
+export async function getCoordinationItems(params: { status?: CoordinationStatus; category?: CoordinationCategory; keyword?: string } = {}): Promise<CoordinationItem[]> {
+  const query = new URLSearchParams()
+  if (params.status) query.set('status', params.status)
+  if (params.category) query.set('category', params.category)
+  if (params.keyword) query.set('keyword', params.keyword)
+  const path = query.toString() ? `/coordination/items?${query.toString()}` : '/coordination/items'
+  return request(path, { method: 'GET' })
+}
+export async function getCoordinationItem(coordinationId: string): Promise<CoordinationItem> { return request(`/coordination/items/${coordinationId}`, { method: 'GET' }) }
+export async function createCoordinationItem(payload: CoordinationItemUpsertRequest): Promise<CoordinationItem> { return request('/coordination/items', { method: 'POST', body: JSON.stringify(payload) }) }
+export async function updateCoordinationItem(coordinationId: string, payload: CoordinationItemUpsertRequest): Promise<CoordinationItem> { return request(`/coordination/items/${coordinationId}`, { method: 'PUT', body: JSON.stringify(payload) }) }
+export async function updateCoordinationItemStatus(coordinationId: string, payload: CoordinationStatusUpdateRequest): Promise<CoordinationItem> { return request(`/coordination/items/${coordinationId}/status`, { method: 'PATCH', body: JSON.stringify(payload) }) }
+export async function appendCoordinationNote(coordinationId: string, payload: CoordinationNoteCreateRequest): Promise<CoordinationItem> { return request(`/coordination/items/${coordinationId}/notes`, { method: 'POST', body: JSON.stringify(payload) }) }
 export async function savePatient(payload: PatientUpsertPayload): Promise<PatientCase> { return request('/patient', { method: 'POST', body: JSON.stringify(payload) }) }
 export async function updatePatient(patientId: string, payload: PatientUpsertPayload): Promise<PatientCase> { return request(`/patient/${patientId}`, { method: 'PUT', body: JSON.stringify(payload) }) }
 export async function addPatientEvent(patientId: string, payload: PatientEventPayload): Promise<PatientCase> { return request(`/patient/${patientId}/event`, { method: 'POST', body: JSON.stringify(payload) }) }

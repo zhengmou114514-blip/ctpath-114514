@@ -31,5 +31,5 @@ def health() -> dict:
 
 
 @router.get("/api/model/metrics", response_model=ModelMetricsResponse)
-def model_metrics(_: object = Depends(require_roles("doctor"))) -> ModelMetricsResponse:
+def model_metrics(_: object = Depends(require_roles("admin"))) -> ModelMetricsResponse:
     return get_model_metrics()

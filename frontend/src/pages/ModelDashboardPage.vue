@@ -10,8 +10,6 @@ const router = useRouter()
 const board = computed(() =>
   buildModelBoardSnapshot({
     modelMetrics: workspace.modelMetrics,
-    maintenance: workspace.maintenanceOverview,
-    patientCount: workspace.allPatients.length,
   })
 )
 
@@ -22,7 +20,7 @@ const modelHealth = computed(() => {
   return { label: '模型不可用', type: 'danger' as const }
 })
 
-const loading = computed(() => workspace.loadingModelMetrics || workspace.loadingMaintenance || workspace.loadingGovernance)
+const loading = computed(() => workspace.loadingModelMetrics)
 
 function formatPercent(value: number | null | undefined) {
   if (value === null || value === undefined || Number.isNaN(value)) return '--'
@@ -35,7 +33,7 @@ function formatDateTime(value: string | undefined) {
 }
 
 function handleRefresh() {
-  void workspace.refreshGovernanceWorkspace()
+  void workspace.refreshModelMetrics()
 }
 
 function handleOpenTrainingCenter() {
@@ -50,8 +48,8 @@ function handleOpenOperations() {
 
 onMounted(() => {
   if (!workspace.currentDoctor) return
-  if (!workspace.modelMetrics || !workspace.maintenanceOverview) {
-    void workspace.refreshGovernanceWorkspace()
+  if (!workspace.modelMetrics) {
+    void workspace.refreshModelMetrics()
   }
 })
 </script>
@@ -62,10 +60,10 @@ onMounted(() => {
       <div>
         <p class="eyebrow">模型中心</p>
         <h1>模型看板</h1>
-        <p>这里只承接模型治理和监控信息，不展示当前患者详情。模型运营台和训练中心通过独立入口查看。</p>
+        <p>这里仅承接模型治理与监控信息，不展示当前患者详情、治理缺陷列表或训练中心内容。训练和调试通过独立入口进入。</p>
       </div>
       <div class="header-actions">
-        <button class="secondary-button" type="button" @click="handleOpenOperations">进入模型运营台</button>
+        <button class="secondary-button" type="button" @click="handleOpenOperations">进入模型调试台</button>
         <button class="secondary-button" type="button" @click="handleOpenTrainingCenter">进入训练中心</button>
         <button class="primary-button" type="button" :disabled="loading" @click="handleRefresh">刷新看板</button>
       </div>
@@ -88,9 +86,9 @@ onMounted(() => {
         <small>运行模式：{{ workspace.health?.mode ?? '--' }}</small>
       </article>
       <article class="clinical-card metric-card">
-        <span>数据覆盖率</span>
+        <span>数据集覆盖</span>
         <strong>{{ formatPercent(board.datasetCoverage) }}</strong>
-        <small>按训练数据集规模估算</small>
+        <small>基于训练中心导入的数据集统计</small>
       </article>
     </section>
 
@@ -114,10 +112,10 @@ onMounted(() => {
       </article>
 
       <article class="clinical-card performance-card">
-        <p class="eyebrow">运行概况</p>
+        <p class="eyebrow">运行态势</p>
         <div class="performance-list">
           <div>
-            <span>近 7 天调用量</span>
+            <span>最近 7 天调用量</span>
             <strong>{{ board.recentInferenceCalls ?? '--' }}</strong>
           </div>
           <div>
@@ -125,8 +123,8 @@ onMounted(() => {
             <strong>{{ formatPercent(board.fallbackRatio) }}</strong>
           </div>
           <div>
-            <span>患者规模</span>
-            <strong>{{ workspace.allPatients.length }}</strong>
+            <span>快照来源</span>
+            <strong>{{ board.source }}</strong>
           </div>
         </div>
       </article>

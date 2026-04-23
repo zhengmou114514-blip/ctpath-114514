@@ -27,7 +27,7 @@ def load_medical_dataset() -> Dict[str, PatientCase]:
 
     for dataset_file in dataset_files:
         if os.path.exists(dataset_file):
-            print(f"正在加载数据集: {dataset_file}")
+            print(f"[dataset] loading: {dataset_file}")
             try:
                 with open(dataset_file, 'r', encoding='utf-8') as f:
                     dataset = json.load(f)
@@ -78,15 +78,15 @@ def load_medical_dataset() -> Dict[str, PatientCase]:
 
                     patients[patient.patientId] = patient
 
-                print(f"✓ 成功加载 {len(patients)} 个患者")
+                print(f"[dataset] loaded {len(patients)} patients")
                 break  # 成功加载后退出循环
 
             except Exception as e:
-                print(f"✗ 加载失败: {e}")
+                print(f"[dataset] load failed: {e!r}")
                 continue
 
     if not patients:
-        print("未找到数据集文件，使用默认数据")
+        print("[dataset] no dataset file found, using default demo data")
 
     return patients
 

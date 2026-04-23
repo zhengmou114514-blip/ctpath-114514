@@ -18,6 +18,7 @@ body {
   margin: 0;
   background: var(--model-bg);
   color: var(--model-text);
+  font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
 }
 
 .model-shell {
@@ -98,6 +99,11 @@ body {
   width: min(560px, 100%);
 }
 
+.login-lead,
+.login-hint {
+  color: var(--model-muted);
+}
+
 .login-form {
   display: grid;
   gap: 14px;
@@ -134,6 +140,10 @@ body {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
+}
+
+.compact-grid {
+  margin-bottom: 20px;
 }
 
 .metric-card {
@@ -179,6 +189,10 @@ body {
 .record-item small {
   margin: 6px 0 0;
   color: var(--model-muted);
+}
+
+.record-item strong + small {
+  display: block;
 }
 
 .stitch-sidenav {

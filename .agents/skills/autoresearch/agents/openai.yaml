@@ -1,0 +1,3 @@
+display_name: Autoresearch
+short_description: Run the Karpathy-style autoresearch loop inside this CTpath workspace
+default_prompt: Use the autoresearch skill to plan and run an iterative research loop in this project.

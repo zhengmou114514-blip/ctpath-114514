@@ -1,9 +1,13 @@
 export type AppSection =
   | 'doctor'
   | 'archive'
+  | 'emr'
+  | 'pharmacy'
+  | 'coordination'
   | 'drug-management'
   | 'drug-permission-management'
   | 'tasks'
+  | 'role-workspaces'
   | 'model-operations'
   | 'training-center'
   | 'governance'

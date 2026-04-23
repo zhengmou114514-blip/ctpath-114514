@@ -26,6 +26,33 @@ const emit = defineEmits<{
 
 const patient = computed(() => props.selectedPatient)
 
+const archiveAttachmentTypes = [
+  {
+    label: '患者照片',
+    hint: '用于身份核对与就诊识别',
+  },
+  {
+    label: '身份证照片',
+    hint: '用于档案建档与实名认证',
+  },
+  {
+    label: '医保卡照片',
+    hint: '用于医保信息留存与核验',
+  },
+  {
+    label: '转诊单',
+    hint: '用于转诊来源与流程留痕',
+  },
+  {
+    label: '检查报告',
+    hint: '用于电子档案附件归档',
+  },
+  {
+    label: '知情同意书',
+    hint: '用于治疗与资料授权确认',
+  },
+]
+
 const timeline = computed(() => {
   if (props.timelineItems.length) return props.timelineItems
   return patient.value?.timeline ?? []
@@ -146,17 +173,17 @@ function riskClass(level: string) {
           <p><span>电话</span><strong>{{ patient?.emergencyContactPhone || patientForm.emergencyContactPhone || '--' }}</strong></p>
         </div>
 
-        <h3>照片与证件附件</h3>
+        <h3>电子档案附件类型总览</h3>
         <div class="attachment-grid">
-          <div class="attach-tile">
-            <span>患者照片</span>
-            <img v-if="patient?.avatarUrl" :src="patient.avatarUrl" alt="患者照片" />
-            <p v-else>待上传</p>
-          </div>
-          <div class="attach-tile"><span>身份证附件</span><p>待上传</p></div>
-          <div class="attach-tile"><span>医保卡附件</span><p>待上传</p></div>
-          <div class="attach-tile"><span>转诊/检查单附件</span><p>待上传</p></div>
+          <article v-for="item in archiveAttachmentTypes" :key="item.label" class="attach-tile">
+            <span>{{ item.label }}</span>
+            <strong>归档附件</strong>
+            <p>{{ item.hint }}</p>
+          </article>
         </div>
+        <p class="attachment-hint">
+          真实上传、预览与记录查询统一在下方附件区完成，支持患者照片、证件、单据和知情同意书的电子归档。
+        </p>
         <PatientAttachmentPanel
           :patient-id="patient?.patientId || patientForm.patientId"
           title="档案附件区（患者照片/证件/单据）"
@@ -398,22 +425,41 @@ function riskClass(level: string) {
 
 .attachment-grid {
   display: grid;
-  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .attach-tile {
-  border: 1px dashed var(--border-strong);
-  border-radius: 8px;
-  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  background: #fbfdff;
   display: grid;
   gap: 6px;
 }
 
-.attach-tile img {
-  width: 100%;
-  max-height: 120px;
-  object-fit: cover;
-  border-radius: 6px;
+.attach-tile span {
+  color: var(--ink-muted);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.attach-tile strong {
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.attach-tile p,
+.attachment-hint {
+  margin: 0;
+  color: var(--ink-muted);
+  line-height: 1.6;
+  font-size: 13px;
+}
+
+.attachment-hint {
+  padding: 2px 2px 0;
 }
 
 .timeline-list,
@@ -498,6 +544,10 @@ function riskClass(level: string) {
   }
 
   .bottom-panels {
+    grid-template-columns: 1fr;
+  }
+
+  .attachment-grid {
     grid-template-columns: 1fr;
   }
 }

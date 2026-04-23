@@ -131,6 +131,14 @@ DOCTORS = [
         role="nurse",
     ),
     DoctorRecord(
+        username="demo_pharmacist",
+        password_hash=hash_password("demo123456"),
+        name="é‘½îˆšæ§å‘æ—‚ãšç’ï¹€å½¿",
+        title="ç¼å­˜å§¢é‘½îˆšæ§",
+        department="è¯æˆ¿è¯åº“",
+        role="pharmacist",
+    ),
+    DoctorRecord(
         username="demo_archivist",
         password_hash=hash_password("demo123456"),
         name="档案管理员演示账号",

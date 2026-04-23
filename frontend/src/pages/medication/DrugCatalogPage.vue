@@ -23,6 +23,7 @@ const selectedDrug = computed(() => drugs.value.find((item) => item.drug_id === 
 const isEditing = computed(() => Boolean(selectedDrugId.value))
 const activeCount = computed(() => drugs.value.filter((item) => item.status === 'active').length)
 const controlledCount = computed(() => drugs.value.filter((item) => item.is_controlled).length)
+const prescriptionCount = computed(() => drugs.value.filter((item) => item.is_prescription).length)
 
 const filteredDrugs = computed(() => {
   const keywordValue = keyword.value.trim().toLowerCase()
@@ -106,7 +107,7 @@ async function loadDrugs(selectDrugId = selectedDrugId.value) {
     const next = drugs.value.find((item) => item.drug_id === selectDrugId)
     if (next) fillForm(next)
   } catch (error) {
-    errorMessage.value = error instanceof Error ? error.message : 'Failed to load medication catalog.'
+    errorMessage.value = error instanceof Error ? error.message : '药品目录加载失败。'
   } finally {
     loading.value = false
   }
@@ -120,16 +121,16 @@ async function saveDrug() {
     const payload = { ...form.value }
     if (selectedDrugId.value) {
       const updated = await updateDrugCatalogItem(selectedDrugId.value, payload)
-      successMessage.value = 'Medication updated.'
+      successMessage.value = '药品目录已更新。'
       await loadDrugs(updated.drug_id)
     } else {
       const created = await createDrugCatalogItem(payload)
-      successMessage.value = 'Medication created.'
+      successMessage.value = '药品目录已新增。'
       await loadDrugs(created.drug_id)
     }
     editorVisible.value = false
   } catch (error) {
-    errorMessage.value = error instanceof Error ? error.message : 'Failed to save medication.'
+    errorMessage.value = error instanceof Error ? error.message : '药品保存失败。'
   } finally {
     saving.value = false
   }
@@ -144,20 +145,16 @@ function clearFilters() {
 }
 
 function statusText(status: DrugCatalogStatus): string {
-  return status === 'active' ? 'Active' : 'Inactive'
+  return status === 'active' ? '启用' : '停用'
 }
 
 function yesNo(value: boolean): string {
-  return value ? 'Yes' : 'No'
+  return value ? '是' : '否'
 }
 
 function formatTime(value: string): string {
   if (!value) return '--'
   return value.replace('T', ' ').slice(0, 16)
-}
-
-function drugRowClass({ row }: { row: DrugCatalogRecord }) {
-  return row.drug_id === selectedDrugId.value ? 'selected-row' : ''
 }
 
 onMounted(() => {
@@ -169,255 +166,402 @@ onMounted(() => {
   <section class="workspace-page drug-catalog-page">
     <header class="workstation-page-header">
       <div>
-        <p class="eyebrow">Medication management</p>
-        <h1>Medication Catalog</h1>
-        <p>Maintain the chronic-care medication dictionary, prescription flags, controlled-drug flags, and catalog status.</p>
+        <p class="eyebrow">药品目录 / 基础字典</p>
+        <h1>药品目录管理</h1>
+        <p>维护慢病场景下的药品字典、剂型规格、处方属性、管制属性和启停状态，为当前用药与权限管理提供基础数据。</p>
       </div>
       <div class="header-actions">
-        <el-button @click="clearFilters">Reset filters</el-button>
-        <el-button type="primary" @click="resetEditor">New medication</el-button>
+        <button class="secondary-button" type="button" @click="clearFilters">重置筛选</button>
+        <button class="primary-button" type="button" @click="resetEditor">新增药品</button>
       </div>
     </header>
 
-    <section class="metric-grid three">
+    <section class="metric-grid four">
       <article class="metric-card">
-        <span>Total medications</span>
+        <span>药品总数</span>
         <strong>{{ drugs.length }}</strong>
       </article>
       <article class="metric-card">
-        <span>Active</span>
+        <span>启用药品</span>
         <strong>{{ activeCount }}</strong>
       </article>
       <article class="metric-card">
-        <span>Controlled</span>
+        <span>处方药</span>
+        <strong>{{ prescriptionCount }}</strong>
+      </article>
+      <article class="metric-card">
+        <span>管制药</span>
         <strong>{{ controlledCount }}</strong>
       </article>
     </section>
 
-    <el-alert v-if="errorMessage" :title="errorMessage" type="error" show-icon :closable="false" />
-    <el-alert v-else-if="successMessage" :title="successMessage" type="success" show-icon :closable="false" />
+    <div v-if="errorMessage" class="inline-alert error">{{ errorMessage }}</div>
+    <div v-else-if="successMessage" class="inline-alert success">{{ successMessage }}</div>
 
-    <el-card shadow="never" class="module-card">
-      <template #header>
+    <section class="drug-layout">
+      <article class="clinical-card catalog-table-card">
         <div class="section-header">
           <div>
-            <h3>Catalog Table</h3>
-            <span>{{ filteredDrugs.length }} matching records</span>
+            <h2>目录筛选与列表</h2>
+            <p>共命中 {{ filteredDrugs.length }} 条药品记录，单击任一行可进入编辑。</p>
           </div>
-          <el-button :loading="loading" @click="loadDrugs()">Refresh</el-button>
+          <button class="secondary-button" type="button" :disabled="loading" @click="loadDrugs()">刷新列表</button>
         </div>
-      </template>
 
-      <el-form label-position="top" class="filter-form">
-        <el-row :gutter="12">
-          <el-col :xs="24" :md="8">
-            <el-form-item label="Keyword">
-              <el-input v-model="keyword" clearable placeholder="Drug ID / generic name / indication" />
-            </el-form-item>
-          </el-col>
-          <el-col :xs="24" :md="8">
-            <el-form-item label="Status">
-              <el-select v-model="statusFilter" class="full-width">
-                <el-option label="All" value="all" />
-                <el-option label="Active" value="active" />
-                <el-option label="Inactive" value="inactive" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :xs="24" :md="8">
-            <el-form-item label="Dosage form">
-              <el-input v-model="dosageFormFilter" clearable placeholder="tablet / capsule / injection" />
-            </el-form-item>
-          </el-col>
-          <el-col :xs="24" :md="8">
-            <el-form-item label="Prescription">
-              <el-select v-model="prescriptionFilter" class="full-width">
-                <el-option label="All" value="all" />
-                <el-option label="Prescription only" value="yes" />
-                <el-option label="Non-prescription" value="no" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :xs="24" :md="8">
-            <el-form-item label="Controlled">
-              <el-select v-model="controlledFilter" class="full-width">
-                <el-option label="All" value="all" />
-                <el-option label="Controlled only" value="yes" />
-                <el-option label="Non-controlled" value="no" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :xs="24" :md="8" class="filter-actions">
-            <el-button @click="clearFilters">Clear</el-button>
-          </el-col>
-        </el-row>
-      </el-form>
-
-      <el-table
-        v-loading="loading"
-        :data="filteredDrugs"
-        :row-class-name="drugRowClass"
-        border
-        stripe
-        empty-text="No medication records."
-        @row-click="openDrug"
-      >
-        <el-table-column prop="drug_id" label="Drug ID" min-width="150" />
-        <el-table-column label="Medication" min-width="240">
-          <template #default="{ row }">
-            <strong>{{ row.generic_name }}</strong>
-            <p class="table-subtitle">{{ row.brand_name || 'No brand' }} / {{ row.indication }}</p>
-          </template>
-        </el-table-column>
-        <el-table-column label="Form / Spec" min-width="170">
-          <template #default="{ row }">{{ row.dosage_form }} / {{ row.specification }}</template>
-        </el-table-column>
-        <el-table-column label="Flags" min-width="180">
-          <template #default="{ row }">
-            <el-tag v-if="row.is_prescription" size="small">Prescription</el-tag>
-            <el-tag v-if="row.is_controlled" size="small" type="warning" class="tag-gap">Controlled</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="Status" width="110">
-          <template #default="{ row }">
-            <el-tag :type="row.status === 'active' ? 'success' : 'danger'" effect="light">
-              {{ statusText(row.status) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
-
-    <el-drawer v-model="editorVisible" :title="isEditing ? 'Medication Detail / Edit' : 'New Medication'" size="520px">
-      <div class="drawer-body">
-        <el-alert
-          v-if="form.is_controlled"
-          title="Controlled medication requires matching role permissions before use in clinical workflows."
-          type="warning"
-          show-icon
-          :closable="false"
-        />
-
-        <el-descriptions v-if="selectedDrug" :column="2" border>
-          <el-descriptions-item label="Updated at">{{ formatTime(selectedDrug.updated_at) }}</el-descriptions-item>
-          <el-descriptions-item label="Updated by">{{ selectedDrug.updated_by || '--' }}</el-descriptions-item>
-          <el-descriptions-item label="Prescription">{{ yesNo(selectedDrug.is_prescription) }}</el-descriptions-item>
-          <el-descriptions-item label="Controlled">{{ yesNo(selectedDrug.is_controlled) }}</el-descriptions-item>
-        </el-descriptions>
-
-        <el-form label-position="top" class="editor-form">
-          <el-row :gutter="12">
-            <el-col :xs="24" :md="12">
-              <el-form-item label="Drug ID"><el-input v-model="form.drug_id" :disabled="isEditing" placeholder="drug-metformin" /></el-form-item>
-            </el-col>
-            <el-col :xs="24" :md="12">
-              <el-form-item label="Generic name"><el-input v-model="form.generic_name" /></el-form-item>
-            </el-col>
-            <el-col :xs="24" :md="12">
-              <el-form-item label="Brand name"><el-input v-model="form.brand_name" /></el-form-item>
-            </el-col>
-            <el-col :xs="24" :md="12">
-              <el-form-item label="Dosage form"><el-input v-model="form.dosage_form" /></el-form-item>
-            </el-col>
-            <el-col :xs="24" :md="12">
-              <el-form-item label="Specification"><el-input v-model="form.specification" /></el-form-item>
-            </el-col>
-            <el-col :xs="24" :md="12">
-              <el-form-item label="Unit"><el-input v-model="form.unit" /></el-form-item>
-            </el-col>
-            <el-col :xs="24">
-              <el-form-item label="Indication"><el-input v-model="form.indication" /></el-form-item>
-            </el-col>
-            <el-col :xs="24" :md="8">
-              <el-form-item label="Status">
-                <el-select v-model="form.status" class="full-width">
-                  <el-option label="Active" value="active" />
-                  <el-option label="Inactive" value="inactive" />
-                </el-select>
-              </el-form-item>
-            </el-col>
-            <el-col :xs="24" :md="8">
-              <el-form-item label="Prescription"><el-switch v-model="form.is_prescription" active-text="Yes" inactive-text="No" /></el-form-item>
-            </el-col>
-            <el-col :xs="24" :md="8">
-              <el-form-item label="Controlled"><el-switch v-model="form.is_controlled" active-text="Yes" inactive-text="No" /></el-form-item>
-            </el-col>
-          </el-row>
-        </el-form>
-
-        <div class="editor-actions">
-          <el-button @click="editorVisible = false">Cancel</el-button>
-          <el-button type="primary" :loading="saving" @click="saveDrug">
-            {{ isEditing ? 'Save changes' : 'Create medication' }}
-          </el-button>
+        <div class="filter-grid">
+          <label class="field">
+            <span>关键词</span>
+            <input v-model="keyword" type="text" placeholder="药品编号 / 通用名 / 适应症" />
+          </label>
+          <label class="field">
+            <span>状态</span>
+            <select v-model="statusFilter">
+              <option value="all">全部</option>
+              <option value="active">启用</option>
+              <option value="inactive">停用</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>剂型</span>
+            <input v-model="dosageFormFilter" type="text" placeholder="tablet / capsule / injection" />
+          </label>
+          <label class="field">
+            <span>处方药</span>
+            <select v-model="prescriptionFilter">
+              <option value="all">全部</option>
+              <option value="yes">处方药</option>
+              <option value="no">非处方药</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>管制药</span>
+            <select v-model="controlledFilter">
+              <option value="all">全部</option>
+              <option value="yes">仅管制药</option>
+              <option value="no">非管制药</option>
+            </select>
+          </label>
         </div>
-      </div>
-    </el-drawer>
+
+        <div v-if="!filteredDrugs.length && !loading" class="empty-state-card compact">
+          <h3>暂无符合条件的药品</h3>
+          <p>可以调整筛选条件，或新增一条药品目录记录。</p>
+        </div>
+
+        <div v-else class="catalog-table">
+          <div class="catalog-head">
+            <span>药品</span>
+            <span>剂型 / 规格</span>
+            <span>适应症</span>
+            <span>属性</span>
+            <span>状态</span>
+          </div>
+          <button
+            v-for="drug in filteredDrugs"
+            :key="drug.drug_id"
+            class="catalog-row"
+            :class="{ selected: drug.drug_id === selectedDrugId }"
+            type="button"
+            @click="openDrug(drug)"
+          >
+            <div class="catalog-cell">
+              <strong>{{ drug.generic_name }}</strong>
+              <span>{{ drug.brand_name || '无商品名' }} / {{ drug.drug_id }}</span>
+            </div>
+            <div class="catalog-cell">
+              <strong>{{ drug.dosage_form }}</strong>
+              <span>{{ drug.specification }} / {{ drug.unit }}</span>
+            </div>
+            <div class="catalog-cell">
+              <strong>{{ drug.indication || '未填写' }}</strong>
+              <span>更新于 {{ formatTime(drug.updated_at) }}</span>
+            </div>
+            <div class="catalog-cell tags">
+              <span class="tag">{{ drug.is_prescription ? '处方药' : '非处方药' }}</span>
+              <span class="tag warning" v-if="drug.is_controlled">管制药</span>
+            </div>
+            <div class="catalog-cell">
+              <span class="status-pill" :class="drug.status === 'active' ? 'success' : 'muted'">
+                {{ statusText(drug.status) }}
+              </span>
+            </div>
+          </button>
+        </div>
+      </article>
+
+      <aside class="clinical-card catalog-editor-card">
+        <div class="section-header">
+          <div>
+            <h2>{{ isEditing ? '药品详情编辑' : '新增药品目录' }}</h2>
+            <p>维护药品目录的最小必要字段，不扩展到库存或收费流程。</p>
+          </div>
+        </div>
+
+        <div v-if="selectedDrug" class="editor-info-grid">
+          <div class="info-item">
+            <span>最近更新时间</span>
+            <strong>{{ formatTime(selectedDrug.updated_at) }}</strong>
+          </div>
+          <div class="info-item">
+            <span>更新人</span>
+            <strong>{{ selectedDrug.updated_by || '--' }}</strong>
+          </div>
+          <div class="info-item">
+            <span>处方药</span>
+            <strong>{{ yesNo(selectedDrug.is_prescription) }}</strong>
+          </div>
+          <div class="info-item">
+            <span>管制药</span>
+            <strong>{{ yesNo(selectedDrug.is_controlled) }}</strong>
+          </div>
+        </div>
+
+        <div class="editor-grid">
+          <label class="field">
+            <span>药品编号</span>
+            <input v-model="form.drug_id" :disabled="isEditing" type="text" placeholder="drug-metformin" />
+          </label>
+          <label class="field">
+            <span>通用名</span>
+            <input v-model="form.generic_name" type="text" />
+          </label>
+          <label class="field">
+            <span>商品名</span>
+            <input v-model="form.brand_name" type="text" />
+          </label>
+          <label class="field">
+            <span>剂型</span>
+            <input v-model="form.dosage_form" type="text" />
+          </label>
+          <label class="field">
+            <span>规格</span>
+            <input v-model="form.specification" type="text" />
+          </label>
+          <label class="field">
+            <span>单位</span>
+            <input v-model="form.unit" type="text" />
+          </label>
+          <label class="field full-span">
+            <span>适应症</span>
+            <input v-model="form.indication" type="text" />
+          </label>
+          <label class="field">
+            <span>目录状态</span>
+            <select v-model="form.status">
+              <option value="active">启用</option>
+              <option value="inactive">停用</option>
+            </select>
+          </label>
+          <label class="field toggle-field">
+            <span>处方药</span>
+            <input v-model="form.is_prescription" type="checkbox" />
+          </label>
+          <label class="field toggle-field">
+            <span>管制药</span>
+            <input v-model="form.is_controlled" type="checkbox" />
+          </label>
+        </div>
+
+        <div class="form-actions">
+          <button class="secondary-button" type="button" @click="resetEditor">清空表单</button>
+          <button class="primary-button" type="button" :disabled="saving" @click="saveDrug">
+            {{ saving ? '保存中...' : isEditing ? '保存修改' : '创建药品' }}
+          </button>
+        </div>
+      </aside>
+    </section>
   </section>
 </template>
 
 <style scoped>
 .drug-catalog-page,
-.drawer-body {
+.drug-layout,
+.filter-grid,
+.catalog-table,
+.editor-grid,
+.editor-info-grid {
   display: grid;
-  gap: 24px;
+  gap: 22px;
 }
 
-.module-card {
-  border-radius: 8px;
+.drug-layout {
+  grid-template-columns: minmax(0, 1.32fr) minmax(360px, 0.92fr);
+  align-items: start;
 }
 
-.section-header,
+.catalog-table-card,
+.catalog-editor-card {
+  display: grid;
+  gap: 18px;
+}
+
+.catalog-table-card {
+  min-width: 0;
+}
+
+.catalog-editor-card {
+  position: sticky;
+  top: 24px;
+}
+
 .header-actions,
-.editor-actions {
+.section-header,
+.form-actions {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
-.section-header h3,
-.section-header span,
-.table-subtitle {
-  margin: 0;
+.filter-grid,
+.editor-grid,
+.editor-info-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.section-header span,
-.table-subtitle {
-  color: var(--ws-text-muted);
-  font-size: 12px;
+.field {
+  display: grid;
+  gap: 8px;
 }
 
-.filter-form,
-.editor-form {
-  margin-top: 14px;
+.field.full-span {
+  grid-column: 1 / -1;
 }
 
-.full-width {
+.field span {
+  color: #3f4848;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.field input,
+.field select {
   width: 100%;
+  min-height: 48px;
+  border: 1px solid #d5dde0;
+  border-radius: 14px;
+  background: #fff;
+  padding: 0 14px;
+  font: inherit;
+  color: #181c1e;
 }
 
-.filter-actions {
+.toggle-field input {
+  width: 20px;
+  min-height: 20px;
+  padding: 0;
+}
+
+.catalog-head,
+.catalog-row {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 1fr 0.9fr 0.6fr;
+  gap: 12px;
+  align-items: center;
+}
+
+.catalog-head {
+  color: #61737b;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.catalog-row {
+  border: 1px solid rgba(205, 214, 218, 0.9);
+  border-radius: 16px;
+  background: #fff;
+  padding: 16px;
+  text-align: left;
+}
+
+.catalog-row.selected {
+  border-color: rgba(0, 92, 97, 0.35);
+  box-shadow: 0 0 0 2px rgba(0, 92, 97, 0.08);
+}
+
+.catalog-cell {
+  display: grid;
+  gap: 6px;
+}
+
+.catalog-cell span {
+  color: #61737b;
+}
+
+.catalog-cell.tags {
   display: flex;
-  align-items: flex-end;
+  flex-wrap: wrap;
 }
 
-.tag-gap {
-  margin-left: 6px;
+.tag,
+.status-pill {
+  display: inline-flex;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: rgba(235, 238, 239, 0.92);
+  color: #31454c;
+  font-size: 12px;
+  font-weight: 700;
 }
 
-.editor-actions {
-  justify-content: flex-end;
+.tag.warning {
+  background: rgba(255, 236, 226, 0.9);
 }
 
-:deep(.selected-row) {
-  --el-table-tr-bg-color: #eff6ff;
+.status-pill.success {
+  background: rgba(237, 247, 238, 0.95);
 }
 
-@media (max-width: 720px) {
-  .section-header,
-  .header-actions {
-    display: grid;
+.status-pill.muted {
+  background: rgba(241, 244, 245, 0.92);
+}
+
+.info-item {
+  display: grid;
+  gap: 6px;
+  border-radius: 14px;
+  background: rgba(241, 244, 245, 0.92);
+  padding: 14px;
+}
+
+.info-item span {
+  color: #61737b;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.inline-alert {
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+
+.inline-alert.error {
+  background: rgba(255, 218, 214, 0.75);
+  color: #8c1d18;
+}
+
+.inline-alert.success {
+  background: rgba(237, 247, 238, 0.9);
+  color: #1f6d33;
+}
+
+@media (max-width: 1180px) {
+  .drug-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .filter-grid,
+  .editor-grid,
+  .editor-info-grid,
+  .catalog-head,
+  .catalog-row {
+    grid-template-columns: 1fr;
   }
 }
 </style>

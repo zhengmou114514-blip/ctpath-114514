@@ -250,8 +250,187 @@ class DrugPermissionUpsertRequest(BaseModel):
     allow_controlled_drug: bool = False
 
 
+PharmacyInventoryStatus = Literal["active", "low", "out_of_stock", "expired", "inactive"]
+PharmacyTransactionType = Literal["inbound", "outbound", "transfer", "adjust", "discard"]
 PatientMedicationStatus = Literal["active", "paused", "stopped"]
 PatientMedicationReviewStatus = Literal["pending", "approved", "rejected", "not_required"]
+
+
+class PharmacyInventoryRecord(BaseModel):
+    itemId: str
+    drugId: str
+    drugName: str
+    warehouse: str
+    batchNo: str
+    lotNo: str
+    unit: str
+    currentStock: int
+    reservedStock: int
+    minStock: int
+    expiryDate: str
+    status: PharmacyInventoryStatus = "active"
+    supplier: str = ""
+    lastInboundAt: str
+    lastOutboundAt: str
+    updatedBy: str = ""
+    updatedAt: str
+
+
+class PharmacyInventoryUpsertRequest(BaseModel):
+    itemId: str = Field(min_length=1)
+    drugId: str = Field(min_length=1)
+    drugName: str = Field(min_length=1)
+    warehouse: str = Field(min_length=1)
+    batchNo: str = Field(min_length=1)
+    lotNo: str = Field(min_length=1)
+    unit: str = Field(min_length=1)
+    currentStock: int = Field(default=0, ge=0)
+    reservedStock: int = Field(default=0, ge=0)
+    minStock: int = Field(default=0, ge=0)
+    expiryDate: str = Field(min_length=1)
+    status: PharmacyInventoryStatus = "active"
+    supplier: str = ""
+
+
+class PharmacyStockAdjustRequest(BaseModel):
+    quantity: int = Field(gt=0)
+    direction: PharmacyTransactionType
+    note: str = ""
+    operatorUsername: Optional[str] = None
+    operatorName: Optional[str] = None
+
+
+class PharmacyReviewDecisionRequest(BaseModel):
+    reviewStatus: PatientMedicationReviewStatus = "approved"
+    note: str = ""
+    operatorUsername: Optional[str] = None
+    operatorName: Optional[str] = None
+
+
+class PharmacyTransactionRecord(BaseModel):
+    transactionId: str
+    itemId: str
+    drugId: str
+    change: int
+    direction: PharmacyTransactionType
+    note: str = ""
+    operatorUsername: Optional[str] = None
+    operatorName: Optional[str] = None
+    createdAt: str
+
+
+class PharmacyReviewOrder(BaseModel):
+    patientId: str
+    patientName: str
+    medicationId: str
+    drugId: str
+    drugNameSnapshot: str
+    dosage: str
+    frequency: str
+    route: str
+    reviewStatus: PatientMedicationReviewStatus
+    status: PatientMedicationStatus
+    prescribedBy: str
+    note: str = ""
+    createdAt: str
+    updatedAt: str
+
+
+class PharmacySummaryItem(BaseModel):
+    label: str
+    value: str
+    trend: str
+
+
+class PharmacyDashboardResponse(BaseModel):
+    summary: List[PharmacySummaryItem] = Field(default_factory=list)
+    inventory: List[PharmacyInventoryRecord] = Field(default_factory=list)
+    reviewQueue: List[PharmacyReviewOrder] = Field(default_factory=list)
+    transactions: List[PharmacyTransactionRecord] = Field(default_factory=list)
+
+
+CoordinationStatus = Literal["open", "in_progress", "blocked", "done", "closed"]
+CoordinationCategory = Literal["handoff", "medication_review", "followup", "referral", "family_contact", "case_review"]
+CoordinationParticipantRole = Literal["doctor", "nurse", "pharmacist", "archivist", "admin"]
+
+
+class CoordinationParticipant(BaseModel):
+    role: CoordinationParticipantRole
+    name: str
+    relation: str = ""
+    phone: str = ""
+
+
+class CoordinationNote(BaseModel):
+    noteId: str
+    createdAt: str
+    createdBy: str
+    createdByRole: CoordinationParticipantRole
+    action: str = "note"
+    note: str
+
+
+class CoordinationItem(BaseModel):
+    coordinationId: str
+    patientId: str
+    patientName: str
+    primaryDisease: str
+    currentStage: str
+    riskLevel: str
+    category: CoordinationCategory
+    status: CoordinationStatus
+    ownerRole: CoordinationParticipantRole
+    ownerName: str
+    nextAction: str
+    dueDate: str
+    lastUpdatedAt: str
+    summary: str
+    participants: List[CoordinationParticipant] = Field(default_factory=list)
+    notes: List[CoordinationNote] = Field(default_factory=list)
+
+
+class CoordinationItemUpsertRequest(BaseModel):
+    coordinationId: str = Field(min_length=1)
+    patientId: str = Field(min_length=1)
+    patientName: str = Field(min_length=1)
+    primaryDisease: str = Field(min_length=1)
+    currentStage: str = Field(min_length=1)
+    riskLevel: str = Field(min_length=1)
+    category: CoordinationCategory
+    status: CoordinationStatus = "open"
+    ownerRole: CoordinationParticipantRole = "doctor"
+    ownerName: str = Field(min_length=1)
+    nextAction: str = Field(min_length=1)
+    dueDate: str = Field(min_length=1)
+    summary: str = ""
+    participants: List[CoordinationParticipant] = Field(default_factory=list)
+
+
+class CoordinationNoteCreateRequest(BaseModel):
+    action: str = "note"
+    note: str = Field(min_length=1)
+    operatorUsername: Optional[str] = None
+    operatorName: Optional[str] = None
+    operatorRole: CoordinationParticipantRole = "doctor"
+
+
+class CoordinationStatusUpdateRequest(BaseModel):
+    status: CoordinationStatus
+    note: str = ""
+    operatorUsername: Optional[str] = None
+    operatorName: Optional[str] = None
+    operatorRole: CoordinationParticipantRole = "doctor"
+
+
+class CoordinationSummaryItem(BaseModel):
+    label: str
+    value: str
+    trend: str
+
+
+class CoordinationBoardResponse(BaseModel):
+    summary: List[CoordinationSummaryItem] = Field(default_factory=list)
+    items: List[CoordinationItem] = Field(default_factory=list)
 
 
 class PatientMedicationRecord(BaseModel):

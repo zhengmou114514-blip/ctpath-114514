@@ -10,7 +10,7 @@
     "dev:model": "set CTPATH_APP_TARGET=model && vite --configLoader native -c vite.config.mjs",
     "build:model": "set CTPATH_APP_TARGET=model && vite build --configLoader native -c vite.config.mjs",
     "preview:model": "set CTPATH_APP_TARGET=model && vite preview --configLoader native -c vite.config.mjs",
-    "test": "vitest run --config vitest.config.ts --configLoader runner"
+    "test": "vitest run --configLoader native --config vitest.config.mjs"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.2",

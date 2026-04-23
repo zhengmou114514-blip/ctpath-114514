@@ -109,7 +109,7 @@ function createPredictionResult(): PredictResponse {
       connected: true,
       note: '',
     },
-    pathExplanation: ['根据近期血糖波动与病程事件生成的解释路径。'],
+    pathExplanation: ['Latest care path from prediction response.'],
     similarCases: [],
   }
 }
@@ -162,6 +162,7 @@ describe('PatientDetailPage', () => {
       screenError: '',
       openPatient: vi.fn(async () => true),
       openFollowupModule: vi.fn(async () => undefined),
+      openArchiveInNewTab: vi.fn(async () => undefined),
       runPrediction,
     })
   })
@@ -169,9 +170,9 @@ describe('PatientDetailPage', () => {
   it('uses preloaded summary first, then switches to latest prediction after trigger', async () => {
     const wrapper = mountPage()
 
-    expect(wrapper.text()).toContain('初始预置摘要')
     expect(wrapper.text()).toContain('Preloaded Risk Event')
-    expect(wrapper.text()).not.toContain('最新预测结果')
+    expect(wrapper.text()).toContain('This is the preloaded summary.')
+    expect(wrapper.text()).not.toContain('Latest Risk Event')
 
     const actionButton = wrapper
       .findAll('button')
@@ -183,8 +184,22 @@ describe('PatientDetailPage', () => {
     await flushPromises()
 
     expect(workspaceMock.runPrediction).toHaveBeenCalledTimes(1)
-    expect(wrapper.text()).toContain('最新预测结果')
     expect(wrapper.text()).toContain('Latest Risk Event')
     expect(wrapper.text()).toContain('Review in two weeks and repeat HbA1c.')
+  })
+
+  it('opens the electronic archive workspace from the patient detail page', async () => {
+    const wrapper = mountPage()
+
+    const archiveButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('电子档案'))
+
+    expect(archiveButton).toBeTruthy()
+
+    await archiveButton!.trigger('click')
+    await flushPromises()
+
+    expect(workspaceMock.openArchiveInNewTab).toHaveBeenCalledWith('PID0001', 'overview')
   })
 })

@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>注册 - 慢性病辅疗系统</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Public+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-tint": "#296767",
+                        "inverse-surface": "#2d3133",
+                        "on-error": "#ffffff",
+                        "outline": "#6f7978",
+                        "background": "#f7fafc",
+                        "error": "#ba1a1a",
+                        "outline-variant": "#bfc8c8",
+                        "surface-container-high": "#e5e9eb",
+                        "secondary-container": "#0070ea",
+                        "on-surface-variant": "#3f4848",
+                        "on-secondary-container": "#fefcff",
+                        "primary-container": "#004d4d",
+                        "on-error-container": "#93000a",
+                        "primary": "#003434",
+                        "primary-fixed-dim": "#94d1d1",
+                        "tertiary-fixed-dim": "#fcb795",
+                        "on-primary": "#ffffff",
+                        "surface-bright": "#f7fafc",
+                        "tertiary-fixed": "#ffdbcb",
+                        "on-tertiary-container": "#e5a282",
+                        "on-secondary-fixed": "#001a41",
+                        "primary-fixed": "#b0eeed",
+                        "surface": "#f7fafc",
+                        "surface-container-low": "#f1f4f6",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "on-tertiary-fixed": "#341100",
+                        "secondary-fixed-dim": "#adc7ff",
+                        "on-secondary-fixed-variant": "#004493",
+                        "inverse-on-surface": "#eef1f3",
+                        "on-surface": "#181c1e",
+                        "on-tertiary-fixed-variant": "#6a3a21",
+                        "surface-container": "#ebeef0",
+                        "surface-container-highest": "#e0e3e5",
+                        "secondary-fixed": "#d8e2ff",
+                        "on-background": "#181c1e",
+                        "error-container": "#ffdad6",
+                        "surface-variant": "#e0e3e5",
+                        "on-primary-container": "#80bdbc",
+                        "secondary": "#0059bb",
+                        "inverse-primary": "#94d1d1",
+                        "on-primary-fixed-variant": "#044f4f",
+                        "surface-dim": "#d7dadc",
+                        "on-primary-fixed": "#002020",
+                        "tertiary": "#4c230b",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-container": "#67381f"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-page": "32px",
+                        "stack-sm": "8px",
+                        "gutter": "24px",
+                        "card-padding": "20px",
+                        "baseline": "4px",
+                        "stack-md": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-xl": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-lg": ["Public Sans"],
+                        "data-mono": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "body-md": ["Public Sans"]
+                    },
+                    "fontSize": {
+                        "headline-xl": ["30px", { "lineHeight": "40px", "fontWeight": "700" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "data-mono": ["18px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "body-md": ["14px", { "lineHeight": "22px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background min-h-screen flex text-on-surface selection:bg-primary selection:text-on-primary">
+<div class="flex w-full min-h-screen">
+<!-- Left Branding Panel (Hidden on Mobile) -->
+<div class="hidden lg:flex lg:w-[45%] relative bg-primary items-center justify-center overflow-hidden">
+<div class="absolute inset-0 bg-gradient-to-br from-primary-fixed-variant to-primary mix-blend-multiply opacity-80 z-10"></div>
+<img alt="Background" class="absolute inset-0 w-full h-full object-cover z-0 opacity-40" data-alt="Abstract, clean medical clinic interior with soft, diffused natural lighting, conveying professionalism, rigor, and modern healthcare environment, slightly out of focus background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC9hWkqNn8U6Kr4Pf9a74shdfBNCW5-bDeCIloFIkv3WjZVxDX4-h3o0xPkQ42Mlax_XrQouyJwL2oe3nlkqW8D-3hxWdwSLmyGCvo75RNu3TG2L_sbFMMdWMvPCPH23qBOU2CmFK7oT68uhRsHYnWh8P2BcPFoMuWT9Sy83SCDtc9zgW2U8Yqamroy1e-2EfjMS78mZQurwMQ0QHypdy1oNbJ9Et1yCrqcEeXwz9dmejbBe27twyPMlzbs7r_kyzncpEgykqUnSCNw"/>
+<div class="relative z-20 flex flex-col items-start px-16 xl:px-24">
+<div class="w-16 h-16 bg-surface-container-lowest rounded-2xl flex items-center justify-center mb-8 shadow-[0_8px_32px_rgba(0,0,0,0.12)]">
+<span class="material-symbols-outlined text-4xl text-primary">ecg_heart</span>
+</div>
+<h1 class="font-headline-xl text-headline-xl text-on-primary mb-4 tracking-tight">慢性病辅疗系统</h1>
+<p class="font-body-lg text-body-lg text-on-primary opacity-85 mb-12 max-w-md">专业 · 严谨 · 高效。我们致力于通过数字化手段，为医护人员提供精准的临床洞察与高效的管理工具。</p>
+<div class="flex items-center space-x-3 mt-auto pt-12">
+<span class="material-symbols-outlined text-primary-fixed">verified_user</span>
+<span class="font-label-sm text-label-sm text-primary-fixed">企业级安全认证</span>
+</div>
+</div>
+</div>
+<!-- Right Form Panel -->
+<div class="flex flex-1 items-center justify-center p-6 sm:p-12 lg:p-24 bg-surface-container-lowest relative">
+<div class="w-full max-w-[480px]">
+<!-- Mobile Header (Visible only on small screens) -->
+<div class="lg:hidden flex flex-col items-center mb-10 text-center">
+<div class="w-14 h-14 bg-surface-container-lowest rounded-xl flex items-center justify-center mb-4 border border-outline-variant shadow-sm">
+<span class="material-symbols-outlined text-3xl text-primary">ecg_heart</span>
+</div>
+<h1 class="font-headline-md text-headline-md text-on-surface mb-2">慢性病辅疗系统</h1>
+</div>
+<!-- Form Header -->
+<div class="mb-8">
+<h2 class="font-headline-xl text-headline-xl text-on-surface mb-3">注册新账号</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">请输入您的真实信息以完成医疗人员身份认证。</p>
+</div>
+<!-- Registration Form -->
+<form class="space-y-6">
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+<div class="space-y-2">
+<label class="block font-label-sm text-label-sm text-on-surface-variant" for="name">姓名</label>
+<input class="w-full px-4 py-3 bg-surface-bright border border-outline-variant rounded-lg font-body-md text-body-md text-on-surface placeholder:text-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all duration-200" id="name" name="name" placeholder="请输入真实姓名" required="" type="text"/>
+</div>
+<div class="space-y-2">
+<label class="block font-label-sm text-label-sm text-on-surface-variant" for="account">账号 (工号)</label>
+<input class="w-full px-4 py-3 bg-surface-bright border border-outline-variant rounded-lg font-body-md text-body-md text-on-surface placeholder:text-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all duration-200" id="account" name="account" placeholder="例如: 801234" required="" type="text"/>
+</div>
+</div>
+<div class="space-y-2">
+<label class="block font-label-sm text-label-sm text-on-surface-variant" for="password">密码</label>
+<div class="relative">
+<input class="w-full px-4 py-3 bg-surface-bright border border-outline-variant rounded-lg font-body-md text-body-md text-on-surface placeholder:text-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all duration-200" id="password" name="password" placeholder="至少包含8位字符" required="" type="password"/>
+<button class="absolute inset-y-0 right-0 flex items-center pr-3 text-outline hover:text-on-surface" type="button">
+<span class="material-symbols-outlined text-lg">visibility_off</span>
+</button>
+</div>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+<div class="space-y-2">
+<label class="block font-label-sm text-label-sm text-on-surface-variant" for="role">系统角色</label>
+<div class="relative">
+<select class="w-full px-4 py-3 bg-surface-bright border border-outline-variant rounded-lg font-body-md text-body-md text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all duration-200 appearance-none cursor-pointer" id="role" name="role" required="">
+<option disabled="" selected="" value="">请选择角色</option>
+<option value="doctor">医生</option>
+<option value="nurse">护理人员</option>
+<option value="manager">管理人员</option>
+</select>
+<div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-outline">
+<span class="material-symbols-outlined">expand_more</span>
+</div>
+</div>
+</div>
+<div class="space-y-2">
+<label class="block font-label-sm text-label-sm text-on-surface-variant" for="title">专业职称</label>
+<div class="relative">
+<select class="w-full px-4 py-3 bg-surface-bright border border-outline-variant rounded-lg font-body-md text-body-md text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all duration-200 appearance-none cursor-pointer" id="title" name="title" required="">
+<option disabled="" selected="" value="">请选择职称</option>
+<option value="resident">住院医师</option>
+<option value="attending">主治医师</option>
+<option value="associate_chief">副主任医师</option>
+<option value="chief">主任医师</option>
+<option value="nurse">护士/护师</option>
+</select>
+<div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-outline">
+<span class="material-symbols-outlined">expand_more</span>
+</div>
+</div>
+</div>
+</div>
+<div class="space-y-2">
+<label class="block font-label-sm text-label-sm text-on-surface-variant" for="department">所属科室</label>
+<div class="relative">
+<select class="w-full px-4 py-3 bg-surface-bright border border-outline-variant rounded-lg font-body-md text-body-md text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all duration-200 appearance-none cursor-pointer" id="department" name="department" required="">
+<option disabled="" selected="" value="">请选择所在科室</option>
+<option value="endocrinology">内分泌科</option>
+<option value="cardiology">心血管内科</option>
+<option value="respiratory">呼吸内科</option>
+<option value="neurology">神经内科</option>
+<option value="geriatrics">老年病科</option>
+</select>
+<div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-outline">
+<span class="material-symbols-outlined">expand_more</span>
+</div>
+</div>
+</div>
+<div class="pt-4">
+<button class="w-full py-3 px-4 bg-primary text-on-primary font-body-lg text-body-lg font-medium rounded-lg shadow-[0_4px_12px_rgba(0,52,52,0.15)] hover:bg-primary-container hover:text-on-primary-container active:scale-[0.98] transition-all duration-200 flex justify-center items-center gap-2" type="submit">
+                            完成注册
+                            <span class="material-symbols-outlined text-lg">arrow_forward</span>
+</button>
+</div>
+</form>
+<div class="mt-8 text-center">
+<p class="font-body-md text-body-md text-on-surface-variant">
+                        已有账号？ 
+                        <a class="text-secondary font-medium hover:text-secondary-container hover:underline underline-offset-4 transition-all duration-200" href="#">返回登录</a>
+</p>
+</div>
+</div>
+</div>
+</div>
+</body></html>

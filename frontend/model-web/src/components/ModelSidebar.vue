@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { DataAnalysis, Dataset, SwitchButton, Tickets } from '@element-plus/icons-vue'
+import { DataAnalysis, Histogram, Notebook, SwitchButton, Tickets } from '@element-plus/icons-vue'
 import { useRoute, useRouter } from 'vue-router'
 import type { ModelUser } from '../services/modelApi'
 
@@ -11,11 +11,11 @@ const route = useRoute()
 const router = useRouter()
 
 const items = [
-  { name: 'model-home', label: '模型总览', icon: DataAnalysis },
-  { name: 'model-datasets', label: '数据集管理', icon: Dataset },
+  { name: 'model-home', label: '模型看板', icon: DataAnalysis },
+  { name: 'model-datasets', label: '数据集管理', icon: Notebook },
   { name: 'model-training', label: '训练任务', icon: Tickets },
-  { name: 'model-versions', label: '模型版本', icon: Tickets },
-  { name: 'model-operations', label: '模型运营台', icon: DataAnalysis },
+  { name: 'model-versions', label: '模型版本', icon: Histogram },
+  { name: 'model-operations', label: '运营与审计', icon: DataAnalysis },
 ]
 
 const currentName = computed(() => route.name?.toString() ?? 'model-home')

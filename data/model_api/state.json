@@ -1,0 +1,476 @@
+{
+  "datasets": [
+    {
+      "datasetId": "ds-1ae1979e7f",
+      "datasetName": "答辩演示训练集",
+      "fileName": "demo_dataset.csv",
+      "rowCount": 2,
+      "uploadedAt": "2026-04-23T15:49:09Z",
+      "uploadedBy": "陈若宁",
+      "status": "ready",
+      "source": "api"
+    },
+    {
+      "datasetId": "ds-7e1c632115",
+      "datasetName": "答辩演示训练集",
+      "fileName": "demo_dataset.csv",
+      "rowCount": 2,
+      "uploadedAt": "2026-04-23T15:47:45Z",
+      "uploadedBy": "陈若宁",
+      "status": "ready",
+      "source": "api"
+    },
+    {
+      "datasetId": "ds-53a4df94cd",
+      "datasetName": "答辩演示训练集",
+      "fileName": "demo_dataset.csv",
+      "rowCount": 2,
+      "uploadedAt": "2026-04-22T15:21:13Z",
+      "uploadedBy": "陈若宁",
+      "status": "ready",
+      "source": "api"
+    },
+    {
+      "datasetId": "ds-af0af52b0e",
+      "datasetName": "答辩演示训练集",
+      "fileName": "demo_dataset.csv",
+      "rowCount": 2,
+      "uploadedAt": "2026-04-22T10:38:22Z",
+      "uploadedBy": "陈若宁",
+      "status": "ready",
+      "source": "api"
+    },
+    {
+      "datasetId": "ds-bc99e1ce34",
+      "datasetName": "答辩演示训练集",
+      "fileName": "demo_dataset.csv",
+      "rowCount": 2,
+      "uploadedAt": "2026-04-22T10:34:08Z",
+      "uploadedBy": "陈若宁",
+      "status": "ready",
+      "source": "api"
+    },
+    {
+      "datasetId": "ds-chronic-2026q1",
+      "datasetName": "慢病时序知识图谱训练集 2026Q1",
+      "fileName": "chronic_q1.csv",
+      "rowCount": 1248,
+      "uploadedAt": "2026-04-08T10:33:27Z",
+      "uploadedBy": "陈若宁",
+      "status": "ready",
+      "source": "seed"
+    },
+    {
+      "datasetId": "ds-followup-2026q1",
+      "datasetName": "随访质控标注集 2026Q1",
+      "fileName": "followup_q1.csv",
+      "rowCount": 892,
+      "uploadedAt": "2026-04-15T10:33:27Z",
+      "uploadedBy": "林予川",
+      "status": "ready",
+      "source": "seed"
+    }
+  ],
+  "tasks": [
+    {
+      "taskId": "task-4f14f29e74",
+      "datasetId": "ds-1ae1979e7f",
+      "datasetName": "答辩演示训练集",
+      "modelName": "CTpath Temporal KG",
+      "status": "queued",
+      "createdAt": "2026-04-23T15:49:09Z",
+      "startedAt": null,
+      "finishedAt": null,
+      "triggeredBy": "陈若宁",
+      "params": {
+        "epochs": 12,
+        "batchSize": 64,
+        "learningRate": 0.001,
+        "embeddingDim": 128,
+        "optimizer": "adamw"
+      },
+      "metrics": null,
+      "logs": [
+        "训练任务已创建，等待资源调度。"
+      ],
+      "source": "api"
+    },
+    {
+      "taskId": "task-47a0e4418a",
+      "datasetId": "ds-7e1c632115",
+      "datasetName": "答辩演示训练集",
+      "modelName": "CTpath Temporal KG",
+      "status": "succeeded",
+      "createdAt": "2026-04-23T15:47:45Z",
+      "startedAt": "2026-04-23T15:49:09Z",
+      "finishedAt": "2026-04-23T15:49:09Z",
+      "triggeredBy": "陈若宁",
+      "params": {
+        "epochs": 12,
+        "batchSize": 64,
+        "learningRate": 0.001,
+        "embeddingDim": 128,
+        "optimizer": "adamw"
+      },
+      "metrics": {
+        "mrr": 0.6124,
+        "hits1": 0.3982,
+        "hits10": 0.8413
+      },
+      "logs": [
+        "训练任务已创建，等待资源调度。",
+        "训练资源已分配，任务开始执行。",
+        "训练结束，指标评估已生成并同步到模型版本库。"
+      ],
+      "source": "api"
+    },
+    {
+      "taskId": "task-11c7f0b92d",
+      "datasetId": "ds-53a4df94cd",
+      "datasetName": "答辩演示训练集",
+      "modelName": "CTpath Temporal KG",
+      "status": "succeeded",
+      "createdAt": "2026-04-22T15:21:13Z",
+      "startedAt": "2026-04-23T15:47:45Z",
+      "finishedAt": "2026-04-23T15:47:45Z",
+      "triggeredBy": "陈若宁",
+      "params": {
+        "epochs": 12,
+        "batchSize": 64,
+        "learningRate": 0.001,
+        "embeddingDim": 128,
+        "optimizer": "adamw"
+      },
+      "metrics": {
+        "mrr": 0.6124,
+        "hits1": 0.3982,
+        "hits10": 0.8413
+      },
+      "logs": [
+        "训练任务已创建，等待资源调度。",
+        "训练资源已分配，任务开始执行。",
+        "训练结束，指标评估已生成并同步到模型版本库。"
+      ],
+      "source": "api"
+    },
+    {
+      "taskId": "task-9efed9998b",
+      "datasetId": "ds-af0af52b0e",
+      "datasetName": "答辩演示训练集",
+      "modelName": "CTpath Temporal KG",
+      "status": "succeeded",
+      "createdAt": "2026-04-22T10:38:22Z",
+      "startedAt": "2026-04-22T15:21:13Z",
+      "finishedAt": "2026-04-22T15:21:13Z",
+      "triggeredBy": "陈若宁",
+      "params": {
+        "epochs": 12,
+        "batchSize": 64,
+        "learningRate": 0.001,
+        "embeddingDim": 128,
+        "optimizer": "adamw"
+      },
+      "metrics": {
+        "mrr": 0.6124,
+        "hits1": 0.3982,
+        "hits10": 0.8413
+      },
+      "logs": [
+        "训练任务已创建，等待资源调度。",
+        "训练资源已分配，任务开始执行。",
+        "训练结束，指标评估已生成并同步到模型版本库。"
+      ],
+      "source": "api"
+    },
+    {
+      "taskId": "task-1949c77ac3",
+      "datasetId": "ds-bc99e1ce34",
+      "datasetName": "答辩演示训练集",
+      "modelName": "CTpath Temporal KG",
+      "status": "succeeded",
+      "createdAt": "2026-04-22T10:34:08Z",
+      "startedAt": "2026-04-22T10:38:22Z",
+      "finishedAt": "2026-04-22T10:38:22Z",
+      "triggeredBy": "陈若宁",
+      "params": {
+        "epochs": 12,
+        "batchSize": 64,
+        "learningRate": 0.001,
+        "embeddingDim": 128,
+        "optimizer": "adamw"
+      },
+      "metrics": {
+        "mrr": 0.6124,
+        "hits1": 0.3982,
+        "hits10": 0.8413
+      },
+      "logs": [
+        "训练任务已创建，等待资源调度。",
+        "训练资源已分配，任务开始执行。",
+        "训练结束，指标评估已生成并同步到模型版本库。"
+      ],
+      "source": "api"
+    },
+    {
+      "taskId": "task-20260412-001",
+      "datasetId": "ds-chronic-2026q1",
+      "datasetName": "慢病时序知识图谱训练集 2026Q1",
+      "modelName": "CTpath Temporal KG",
+      "status": "succeeded",
+      "createdAt": "2026-04-17T10:33:27Z",
+      "startedAt": "2026-04-17T10:33:27Z",
+      "finishedAt": "2026-04-17T10:33:27Z",
+      "triggeredBy": "陈若宁",
+      "params": {
+        "epochs": 32,
+        "batchSize": 128,
+        "learningRate": 0.001,
+        "embeddingDim": 200,
+        "optimizer": "adamw"
+      },
+      "metrics": {
+        "mrr": 0.6124,
+        "hits1": 0.3982,
+        "hits10": 0.8413
+      },
+      "logs": [
+        "任务已排队，等待 GPU 训练资源。",
+        "训练完成，已生成候选模型版本。"
+      ],
+      "source": "seed"
+    }
+  ],
+  "versions": [
+    {
+      "versionId": "mv-a0e4418a",
+      "versionName": "va0e4418a",
+      "modelName": "CTpath Temporal KG",
+      "status": "deployed",
+      "createdAt": "2026-04-23T15:49:09Z",
+      "publishedAt": "2026-04-23T15:49:09Z",
+      "datasetId": "ds-7e1c632115",
+      "metrics": {
+        "mrr": 0.6124,
+        "hits1": 0.3982,
+        "hits10": 0.8413
+      },
+      "notes": "由最新训练任务自动生成，等待评审后部署。",
+      "deployed": true
+    },
+    {
+      "versionId": "mv-c7f0b92d",
+      "versionName": "vc7f0b92d",
+      "modelName": "CTpath Temporal KG",
+      "status": "staging",
+      "createdAt": "2026-04-23T15:47:45Z",
+      "publishedAt": "2026-04-23T15:47:45Z",
+      "datasetId": "ds-53a4df94cd",
+      "metrics": {
+        "mrr": 0.6124,
+        "hits1": 0.3982,
+        "hits10": 0.8413
+      },
+      "notes": "由最新训练任务自动生成，等待评审后部署。",
+      "deployed": false
+    },
+    {
+      "versionId": "mv-fed9998b",
+      "versionName": "vfed9998b",
+      "modelName": "CTpath Temporal KG",
+      "status": "staging",
+      "createdAt": "2026-04-22T15:21:13Z",
+      "publishedAt": "2026-04-22T15:21:13Z",
+      "datasetId": "ds-af0af52b0e",
+      "metrics": {
+        "mrr": 0.6124,
+        "hits1": 0.3982,
+        "hits10": 0.8413
+      },
+      "notes": "由最新训练任务自动生成，等待评审后部署。",
+      "deployed": false
+    },
+    {
+      "versionId": "mv-49c77ac3",
+      "versionName": "v49c77ac3",
+      "modelName": "CTpath Temporal KG",
+      "status": "staging",
+      "createdAt": "2026-04-22T10:38:22Z",
+      "publishedAt": "2026-04-22T10:38:22Z",
+      "datasetId": "ds-bc99e1ce34",
+      "metrics": {
+        "mrr": 0.6124,
+        "hits1": 0.3982,
+        "hits10": 0.8413
+      },
+      "notes": "由最新训练任务自动生成，等待评审后部署。",
+      "deployed": false
+    },
+    {
+      "versionId": "mv-20260412-001",
+      "versionName": "v2026.04.12",
+      "modelName": "CTpath Temporal KG",
+      "status": "staging",
+      "createdAt": "2026-04-17T10:33:27Z",
+      "publishedAt": "2026-04-22T10:34:08Z",
+      "datasetId": "ds-chronic-2026q1",
+      "metrics": {
+        "mrr": 0.6124,
+        "hits1": 0.3982,
+        "hits10": 0.8413
+      },
+      "notes": "基于 2026Q1 慢病时序数据完成训练，并通过离线评估。",
+      "deployed": false
+    }
+  ],
+  "health": {
+    "status": "healthy",
+    "mode": "model",
+    "model_available": true,
+    "model_error": null,
+    "current_deployment": "mv-a0e4418a",
+    "last_sync_at": "2026-04-23T15:49:09Z"
+  },
+  "loginCount": 0,
+  "activityLog": [
+    {
+      "id": "act-f21617f6",
+      "action": "version_deploy",
+      "detail": "发布模型版本：va0e4418a",
+      "operator": "陈若宁",
+      "createdAt": "2026-04-23T15:49:09Z"
+    },
+    {
+      "id": "act-31e541c0",
+      "action": "training_created",
+      "detail": "创建训练任务：CTpath Temporal KG",
+      "operator": "陈若宁",
+      "createdAt": "2026-04-23T15:49:09Z"
+    },
+    {
+      "id": "act-13d2cc71",
+      "action": "dataset_import",
+      "detail": "导入训练数据集：答辩演示训练集",
+      "operator": "陈若宁",
+      "createdAt": "2026-04-23T15:49:09Z"
+    },
+    {
+      "id": "act-46c1c443",
+      "action": "login",
+      "detail": "用户 陈若宁 登录模型管理端",
+      "operator": "model_admin",
+      "createdAt": "2026-04-23T15:49:09Z"
+    },
+    {
+      "id": "act-a2b94aeb",
+      "action": "version_deploy",
+      "detail": "发布模型版本：vc7f0b92d",
+      "operator": "陈若宁",
+      "createdAt": "2026-04-23T15:47:45Z"
+    },
+    {
+      "id": "act-fc94436f",
+      "action": "training_created",
+      "detail": "创建训练任务：CTpath Temporal KG",
+      "operator": "陈若宁",
+      "createdAt": "2026-04-23T15:47:45Z"
+    },
+    {
+      "id": "act-50c9b410",
+      "action": "dataset_import",
+      "detail": "导入训练数据集：答辩演示训练集",
+      "operator": "陈若宁",
+      "createdAt": "2026-04-23T15:47:45Z"
+    },
+    {
+      "id": "act-35edf4c1",
+      "action": "login",
+      "detail": "用户 陈若宁 登录模型管理端",
+      "operator": "model_admin",
+      "createdAt": "2026-04-23T15:47:45Z"
+    },
+    {
+      "id": "act-e8371ee7",
+      "action": "version_deploy",
+      "detail": "发布模型版本：vfed9998b",
+      "operator": "陈若宁",
+      "createdAt": "2026-04-22T15:21:13Z"
+    },
+    {
+      "id": "act-486b278e",
+      "action": "training_created",
+      "detail": "创建训练任务：CTpath Temporal KG",
+      "operator": "陈若宁",
+      "createdAt": "2026-04-22T15:21:13Z"
+    },
+    {
+      "id": "act-fd5cc033",
+      "action": "dataset_import",
+      "detail": "导入训练数据集：答辩演示训练集",
+      "operator": "陈若宁",
+      "createdAt": "2026-04-22T15:21:13Z"
+    },
+    {
+      "id": "act-0240d53e",
+      "action": "login",
+      "detail": "用户 陈若宁 登录模型管理端",
+      "operator": "model_admin",
+      "createdAt": "2026-04-22T15:21:13Z"
+    },
+    {
+      "id": "act-dca37df0",
+      "action": "version_deploy",
+      "detail": "发布模型版本：v49c77ac3",
+      "operator": "陈若宁",
+      "createdAt": "2026-04-22T10:38:22Z"
+    },
+    {
+      "id": "act-fd6fa4a1",
+      "action": "training_created",
+      "detail": "创建训练任务：CTpath Temporal KG",
+      "operator": "陈若宁",
+      "createdAt": "2026-04-22T10:38:22Z"
+    },
+    {
+      "id": "act-402f1060",
+      "action": "dataset_import",
+      "detail": "导入训练数据集：答辩演示训练集",
+      "operator": "陈若宁",
+      "createdAt": "2026-04-22T10:38:22Z"
+    },
+    {
+      "id": "act-16271dbc",
+      "action": "login",
+      "detail": "用户 陈若宁 登录模型管理端",
+      "operator": "model_admin",
+      "createdAt": "2026-04-22T10:38:22Z"
+    },
+    {
+      "id": "act-9bedee28",
+      "action": "version_deploy",
+      "detail": "发布模型版本：v2026.04.12",
+      "operator": "陈若宁",
+      "createdAt": "2026-04-22T10:34:08Z"
+    },
+    {
+      "id": "act-9f29c69b",
+      "action": "training_created",
+      "detail": "创建训练任务：CTpath Temporal KG",
+      "operator": "陈若宁",
+      "createdAt": "2026-04-22T10:34:08Z"
+    },
+    {
+      "id": "act-75950b28",
+      "action": "dataset_import",
+      "detail": "导入训练数据集：答辩演示训练集",
+      "operator": "陈若宁",
+      "createdAt": "2026-04-22T10:34:08Z"
+    },
+    {
+      "id": "act-f9b1a419",
+      "action": "login",
+      "detail": "用户 陈若宁 登录模型管理端",
+      "operator": "model_admin",
+      "createdAt": "2026-04-22T10:34:08Z"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { ArrowRight, View } from '@element-plus/icons-vue'
+import { View } from '@element-plus/icons-vue'
 import type { PatientCase, PatientSummary } from '../services/types'
 
 const props = defineProps<{
@@ -40,6 +40,8 @@ const filteredPatients = computed(() => {
   })
 })
 
+const previewPatients = computed(() => filteredPatients.value.slice(0, 5))
+
 const highRiskCount = computed(() => props.allPatients.filter((patient) => patient.riskLevel.toLowerCase().includes('high')).length)
 const followupCount = computed(() => props.allPatients.filter((patient) => patient.summary.toLowerCase().includes('follow')).length)
 const modelCoverage = computed(() => {
@@ -48,19 +50,7 @@ const modelCoverage = computed(() => {
   return `${Math.round((readyCount / props.allPatients.length) * 1000) / 10}%`
 })
 
-const alertCards = computed(() =>
-  filteredPatients.value.slice(0, 3).map((patient, index) => {
-    const isHigh = patient.riskLevel.toLowerCase().includes('high')
-    return {
-      patientId: patient.patientId,
-      tone: isHigh ? 'critical' : index === 1 ? 'warning' : 'info',
-      title: isHigh ? '高风险预警' : index === 1 ? '随访提醒' : '档案提示',
-      headline: `${patient.patientId} · ${patient.name}`,
-      body: patient.summary || `${patient.primaryDisease} 需要继续关注近期病程变化。`,
-      action: isHigh ? '进入详情' : index === 1 ? '安排随访' : '打开档案',
-    }
-  })
-)
+const focusPatient = computed(() => props.selectedPatient ?? previewPatients.value[0] ?? null)
 
 function riskClass(level: string) {
   const raw = (level || '').toLowerCase()
@@ -87,7 +77,7 @@ function openPatientDetail(patientId: string) {
         <article class="metric-panel clinical-card">
           <p class="eyebrow">患者总量</p>
           <strong>{{ allPatients.length }}</strong>
-          <span>当前工作台可见患者</span>
+          <span>当前工作台可见患者数量</span>
         </article>
 
         <article class="metric-panel clinical-card accent-warm">
@@ -97,20 +87,21 @@ function openPatientDetail(patientId: string) {
         </article>
 
         <article class="metric-panel clinical-card accent-cool">
-          <p class="eyebrow">模型覆盖率</p>
+          <p class="eyebrow">模型覆盖</p>
           <strong>{{ modelCoverage }}</strong>
           <span>按当前患者数据支持度估算</span>
         </article>
       </section>
 
       <section class="dashboard-grid">
-        <main class="queue-panel clinical-card">
-          <div class="queue-header">
+        <main class="summary-panel clinical-card">
+          <div class="panel-header">
             <div>
-              <p class="eyebrow">患者队列</p>
-              <h2>待处理患者</h2>
-              <p>保持 Stitch 的工作站结构，只保留当前医生主流程需要的患者队列和入口动作。</p>
+              <p class="eyebrow">今日摘要</p>
+              <h2>待处理患者入口</h2>
+              <p>医生首页只保留摘要、筛选和少量主入口，不堆叠治理页或完整模型页内容。</p>
             </div>
+
             <div class="queue-toolbar">
               <input
                 :value="searchText"
@@ -127,80 +118,79 @@ function openPatientDetail(patientId: string) {
             </div>
           </div>
 
-          <div v-if="loadingPatients" class="empty-state-card">正在载入患者队列...</div>
-          <div v-else-if="!filteredPatients.length" class="empty-state-card">当前筛选条件下没有可显示的患者。</div>
+          <div v-if="loadingPatients" class="empty-state-card">正在加载患者摘要...</div>
+          <div v-else-if="!previewPatients.length" class="empty-state-card">当前筛选条件下没有可展示的患者。</div>
 
-          <table v-else class="queue-table">
-            <thead>
-              <tr>
-                <th>患者编号</th>
-                <th>患者信息</th>
-                <th>风险等级</th>
-                <th>最近就诊</th>
-                <th>操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="patient in filteredPatients"
-                :key="patient.patientId"
-                :class="{ selected: selectedPatientId === patient.patientId }"
-                @click="emit('open', patient.patientId)"
-              >
-                <td>{{ patient.patientId }}</td>
-                <td>
-                  <div class="patient-cell">
-                    <strong>{{ patient.name }}</strong>
-                    <small>{{ patient.primaryDisease }}</small>
-                  </div>
-                </td>
-                <td>
+          <div v-else class="patient-brief-list">
+            <article
+              v-for="patient in previewPatients"
+              :key="patient.patientId"
+              class="patient-brief-card clinical-card"
+              :class="{ selected: selectedPatientId === patient.patientId }"
+              @click="emit('open', patient.patientId)"
+            >
+              <div class="patient-brief-main">
+                <div class="brief-head">
+                  <strong>{{ patient.name }}</strong>
                   <span class="risk-pill" :class="riskClass(patient.riskLevel)">{{ patient.riskLevel }}</span>
-                </td>
-                <td>{{ patient.lastVisit || '--' }}</td>
-                <td>
-                  <div class="row-actions">
-                    <button class="icon-action" type="button" :disabled="loadingPatient" @click.stop="openPatientDetail(patient.patientId)">
-                      <el-icon><View /></el-icon>
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                </div>
+                <small>{{ patient.patientId }} · {{ patient.primaryDisease }}</small>
+                <p>{{ patient.summary }}</p>
+              </div>
+
+              <div class="brief-actions">
+                <button class="secondary-button" type="button" :disabled="loadingPatient" @click.stop="openPatientDetail(patient.patientId)">
+                  <el-icon><View /></el-icon>
+                  <span>查看详情</span>
+                </button>
+                <button
+                  class="ghost-button"
+                  type="button"
+                  @click.stop="emit('open-archive', { patientId: patient.patientId, focus: 'overview' })"
+                >
+                  档案
+                </button>
+                <button
+                  class="ghost-button"
+                  type="button"
+                  @click.stop="emit('open-followup', { patientId: patient.patientId, section: 'tasks' })"
+                >
+                  随访
+                </button>
+              </div>
+            </article>
+          </div>
         </main>
 
-        <aside class="alerts-panel">
-          <div class="alerts-header">
-            <div>
-              <p class="eyebrow">风险提醒</p>
-              <h2>临床提示</h2>
-            </div>
-            <button type="button" class="text-link">查看全部 <el-icon><ArrowRight /></el-icon></button>
-          </div>
-
-          <article
-            v-for="alert in alertCards"
-            :key="alert.patientId"
-            class="clinical-card alert-card"
-            :class="`alert-${alert.tone}`"
-          >
-            <span class="alert-title">{{ alert.title }}</span>
-            <strong>{{ alert.headline }}</strong>
-            <p>{{ alert.body }}</p>
-            <button type="button" class="text-link" @click="openPatientDetail(alert.patientId)">{{ alert.action }}</button>
-          </article>
-
-          <article v-if="selectedPatient" class="clinical-card alert-card alert-selected">
-            <span class="alert-title">当前聚焦患者</span>
-            <strong>{{ selectedPatient.name }}</strong>
-            <p>{{ selectedPatient.summary }}</p>
-            <div class="focus-actions">
-              <button class="secondary-button" type="button" @click="emit('open-archive', { patientId: selectedPatient.patientId, focus: 'overview' })">
+        <aside class="action-panel">
+          <article class="clinical-card spotlight-card" v-if="focusPatient">
+            <p class="eyebrow">当前关注患者</p>
+            <strong>{{ focusPatient.name }}</strong>
+            <span>{{ focusPatient.patientId }} · {{ focusPatient.primaryDisease }}</span>
+            <p>{{ focusPatient.summary }}</p>
+            <div class="spotlight-actions">
+              <button class="primary-button" type="button" @click="openPatientDetail(focusPatient.patientId)">进入详情</button>
+              <button
+                class="secondary-button"
+                type="button"
+                @click="emit('open-archive', { patientId: focusPatient.patientId, focus: 'overview' })"
+              >
                 打开档案
               </button>
-              <button class="primary-button" type="button" @click="emit('open-followup', { patientId: selectedPatient.patientId, section: 'tasks' })">
-                安排随访
+            </div>
+          </article>
+
+          <article class="clinical-card shortcut-card">
+            <p class="eyebrow">主动作入口</p>
+            <div class="shortcut-list">
+              <button type="button" class="shortcut-button" @click="emit('open-followup', { patientId: previewPatients[0]?.patientId ?? '', section: 'tasks' })">
+                随访工作台
+              </button>
+              <button type="button" class="shortcut-button" @click="emit('open-archive', { patientId: previewPatients[0]?.patientId ?? '', focus: 'overview' })">
+                患者档案
+              </button>
+              <button type="button" class="shortcut-button" @click="previewPatients[0] && openPatientDetail(previewPatients[0].patientId)">
+                患者详情
               </button>
             </div>
           </article>
@@ -265,20 +255,19 @@ function openPatientDetail(patientId: string) {
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.55fr) 320px;
+  grid-template-columns: minmax(0, 1.6fr) 320px;
   gap: 20px;
   align-items: start;
 }
 
-.queue-panel,
-.alerts-panel {
+.summary-panel,
+.action-panel {
   min-width: 0;
   display: grid;
   gap: 18px;
 }
 
-.queue-header,
-.alerts-header {
+.panel-header {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
@@ -299,74 +288,109 @@ function openPatientDetail(patientId: string) {
   min-width: 168px;
 }
 
-.queue-table tbody tr.selected td {
-  background: rgba(241, 244, 245, 0.98);
-}
-
-.patient-cell {
-  display: grid;
-  gap: 4px;
-}
-
-.patient-cell small {
-  color: rgba(63, 72, 73, 0.74);
-}
-
-.row-actions {
-  display: flex;
-  justify-content: center;
-}
-
-.icon-action {
-  width: 42px;
-  height: 42px;
-  display: grid;
-  place-items: center;
-  border: 0;
-  border-radius: 12px;
-  background: rgba(168, 239, 244, 0.45);
-  color: var(--ws-primary);
-}
-
-.alert-card {
+.patient-brief-list {
   display: grid;
   gap: 12px;
-  min-height: 168px;
-  border-left: 4px solid transparent;
 }
 
-.alert-title {
-  color: rgba(24, 28, 29, 0.7);
-  font-family: var(--ws-font-headline);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+.patient-brief-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  cursor: pointer;
 }
 
-.alert-card p {
+.patient-brief-card.selected {
+  border-color: rgba(0, 92, 97, 0.35);
+  box-shadow: 0 0 0 1px rgba(0, 92, 97, 0.16) inset;
+}
+
+.patient-brief-main {
+  display: grid;
+  gap: 8px;
+}
+
+.brief-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.patient-brief-main strong {
+  font-size: 18px;
+}
+
+.patient-brief-main small {
+  color: rgba(63, 72, 73, 0.72);
+}
+
+.patient-brief-main p {
   margin: 0;
-  color: rgba(63, 72, 73, 0.84);
+  color: rgba(63, 72, 73, 0.88);
   line-height: 1.55;
 }
 
-.alert-critical {
-  border-left-color: var(--ws-error);
+.brief-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
-.alert-warning {
-  border-left-color: var(--ws-tertiary);
+.brief-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.alert-info,
-.alert-selected {
-  border-left-color: var(--ws-primary);
+.spotlight-card {
+  display: grid;
+  gap: 12px;
 }
 
-.focus-actions {
+.spotlight-card strong {
+  font-family: var(--ws-font-headline);
+  font-size: 26px;
+}
+
+.spotlight-card span {
+  color: rgba(63, 72, 73, 0.76);
+}
+
+.spotlight-card p {
+  margin: 0;
+  color: rgba(63, 72, 73, 0.88);
+  line-height: 1.55;
+}
+
+.spotlight-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+.shortcut-card {
+  display: grid;
+  gap: 12px;
+}
+
+.shortcut-list {
+  display: grid;
+  gap: 10px;
+}
+
+.shortcut-button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(241, 244, 245, 0.95);
+  color: #004347;
+  font-family: var(--ws-font-headline);
+  font-weight: 800;
+  text-align: left;
+  padding: 0 16px;
 }
 
 @media (max-width: 1240px) {
@@ -380,7 +404,7 @@ function openPatientDetail(patientId: string) {
     grid-template-columns: 1fr;
   }
 
-  .queue-header {
+  .panel-header {
     display: grid;
   }
 
@@ -391,6 +415,10 @@ function openPatientDetail(patientId: string) {
   .queue-toolbar input,
   .queue-toolbar select {
     min-width: 0;
+  }
+
+  .patient-brief-card {
+    grid-template-columns: 1fr;
   }
 }
 </style>

@@ -1,8 +1,16 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import AppWorkspacePage from '../pages/AppWorkspacePage.vue'
 import LoginPage from '../pages/LoginPage.vue'
+import ModelDashboardPage from '../pages/ModelDashboardPage.vue'
+import ModelInsightPage from '../pages/ModelInsightPage.vue'
+import ModelOperationsPage from '../pages/ModelOperationsPage.vue'
+import RoleWorkspacePage from '../pages/RoleWorkspacePage.vue'
+import PatientArchivePrintPage from '../pages/PatientArchivePrintPage.vue'
 import GovernancePage from '../pages/GovernancePage.vue'
 import NurseFollowupsPage from '../pages/NurseFollowupsPage.vue'
+import PharmacyWarehousePage from '../pages/PharmacyWarehousePage.vue'
+import CareCoordinationPage from '../pages/CareCoordinationPage.vue'
+import TrainingCenterPage from '../pages/TrainingCenterPage.vue'
 import DrugCatalogPage from '../pages/medication/DrugCatalogPage.vue'
 import DrugPermissionManagementPage from '../pages/medication/permissions/DrugPermissionManagementPage.vue'
 import { useAuthStore } from '../stores/auth'
@@ -28,9 +36,34 @@ const routes: RouteRecordRaw[] = [
         component: NurseFollowupsPage,
       },
       {
+        path: 'model-dashboard',
+        name: 'model-dashboard',
+        component: ModelDashboardPage,
+      },
+      {
+        path: 'training-center',
+        name: 'training-center',
+        component: TrainingCenterPage,
+      },
+      {
+        path: 'model-operations',
+        name: 'model-operations',
+        component: ModelOperationsPage,
+      },
+      {
+        path: 'model-insight',
+        name: 'model-insight',
+        component: ModelInsightPage,
+      },
+      {
         path: 'governance',
         name: 'governance',
         component: GovernancePage,
+      },
+      {
+        path: 'role-workspaces',
+        name: 'role-workspaces',
+        component: RoleWorkspacePage,
       },
       {
         path: 'drug-management',
@@ -42,6 +75,16 @@ const routes: RouteRecordRaw[] = [
         name: 'drug-permission-management',
         component: DrugPermissionManagementPage,
       },
+      {
+        path: 'pharmacy',
+        name: 'pharmacy',
+        component: PharmacyWarehousePage,
+      },
+      {
+        path: 'coordination',
+        name: 'coordination',
+        component: CareCoordinationPage,
+      },
     ],
   },
   {
@@ -50,6 +93,14 @@ const routes: RouteRecordRaw[] = [
     component: LoginPage,
     meta: {
       requiresAuth: false,
+    },
+  },
+  {
+    path: '/patient-archive-print/:patientId',
+    name: 'patient-archive-print',
+    component: PatientArchivePrintPage,
+    meta: {
+      requiresAuth: true,
     },
   },
   {

@@ -1,13 +1,7 @@
-"""
-RBAC权限验证中间件
+"""RBAC权限验证中间件。"""
 
-基于角色的访问控制中间件，验证所有API请求的权限
-"""
-
-import json
 import logging
-from typing import Optional, Callable
-from datetime import datetime
+from typing import Callable, Optional
 
 from fastapi import Request, HTTPException, status
 from fastapi.responses import JSONResponse
@@ -16,6 +10,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from .role_definitions import Role, get_role_by_name, validate_role
 from .permission_registry import PERMISSION_REGISTRY
 from ..audit.system_audit import record_system_audit
+from ..middleware.trace_id import get_trace_id
 
 
 logger = logging.getLogger(__name__)
@@ -70,22 +65,16 @@ class RBACMiddleware(BaseHTTPMiddleware):
         # 获取用户角色
         role = self._get_user_role(request)
 
+        trace_id = get_trace_id(request)
+
         if role is None:
-            # 未认证
-            return self._unauthorized_response("未提供认证信息")
+            return self._unauthorized_response("未提供认证信息", trace_id)
 
-        # 验证权限
         if not PERMISSION_REGISTRY.is_allowed(path, method, role):
-            # 记录审计日志
-            self._log_access_denied(request, role, path, method)
+            self._log_access_denied(request, role, path, method, trace_id)
+            return self._forbidden_response(role, path, method, trace_id)
 
-            # 返回403
-            return self._forbidden_response(role, path, method)
-
-        # 记录审计日志
-        self._log_access_granted(request, role, path, method)
-
-        # 继续处理请求
+        self._log_access_granted(request, role, path, method, trace_id)
         return await call_next(request)
 
     def _is_excluded_path(self, path: str) -> bool:
@@ -104,6 +93,8 @@ class RBACMiddleware(BaseHTTPMiddleware):
 
         # 前缀匹配（用于静态文件等）
         for excluded in self.excluded_paths:
+            if excluded == "/":
+                continue
             if path.startswith(excluded):
                 return True
 
@@ -132,7 +123,7 @@ class RBACMiddleware(BaseHTTPMiddleware):
 
         return None
 
-    def _unauthorized_response(self, message: str) -> JSONResponse:
+    def _unauthorized_response(self, message: str, trace_id: str) -> JSONResponse:
         """
         返回401未认证响应
 
@@ -146,16 +137,18 @@ class RBACMiddleware(BaseHTTPMiddleware):
             status_code=status.HTTP_401_UNAUTHORIZED,
             content={
                 "detail": message,
-                "error_code": "UNAUTHORIZED"
+                "error_code": "UNAUTHORIZED",
+                "trace_id": trace_id,
             },
-            headers={"WWW-Authenticate": "Bearer"}
+            headers={"WWW-Authenticate": "Bearer", "X-Trace-Id": trace_id}
         )
 
     def _forbidden_response(
         self,
         role: Role,
         path: str,
-        method: str
+        method: str,
+        trace_id: str,
     ) -> JSONResponse:
         """
         返回403禁止访问响应
@@ -175,8 +168,10 @@ class RBACMiddleware(BaseHTTPMiddleware):
                 "error_code": "FORBIDDEN",
                 "role": role.value,
                 "path": path,
-                "method": method
-            }
+                "method": method,
+                "trace_id": trace_id,
+            },
+            headers={"X-Trace-Id": trace_id},
         )
 
     def _log_access_granted(
@@ -184,7 +179,8 @@ class RBACMiddleware(BaseHTTPMiddleware):
         request: Request,
         role: Role,
         path: str,
-        method: str
+        method: str,
+        trace_id: str,
     ):
         """
         记录访问允许日志
@@ -196,7 +192,7 @@ class RBACMiddleware(BaseHTTPMiddleware):
             method: 请求方法
         """
         logger.info(
-            f"Access granted: role={role.value}, method={method}, path={path}, "
+            f"Access granted: trace_id={trace_id}, role={role.value}, method={method}, path={path}, "
             f"client={request.client.host if request.client else 'unknown'}"
         )
         user = getattr(request.state, "user", None)
@@ -207,7 +203,7 @@ class RBACMiddleware(BaseHTTPMiddleware):
             username=getattr(user, "username", None),
             path=path,
             method=method,
-            detail="RBAC allowed",
+            detail=f"RBAC allowed; trace_id={trace_id}",
             client_ip=request.client.host if request.client else None,
         )
 
@@ -216,7 +212,8 @@ class RBACMiddleware(BaseHTTPMiddleware):
         request: Request,
         role: Role,
         path: str,
-        method: str
+        method: str,
+        trace_id: str,
     ):
         """
         记录访问拒绝日志
@@ -228,7 +225,7 @@ class RBACMiddleware(BaseHTTPMiddleware):
             method: 请求方法
         """
         logger.warning(
-            f"Access denied: role={role.value}, method={method}, path={path}, "
+            f"Access denied: trace_id={trace_id}, role={role.value}, method={method}, path={path}, "
             f"client={request.client.host if request.client else 'unknown'}"
         )
         user = getattr(request.state, "user", None)
@@ -239,7 +236,7 @@ class RBACMiddleware(BaseHTTPMiddleware):
             username=getattr(user, "username", None),
             path=path,
             method=method,
-            detail="RBAC denied",
+            detail=f"RBAC denied; trace_id={trace_id}",
             client_ip=request.client.host if request.client else None,
         )
 

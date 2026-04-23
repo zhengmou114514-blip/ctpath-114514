@@ -9,8 +9,10 @@ from .api.attachments import router as attachments_router
 from .api.audit import router as audit_router
 from .api.auth import router as auth_router
 from .api.authz import router as authz_router
+from .api.coordination import router as coordination_router
 from .api.drug_permissions import router as drug_permissions_router
 from .api.drugs import router as drugs_router
+from .api.pharmacy import router as pharmacy_router
 from .api.governance import router as governance_router
 from .api.patient_medications import router as patient_medications_router
 from .api.patients import router as patients_router
@@ -20,7 +22,9 @@ from .errors import http_exception_handler, validation_exception_handler
 from .middleware.exception import GlobalExceptionMiddleware
 from .middleware.jwt_auth import JWTAuthMiddleware
 from .middleware.rate_limit import limiter, rate_limit_exceeded_handler
+from .middleware.timing import RequestTimingMiddleware
 from .middleware.trace_id import TraceIdMiddleware
+from .auth.rbac_middleware import RBACMiddleware
 
 
 app = FastAPI(
@@ -35,7 +39,7 @@ app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 # FastAPI/Starlette wraps middleware in reverse add order. Requests pass through:
-# TraceIdMiddleware -> GlobalExceptionMiddleware -> JWTAuthMiddleware -> CORSMiddleware.
+# TraceIdMiddleware -> GlobalExceptionMiddleware -> RequestTimingMiddleware -> JWTAuthMiddleware -> RBACMiddleware -> CORSMiddleware.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -49,7 +53,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(RBACMiddleware)
 app.add_middleware(JWTAuthMiddleware)
+app.add_middleware(RequestTimingMiddleware)
 app.add_middleware(GlobalExceptionMiddleware)
 app.add_middleware(TraceIdMiddleware)
 
@@ -61,12 +67,12 @@ async def load_dataset_on_startup() -> None:
     from .dataset_loader import init_dataset
 
     print("\n" + "=" * 50)
-    print("Loading medical dataset...")
+    print("[startup] loading medical dataset...")
     print("=" * 50)
 
     loaded_patients = init_dataset()
     if not loaded_patients:
-        print("No external dataset loaded, using built-in demo data.")
+        print("[startup] no external dataset loaded, using built-in demo data.")
         print("=" * 50 + "\n")
         return
 
@@ -108,12 +114,7 @@ async def load_dataset_on_startup() -> None:
         )
         imported_count += 1
 
-    print(
-        "Dataset load complete: imported {0} patients, total demo patients {1}.".format(
-            imported_count,
-            len(demo_store.PATIENT_RECORDS),
-        )
-    )
+    print("[startup] dataset load complete: imported {0} patients, total demo patients {1}.".format(imported_count, len(demo_store.PATIENT_RECORDS)))
     print("=" * 50 + "\n")
 
 
@@ -122,10 +123,12 @@ app.include_router(attachments_router)
 app.include_router(auth_router)
 app.include_router(authz_router)
 app.include_router(audit_router)
+app.include_router(coordination_router)
 app.include_router(drug_permissions_router)
 app.include_router(drugs_router)
 app.include_router(patient_medications_router)
 app.include_router(patients_router)
+app.include_router(pharmacy_router)
 app.include_router(predictions_router)
 app.include_router(worklists_router)
 app.include_router(governance_router)

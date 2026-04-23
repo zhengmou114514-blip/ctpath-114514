@@ -112,6 +112,8 @@ uvicorn app.main:app --reload
 - API: `http://127.0.0.1:8000`
 - OpenAPI: `http://127.0.0.1:8000/docs`
 - 前端开发服务: `http://127.0.0.1:5173`
+- 模型 API: `http://127.0.0.1:8001`
+- 模型前端开发服务: `http://127.0.0.1:5173`（`npm run dev:model`）
 
 ## demo / mysql 模式
 

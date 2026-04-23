@@ -31,7 +31,21 @@ const route = useRoute()
 const showError = ref(false)
 const showSuccess = ref(false)
 
-const showPatientContext = computed(() => props.selectedPatient && route.name !== 'patient-detail')
+const patientContextSections = new Set<AppSection>([
+  'doctor',
+  'archive',
+  'emr',
+  'tasks',
+  'contacts',
+  'flow',
+  'coordination',
+])
+
+const showPatientContext = computed(() => {
+  if (!props.selectedPatient) return false
+  if (route.name === 'patient-detail') return false
+  return patientContextSections.has(props.activeSection)
+})
 
 watch(
   () => props.errorMessage,
@@ -73,7 +87,7 @@ watch(
 
       <transition name="slide-fade">
         <div v-if="showError && errorMessage" class="status-banner status-banner-error" role="alert">
-          <strong>提示</strong>
+          <strong>系统提示</strong>
           <span>{{ errorMessage }}</span>
           <button type="button" @click="showError = false">关闭</button>
         </div>
@@ -81,7 +95,7 @@ watch(
 
       <transition name="slide-fade">
         <div v-if="showSuccess && successMessage" class="status-banner status-banner-success" role="status">
-          <strong>已完成</strong>
+          <strong>操作成功</strong>
           <span>{{ successMessage }}</span>
           <button type="button" @click="showSuccess = false">关闭</button>
         </div>

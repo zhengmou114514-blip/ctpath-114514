@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { allowedSectionsForRole, sectionLabel } from '../config/workspaceMenu'
 import type { DoctorUser } from '../services/types'
 import type { AppSection } from '../types/workspace'
 
@@ -10,18 +11,18 @@ const props = defineProps<{
   followupCount: number
 }>()
 
-const sectionLabels: Record<AppSection, string> = {
+const sectionLabels: Partial<Record<AppSection, string>> = {
   doctor: '医生工作台',
   archive: '患者档案',
+  emr: '电子病历',
+  pharmacy: '药房药库',
   'drug-management': '药品目录',
   'drug-permission-management': '药品权限',
   tasks: '随访任务',
   contacts: '联系记录',
   flow: '随访流程',
+  coordination: '医护协调',
   insights: '模型洞察',
-  'model-dashboard': '模型看板',
-  'model-operations': '模型运营台',
-  'training-center': '训练中心',
   governance: '治理看板',
   'data-quality': '数据质量',
   system: '系统中心',
@@ -32,7 +33,7 @@ const bannerConfig = computed(() => {
     return {
       eyebrow: '随访工作台',
       title: '护士随访工作台',
-      description: '聚焦待随访患者、联系记录和流程推进，不混入训练中心或治理看板。',
+      description: '聚焦待随访患者、联系记录、病程流转和协同事项，不混入训练中心或治理看板。',
       role: '护士',
     }
   }
@@ -41,8 +42,26 @@ const bannerConfig = computed(() => {
     return {
       eyebrow: '档案治理',
       title: '患者档案与治理工作台',
-      description: '聚焦档案归集、信息补全、电子附件和治理动作，保持与临床主流程边界清晰。',
+      description: '聚焦档案归集、信息补全、电子附件和数据质量，保持与临床主流程边界清晰。',
       role: '档案员',
+    }
+  }
+
+  if (props.doctor.role === 'pharmacist') {
+    return {
+      eyebrow: '药事工作台',
+      title: '药房与药品管理工作台',
+      description: '聚焦药房库存、药品目录和权限控制，不混入患者临床首页的长流程内容。',
+      role: '药师',
+    }
+  }
+
+  if (props.doctor.role === 'admin') {
+    return {
+      eyebrow: '系统管理',
+      title: '管理员工作台',
+      description: '聚焦多角色入口、模型治理、数据质量和系统状态，作为全局协调与管理中心。',
+      role: '管理员',
     }
   }
 
@@ -53,6 +72,9 @@ const bannerConfig = computed(() => {
     role: '医生',
   }
 })
+
+const roleSections = computed(() => allowedSectionsForRole(props.doctor.role))
+const roleSectionLabels = computed(() => roleSections.value.slice(0, 5).map((item) => sectionLabel(item)))
 </script>
 
 <template>
@@ -70,6 +92,10 @@ const bannerConfig = computed(() => {
         <strong>{{ sectionLabels[section] }}</strong>
       </article>
       <article class="role-banner-chip">
+        <span>可见模块</span>
+        <strong>{{ roleSections.length }} 个</strong>
+      </article>
+      <article class="role-banner-chip">
         <span>患者数</span>
         <strong>{{ patientCount }}</strong>
       </article>
@@ -78,5 +104,42 @@ const bannerConfig = computed(() => {
         <strong>{{ followupCount }}</strong>
       </article>
     </div>
+
+    <div class="role-banner-links">
+      <span class="role-banner-link-label">该角色常用入口</span>
+      <div class="role-banner-link-list">
+        <span v-for="item in roleSectionLabels" :key="item" class="role-banner-link-chip">{{ item }}</span>
+      </div>
+    </div>
   </section>
 </template>
+
+<style scoped>
+.role-banner-links {
+  display: grid;
+  gap: 10px;
+}
+
+.role-banner-link-label {
+  color: rgba(24, 28, 29, 0.64);
+  font-family: var(--ws-font-headline);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.role-banner-link-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.role-banner-link-chip {
+  border: 1px solid rgba(190, 200, 201, 0.68);
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.6);
+  color: rgba(24, 28, 29, 0.84);
+  font-size: 13px;
+}
+</style>

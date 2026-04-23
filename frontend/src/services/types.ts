@@ -114,7 +114,7 @@ export interface DoctorUser {
   name: string
   title: string
   department: string
-  role: 'doctor' | 'nurse' | 'archivist'
+  role: 'doctor' | 'nurse' | 'pharmacist' | 'archivist' | 'admin'
   password?: string
 }
 
@@ -123,7 +123,7 @@ export interface MeResponse {
   name: string
   title: string
   department: string
-  role: 'doctor' | 'nurse' | 'archivist'
+  role: 'doctor' | 'nurse' | 'pharmacist' | 'archivist' | 'admin'
 }
 
 export interface AuthSession {
@@ -137,7 +137,7 @@ export interface RegisterPayload {
   name: string
   title: string
   department: string
-  role: 'doctor' | 'nurse' | 'archivist'
+  role: 'doctor' | 'nurse' | 'pharmacist' | 'archivist' | 'admin'
 }
 
 export interface PatientCase {
@@ -365,7 +365,7 @@ export interface AuthzCapabilityResponse {
   allowedApis: string[]
 }
 
-export type BusinessWorkspaceRole = 'doctor' | 'nurse' | 'pharmacist' | 'admin'
+export type BusinessWorkspaceRole = 'doctor' | 'nurse' | 'pharmacist' | 'archivist' | 'admin'
 
 export interface RoleWorkspaceModule {
   key: string
@@ -740,6 +740,185 @@ export interface PatientAttachmentRecord {
   uploadedAt: string
   uploadedBy: string
   source: 'local-file' | 'mock-local'
+}
+
+export type PharmacyInventoryStatus = 'active' | 'low' | 'out_of_stock' | 'expired' | 'inactive'
+export type PharmacyTransactionType = 'inbound' | 'outbound' | 'transfer' | 'adjust' | 'discard'
+
+export interface PharmacyInventoryRecord {
+  itemId: string
+  drugId: string
+  drugName: string
+  warehouse: string
+  batchNo: string
+  lotNo: string
+  unit: string
+  currentStock: number
+  reservedStock: number
+  minStock: number
+  expiryDate: string
+  status: PharmacyInventoryStatus
+  supplier: string
+  lastInboundAt: string
+  lastOutboundAt: string
+  updatedBy: string
+  updatedAt: string
+}
+
+export interface PharmacyInventoryUpsertRequest {
+  itemId: string
+  drugId: string
+  drugName: string
+  warehouse: string
+  batchNo: string
+  lotNo: string
+  unit: string
+  currentStock: number
+  reservedStock: number
+  minStock: number
+  expiryDate: string
+  status: PharmacyInventoryStatus
+  supplier: string
+}
+
+export interface PharmacyStockAdjustRequest {
+  quantity: number
+  direction: PharmacyTransactionType
+  note: string
+  operatorUsername?: string | null
+  operatorName?: string | null
+}
+
+export interface PharmacyReviewDecisionRequest {
+  reviewStatus: PatientMedicationReviewStatus
+  note: string
+  operatorUsername?: string | null
+  operatorName?: string | null
+}
+
+export interface PharmacyTransactionRecord {
+  transactionId: string
+  itemId: string
+  drugId: string
+  change: number
+  direction: PharmacyTransactionType
+  note: string
+  operatorUsername?: string | null
+  operatorName?: string | null
+  createdAt: string
+}
+
+export interface PharmacyReviewOrder {
+  patientId: string
+  patientName: string
+  medicationId: string
+  drugId: string
+  drugNameSnapshot: string
+  dosage: string
+  frequency: string
+  route: string
+  reviewStatus: PatientMedicationReviewStatus
+  status: PatientMedicationStatus
+  prescribedBy: string
+  note: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface PharmacySummaryItem {
+  label: string
+  value: string
+  trend: string
+}
+
+export interface PharmacyDashboardResponse {
+  summary: PharmacySummaryItem[]
+  inventory: PharmacyInventoryRecord[]
+  reviewQueue: PharmacyReviewOrder[]
+  transactions: PharmacyTransactionRecord[]
+}
+
+export type CoordinationStatus = 'open' | 'in_progress' | 'blocked' | 'done' | 'closed'
+export type CoordinationCategory = 'handoff' | 'medication_review' | 'followup' | 'referral' | 'family_contact' | 'case_review'
+export type CoordinationParticipantRole = 'doctor' | 'nurse' | 'pharmacist' | 'archivist' | 'admin'
+
+export interface CoordinationParticipant {
+  role: CoordinationParticipantRole
+  name: string
+  relation: string
+  phone: string
+}
+
+export interface CoordinationNote {
+  noteId: string
+  createdAt: string
+  createdBy: string
+  createdByRole: CoordinationParticipantRole
+  action: string
+  note: string
+}
+
+export interface CoordinationItem {
+  coordinationId: string
+  patientId: string
+  patientName: string
+  primaryDisease: string
+  currentStage: string
+  riskLevel: string
+  category: CoordinationCategory
+  status: CoordinationStatus
+  ownerRole: CoordinationParticipantRole
+  ownerName: string
+  nextAction: string
+  dueDate: string
+  lastUpdatedAt: string
+  summary: string
+  participants: CoordinationParticipant[]
+  notes: CoordinationNote[]
+}
+
+export interface CoordinationItemUpsertRequest {
+  coordinationId: string
+  patientId: string
+  patientName: string
+  primaryDisease: string
+  currentStage: string
+  riskLevel: string
+  category: CoordinationCategory
+  status: CoordinationStatus
+  ownerRole: CoordinationParticipantRole
+  ownerName: string
+  nextAction: string
+  dueDate: string
+  summary: string
+  participants: CoordinationParticipant[]
+}
+
+export interface CoordinationNoteCreateRequest {
+  action: string
+  note: string
+  operatorUsername?: string | null
+  operatorName?: string | null
+  operatorRole?: CoordinationParticipantRole
+}
+
+export interface CoordinationStatusUpdateRequest {
+  status: CoordinationStatus
+  note: string
+  operatorUsername?: string | null
+  operatorName?: string | null
+  operatorRole?: CoordinationParticipantRole
+}
+
+export interface CoordinationSummaryItem {
+  label: string
+  value: string
+  trend: string
+}
+
+export interface CoordinationBoardResponse {
+  summary: CoordinationSummaryItem[]
+  items: CoordinationItem[]
 }
 
 export type DrugCatalogStatus = 'active' | 'inactive'

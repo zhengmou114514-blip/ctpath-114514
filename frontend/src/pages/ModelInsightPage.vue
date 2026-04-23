@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed } from 'vue'
 import { useWorkspaceContext } from '../composables/workspaceContext'
 
 const workspace = useWorkspaceContext()
@@ -20,7 +20,7 @@ const evidence = computed(() => {
     eventCount: selectedPatient.value?.timeline.length ?? 0,
     relationCount: selectedPatient.value?.pathExplanation.length ?? 0,
     supportLevel: selectedPatient.value?.dataSupport ?? 'unknown',
-    summary: selectedPatient.value?.summary || '当前仅展示患者历史摘要，尚未触发新的真实预测。',
+    summary: selectedPatient.value?.summary || '当前仅展示患者历史摘要，尚未触发新的实时预测。',
   }
 })
 
@@ -40,7 +40,7 @@ const adviceSource = computed(() => {
     provider: selectedPatient.value?.recommendationMode || '--',
     model: workspace.health?.mode || '--',
     source: workspace.modelUnavailable ? 'fallback' : 'history',
-    note: selectedPatient.value?.summary || '当前展示的是患者已有建议摘要，尚未触发新的建议生成。',
+    note: selectedPatient.value?.summary || '当前展示的是患者已有建议摘要。',
   }
 })
 
@@ -61,8 +61,9 @@ function supportLabel(value: string) {
   return value || '--'
 }
 
-function handleRefresh() {
-  void workspace.refreshGovernanceWorkspace()
+async function handleRefresh() {
+  if (!selectedPatient.value) return
+  await workspace.openPatient(selectedPatient.value.patientId, 'doctor')
 }
 
 function handleRunPrediction() {
@@ -79,13 +80,6 @@ function handleOpenFollowup() {
   if (!selectedPatient.value) return
   void workspace.openFollowupModule(selectedPatient.value.patientId, 'tasks')
 }
-
-onMounted(() => {
-  if (!workspace.currentDoctor) return
-  if (!workspace.modelMetrics || !workspace.maintenanceOverview) {
-    void workspace.refreshGovernanceWorkspace()
-  }
-})
 </script>
 
 <template>
@@ -94,19 +88,19 @@ onMounted(() => {
       <div>
         <p class="eyebrow">模型中心</p>
         <h1>模型洞察</h1>
-        <p>仅面向当前患者，展示风险预测、证据支持与建议来源，不承担全局训练与治理功能。</p>
+        <p>这里只面向当前患者，展示风险预测、证据摘要与建议来源，不承接训练任务、全局指标或治理缺陷列表。</p>
       </div>
       <div class="header-actions">
-        <el-button @click="handleRefresh">刷新上下文</el-button>
+        <el-button @click="handleRefresh">刷新当前患者</el-button>
         <el-button type="primary" :disabled="!hasPatient || workspace.loadingPredict" :loading="workspace.loadingPredict" @click="handleRunPrediction">
-          触发预测
+          重算洞察
         </el-button>
       </div>
     </header>
 
     <section v-if="!hasPatient" class="empty-state-card">
       <h3>当前没有选中的患者</h3>
-      <p>请先从医生工作台或患者详情页进入一个具体患者，再查看与该患者相关的模型洞察。</p>
+      <p>请先从医生工作台或患者详情页进入一个具体患者，再查看该患者对应的模型洞察。</p>
     </section>
 
     <template v-else>
@@ -122,7 +116,7 @@ onMounted(() => {
           <p>当前运行模式：{{ workspace.health?.mode ?? '--' }}</p>
         </article>
         <article class="metric-card">
-          <span>证据支撑等级</span>
+          <span>证据支持等级</span>
           <strong>{{ supportLabel(evidence.supportLevel) }}</strong>
           <p>事件数 {{ evidence.eventCount }} / 关系数 {{ evidence.relationCount }}</p>
         </article>
@@ -133,7 +127,7 @@ onMounted(() => {
           <div class="section-header">
             <div>
               <h2>Top-K 风险事件</h2>
-              <p>展示当前患者最值得关注的风险事件及其分数与原因。</p>
+              <p>仅展示当前患者最需要关注的风险事件及其分数与原因。</p>
             </div>
           </div>
           <div v-if="topK.length" class="risk-list">
@@ -152,7 +146,7 @@ onMounted(() => {
           <div class="section-header">
             <div>
               <h2>证据摘要</h2>
-              <p>汇总病程事件、关系数量与支撑等级，帮助判断当前预测可信度。</p>
+              <p>汇总病程事件、关系数量与支撑等级，帮助理解当前患者的洞察来源。</p>
             </div>
           </div>
           <ul class="kv-list">
@@ -167,7 +161,7 @@ onMounted(() => {
           <div class="section-header">
             <div>
               <h2>建议来源</h2>
-              <p>说明当前建议来自模型、回退逻辑还是患者历史摘要，避免误判结果来源。</p>
+              <p>说明当前建议来自模型、回退逻辑还是患者历史摘要，避免和治理或训练信息混淆。</p>
             </div>
           </div>
           <ul class="kv-list">
@@ -182,7 +176,7 @@ onMounted(() => {
           <div class="section-header">
             <div>
               <h2>建议清单</h2>
-              <p>展示当前患者的随访与诊疗建议摘要。</p>
+              <p>只显示当前患者的诊疗建议摘要，不承接训练结果或全局治理动作。</p>
             </div>
           </div>
           <ol v-if="adviceList.length" class="advice-list">
@@ -196,7 +190,7 @@ onMounted(() => {
         <div class="section-header">
           <div>
             <h2>下一步动作</h2>
-            <p>从模型洞察直接回到患者详情或进入随访模块，形成业务闭环。</p>
+            <p>回到患者详情或进入随访模块，保持模型洞察和临床工作流的闭环。</p>
           </div>
         </div>
         <div class="action-row">

@@ -1,4 +1,5 @@
 import { computed, reactive, ref } from 'vue'
+import { AxiosError } from 'axios'
 import {
   createTrainingTask,
   deployModelVersion,
@@ -38,20 +39,32 @@ function buildBoardSnapshot(payload: {
   versions: ModelVersionRecord[]
 }): ModelBoardSnapshot {
   const currentVersion = payload.versions.find((item) => item.deployed) ?? payload.versions[0]
-  const task = payload.tasks[0]
+  const latestTask = payload.tasks[0]
+  const totalRows = payload.datasets.reduce((sum, item) => sum + item.rowCount, 0)
+
   return {
-    currentModelVersion: currentVersion?.versionName ?? 'v-demo',
+    currentModelVersion: currentVersion?.versionName ?? '未部署',
     currentModelName: currentVersion?.modelName ?? 'CTpath Temporal KG',
-    recentTrainingTime: task?.finishedAt || task?.createdAt || '--',
+    recentTrainingTime: latestTask?.finishedAt || latestTask?.createdAt || '--',
     mrr: currentVersion?.metrics?.mrr ?? 0,
     hits1: currentVersion?.metrics?.hits1 ?? 0,
     hits10: currentVersion?.metrics?.hits10 ?? 0,
-    datasetCoverage: payload.datasets.length ? 1 : 0,
-    recentInferenceCalls: payload.dashboard?.activeDatasetCount ?? 0,
-    fallbackRatio: payload.dashboard?.health.model_available ? 0.08 : 0.35,
-    recentTrainingTaskStatus: task?.status ?? '无任务',
-    source: 'mixed',
+    datasetCoverage: totalRows > 0 ? 1 : 0,
+    recentInferenceCalls: payload.dashboard?.loginCount ?? 0,
+    fallbackRatio: payload.dashboard?.health.model_available ? 0.04 : 0.35,
+    recentTrainingTaskStatus: latestTask?.status ?? 'no-task',
+    source: 'api',
   }
+}
+
+function toErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof AxiosError) {
+    const detail = error.response?.data?.detail
+    if (typeof detail === 'string' && detail.trim()) return detail
+    if (error.message) return error.message
+  }
+  if (error instanceof Error && error.message) return error.message
+  return fallback
 }
 
 let singleton: ReturnType<typeof createModelWorkspace> | null = null
@@ -73,12 +86,11 @@ function createModelWorkspace() {
   const loadingTask = ref(false)
   const loadingVersion = ref(false)
   const loadingOps = ref(false)
-  const datasetError = ref('')
+  const workspaceError = ref('')
   const taskError = ref('')
   const versionError = ref('')
   const opsError = ref('')
   const selectedDatasetId = ref('')
-  const trainingError = ref('')
   const importError = ref('')
   const importSuccess = ref('')
   const params = ref<ModelTrainingParams>({ ...emptyParams })
@@ -87,10 +99,24 @@ function createModelWorkspace() {
   const selectedFile = ref<File | null>(null)
 
   const isAuthenticated = computed(() => Boolean(currentUser.value))
+  const currentDeployment = computed(() => versions.value.find((item) => item.deployed) ?? versions.value[0] ?? null)
+
+  async function refreshHealthOnly() {
+    try {
+      health.value = await getModelHealth()
+    } catch (error) {
+      workspaceError.value = toErrorMessage(error, '无法获取模型服务健康状态。')
+    }
+  }
 
   async function refreshAll() {
-    if (!currentUser.value) return
+    if (!currentUser.value) {
+      await refreshHealthOnly()
+      return
+    }
+
     loading.value = true
+    workspaceError.value = ''
     try {
       const [dashboardResp, healthResp, datasetResp, taskResp, versionResp, operationsResp] = await Promise.all([
         getModelDashboard(),
@@ -109,6 +135,11 @@ function createModelWorkspace() {
       if (!selectedDatasetId.value && datasetResp[0]) {
         selectedDatasetId.value = datasetResp[0].datasetId
       }
+    } catch (error) {
+      workspaceError.value = toErrorMessage(error, '模型中心数据同步失败。')
+      if (error instanceof AxiosError && error.response?.status === 401) {
+        logout()
+      }
     } finally {
       loading.value = false
     }
@@ -122,11 +153,12 @@ function createModelWorkspace() {
     }
     if (restored?.token) {
       await refreshAll()
-    } else {
-      await getModelHealth().then((value) => {
-        health.value = value
-      })
+      if (!currentUser.value) {
+        await refreshHealthOnly()
+      }
+      return
     }
+    await refreshHealthOnly()
   }
 
   async function submitLogin() {
@@ -136,9 +168,10 @@ function createModelWorkspace() {
       const session = await loginModelUser(username.value, password.value)
       saveModelSession(session)
       currentUser.value = session.user
+      username.value = session.user.username
       await refreshAll()
     } catch (error) {
-      loginError.value = error instanceof Error ? error.message : '登录失败。'
+      loginError.value = toErrorMessage(error, '模型管理端登录失败。')
     } finally {
       loadingLogin.value = false
     }
@@ -152,14 +185,23 @@ function createModelWorkspace() {
     tasks.value = []
     versions.value = []
     operations.value = null
+    workspaceError.value = ''
+    taskError.value = ''
+    versionError.value = ''
+    opsError.value = ''
     selectedDatasetId.value = ''
     datasetName.value = ''
     selectedFile.value = null
+    importError.value = ''
+    importSuccess.value = ''
+    params.value = { ...emptyParams }
+    modelName.value = 'CTpath Temporal KG'
+    void refreshHealthOnly()
   }
 
   async function handleImportDataset() {
     if (!selectedFile.value) {
-      importError.value = '请选择一个 CSV 文件。'
+      importError.value = '请先选择待导入的训练 CSV 文件。'
       importSuccess.value = ''
       return
     }
@@ -173,13 +215,13 @@ function createModelWorkspace() {
         fileName: selectedFile.value.name,
         content,
       })
-      importSuccess.value = `已导入 ${record.datasetName}。`
+      importSuccess.value = `已导入训练数据集：${record.datasetName}`
       datasetName.value = ''
       selectedFile.value = null
       await refreshAll()
       selectedDatasetId.value = record.datasetId
     } catch (error) {
-      importError.value = error instanceof Error ? error.message : '导入失败。'
+      importError.value = toErrorMessage(error, '训练数据集导入失败。')
     } finally {
       loadingDataset.value = false
     }
@@ -188,7 +230,7 @@ function createModelWorkspace() {
   async function handleCreateTask() {
     const selectedDataset = datasets.value.find((item) => item.datasetId === selectedDatasetId.value)
     if (!selectedDataset) {
-      taskError.value = '请选择数据集。'
+      taskError.value = '请先选择训练数据集。'
       return
     }
     loadingTask.value = true
@@ -202,7 +244,7 @@ function createModelWorkspace() {
       })
       await refreshAll()
     } catch (error) {
-      taskError.value = error instanceof Error ? error.message : '创建训练任务失败。'
+      taskError.value = toErrorMessage(error, '训练任务创建失败。')
     } finally {
       loadingTask.value = false
     }
@@ -215,7 +257,7 @@ function createModelWorkspace() {
       await deployModelVersion(versionId)
       await refreshAll()
     } catch (error) {
-      versionError.value = error instanceof Error ? error.message : '发布失败。'
+      versionError.value = toErrorMessage(error, '模型版本发布失败。')
     } finally {
       loadingVersion.value = false
     }
@@ -228,7 +270,7 @@ function createModelWorkspace() {
       await rollbackModelVersion(versionId)
       await refreshAll()
     } catch (error) {
-      versionError.value = error instanceof Error ? error.message : '回滚失败。'
+      versionError.value = toErrorMessage(error, '模型版本回滚失败。')
     } finally {
       loadingVersion.value = false
     }
@@ -240,7 +282,7 @@ function createModelWorkspace() {
     try {
       operations.value = await getModelOperations()
     } catch (error) {
-      opsError.value = error instanceof Error ? error.message : '加载运营信息失败。'
+      opsError.value = toErrorMessage(error, '模型运营信息获取失败。')
     } finally {
       loadingOps.value = false
     }
@@ -272,12 +314,11 @@ function createModelWorkspace() {
     loadingTask,
     loadingVersion,
     loadingOps,
-    datasetError,
+    workspaceError,
     taskError,
     versionError,
     opsError,
     selectedDatasetId,
-    trainingError,
     importError,
     importSuccess,
     params,
@@ -286,6 +327,7 @@ function createModelWorkspace() {
     selectedFile,
     isAuthenticated,
     board,
+    currentDeployment,
     initialize,
     submitLogin,
     logout,
@@ -302,4 +344,3 @@ export function useModelWorkspace() {
   singleton ??= createModelWorkspace()
   return singleton
 }
-

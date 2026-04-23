@@ -2,7 +2,11 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { fileURLToPath, URL } from 'node:url'
 
-const isModelApp = process.env.CTPATH_APP_TARGET === 'model'
+const isModelApp =
+  process.env.CTPATH_APP_TARGET === 'model' ||
+  process.env.npm_lifecycle_event === 'build:model' ||
+  process.env.npm_lifecycle_event === 'dev:model' ||
+  process.env.npm_lifecycle_event === 'preview:model'
 
 export default defineConfig({
   // Keep Vite's temp dependency cache out of node_modules on Windows.

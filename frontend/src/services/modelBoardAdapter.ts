@@ -1,5 +1,5 @@
 import { getCurrentModelVersionFromTasks, listModelDatasets, listTrainingTasks } from './modelTrainingAdapter'
-import type { GovernanceCenterViewModel, MaintenanceOverview, ModelBoardSnapshot, ModelMetricsResponse } from './types'
+import type { ModelBoardSnapshot, ModelMetricsResponse } from './types'
 
 const CHRONIC_BASELINE = {
   mrr: 0.345,
@@ -24,8 +24,6 @@ function toTaskStatusLabel(status?: string): string {
 
 export function buildModelBoardSnapshot(params: {
   modelMetrics: ModelMetricsResponse | null
-  maintenance: MaintenanceOverview | GovernanceCenterViewModel | null
-  patientCount: number
 }): ModelBoardSnapshot {
   const tasks = listTrainingTasks()
   const datasets = listModelDatasets()
@@ -38,12 +36,10 @@ export function buildModelBoardSnapshot(params: {
   const hits10 = normalizePercent(fallbackModel?.hits10 ?? CHRONIC_BASELINE.hits10)
 
   const totalRows = datasets.reduce((sum, item) => sum + item.rowCount, 0)
-  const expectedRows = Math.max(1, params.patientCount * 20)
+  const expectedRows = Math.max(1, datasets.length * 160)
   const datasetCoverage = Math.min(1, totalRows / expectedRows)
-
-  const maintenanceAny = params.maintenance as
-    | (MaintenanceOverview & { modelGovernance?: { predictionCalls7d?: number | null; fallbackRatio?: number | null } })
-    | null
+  const recentInferenceCalls = latestTask ? Math.max(120, totalRows * 3 + tasks.length * 45) : null
+  const fallbackRatio = latestTask ? 0.06 : null
 
   return {
     currentModelVersion: currentVersion.version,
@@ -53,9 +49,9 @@ export function buildModelBoardSnapshot(params: {
     hits1,
     hits10,
     datasetCoverage,
-    recentInferenceCalls: maintenanceAny?.modelGovernance?.predictionCalls7d ?? null,
-    fallbackRatio: maintenanceAny?.modelGovernance?.fallbackRatio ?? null,
+    recentInferenceCalls,
+    fallbackRatio,
     recentTrainingTaskStatus: toTaskStatusLabel(latestTask?.status),
-    source: 'mixed',
+    source: 'mock-local',
   }
 }

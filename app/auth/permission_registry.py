@@ -234,6 +234,62 @@ class PermissionRegistry:
             description="生成用药计划"
         ))
 
+        self.register(APIPermission(
+            path="/api/patient/{id}/attachments",
+            method="GET",
+            required_permissions={Permission.PATIENT_VIEW},
+            allowed_roles={Role.ADMIN, Role.DOCTOR, Role.NURSE, Role.PHARMACIST, Role.ARCHIVIST},
+            description="获取患者附件列表"
+        ))
+
+        self.register(APIPermission(
+            path="/api/patient/{id}/attachments",
+            method="POST",
+            required_permissions={Permission.PATIENT_UPDATE},
+            allowed_roles={Role.ADMIN, Role.DOCTOR, Role.NURSE, Role.ARCHIVIST},
+            description="上传患者附件"
+        ))
+
+        self.register(APIPermission(
+            path="/api/patient/{id}/attachments/{attachment_id}/file",
+            method="GET",
+            required_permissions={Permission.PATIENT_VIEW},
+            allowed_roles={Role.ADMIN, Role.DOCTOR, Role.NURSE, Role.PHARMACIST, Role.ARCHIVIST},
+            description="下载患者附件文件"
+        ))
+
+        self.register(APIPermission(
+            path="/api/patient/{id}/medications",
+            method="GET",
+            required_permissions={Permission.PATIENT_VIEW},
+            allowed_roles={Role.ADMIN, Role.DOCTOR, Role.NURSE, Role.PHARMACIST, Role.ARCHIVIST},
+            description="获取患者用药列表"
+        ))
+
+        self.register(APIPermission(
+            path="/api/patient/{id}/medication-assessment",
+            method="POST",
+            required_permissions={Permission.ADVICE_VIEW},
+            allowed_roles={Role.ADMIN, Role.DOCTOR, Role.NURSE, Role.PHARMACIST, Role.ARCHIVIST},
+            description="患者用药充分性评估"
+        ))
+
+        self.register(APIPermission(
+            path="/api/patient/{id}/medications",
+            method="POST",
+            required_permissions={Permission.PATIENT_UPDATE},
+            allowed_roles={Role.ADMIN, Role.DOCTOR, Role.PHARMACIST, Role.ARCHIVIST},
+            description="创建患者用药记录"
+        ))
+
+        self.register(APIPermission(
+            path="/api/patient/{id}/medications/{medication_id}",
+            method="PUT",
+            required_permissions={Permission.PATIENT_UPDATE},
+            allowed_roles={Role.ADMIN, Role.DOCTOR, Role.PHARMACIST, Role.ARCHIVIST},
+            description="更新患者用药记录"
+        ))
+
         # 预测API
         self.register(APIPermission(
             path="/api/predict",
@@ -265,6 +321,120 @@ class PermissionRegistry:
             description="获取流程看板"
         ))
 
+        # 药房与药库 API
+        self.register(APIPermission(
+            path="/api/pharmacy/dashboard",
+            method="GET",
+            required_permissions={Permission.PHARMACY_VIEW},
+            description="获取药房看板"
+        ))
+
+        self.register(APIPermission(
+            path="/api/pharmacy/inventory",
+            method="GET",
+            required_permissions={Permission.PHARMACY_VIEW},
+            description="获取药房库存"
+        ))
+
+        self.register(APIPermission(
+            path="/api/pharmacy/inventory/{item_id}",
+            method="GET",
+            required_permissions={Permission.PHARMACY_VIEW},
+            description="获取药房库存详情"
+        ))
+
+        self.register(APIPermission(
+            path="/api/pharmacy/inventory",
+            method="POST",
+            required_permissions={Permission.PHARMACY_CREATE},
+            description="创建药房库存记录"
+        ))
+
+        self.register(APIPermission(
+            path="/api/pharmacy/inventory/{item_id}",
+            method="PUT",
+            required_permissions={Permission.PHARMACY_UPDATE},
+            description="更新药房库存记录"
+        ))
+
+        self.register(APIPermission(
+            path="/api/pharmacy/inventory/{item_id}/adjust",
+            method="PATCH",
+            required_permissions={Permission.PHARMACY_UPDATE},
+            description="调整药房库存"
+        ))
+
+        self.register(APIPermission(
+            path="/api/pharmacy/transactions",
+            method="GET",
+            required_permissions={Permission.PHARMACY_VIEW},
+            description="查看药房流水"
+        ))
+
+        self.register(APIPermission(
+            path="/api/pharmacy/review-queue",
+            method="GET",
+            required_permissions={Permission.PHARMACY_VIEW},
+            description="查看药房复核队列"
+        ))
+
+        self.register(APIPermission(
+            path="/api/pharmacy/review-queue/{patient_id}/{medication_id}",
+            method="PATCH",
+            required_permissions={Permission.PHARMACY_UPDATE},
+            description="更新药房复核结果"
+        ))
+
+        # 医护协调 API
+        self.register(APIPermission(
+            path="/api/coordination/board",
+            method="GET",
+            required_permissions={Permission.COORDINATION_VIEW},
+            description="获取医护协调看板"
+        ))
+
+        self.register(APIPermission(
+            path="/api/coordination/items",
+            method="GET",
+            required_permissions={Permission.COORDINATION_VIEW},
+            description="获取医护协调列表"
+        ))
+
+        self.register(APIPermission(
+            path="/api/coordination/items/{coordination_id}",
+            method="GET",
+            required_permissions={Permission.COORDINATION_VIEW},
+            description="获取医护协调详情"
+        ))
+
+        self.register(APIPermission(
+            path="/api/coordination/items",
+            method="POST",
+            required_permissions={Permission.COORDINATION_CREATE},
+            description="创建医护协调记录"
+        ))
+
+        self.register(APIPermission(
+            path="/api/coordination/items/{coordination_id}",
+            method="PUT",
+            required_permissions={Permission.COORDINATION_UPDATE},
+            description="更新医护协调记录"
+        ))
+
+        self.register(APIPermission(
+            path="/api/coordination/items/{coordination_id}/status",
+            method="PATCH",
+            required_permissions={Permission.COORDINATION_UPDATE},
+            description="更新医护协调状态"
+        ))
+
+        self.register(APIPermission(
+            path="/api/coordination/items/{coordination_id}/notes",
+            method="POST",
+            required_permissions={Permission.COORDINATION_CREATE},
+            description="新增医护协调备注"
+        ))
+
         # 治理/运维
         self.register(APIPermission(
             path="/api/maintenance/overview",
@@ -286,7 +456,7 @@ class PermissionRegistry:
             path="/api/model/metrics",
             method="GET",
             required_permissions={Permission.PREDICTION_VIEW},
-            allowed_roles={Role.ADMIN, Role.DOCTOR},
+            allowed_roles={Role.ADMIN},
             description="模型指标"
         ))
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal, Optional
+from typing import Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -68,8 +68,8 @@ class ModelTrainingTaskRecord(BaseModel):
     finishedAt: Optional[str] = None
     triggeredBy: str
     params: ModelTrainingParams
-    metrics: Optional[dict[str, float]] = None
-    logs: list[str]
+    metrics: Optional[Dict[str, float]] = None
+    logs: List[str]
     source: str = Field(default="api")
 
 
@@ -88,13 +88,13 @@ class ModelVersionRecord(BaseModel):
     createdAt: str
     publishedAt: Optional[str] = None
     datasetId: str
-    metrics: dict[str, float]
+    metrics: Dict[str, float]
     notes: str
     deployed: bool = False
 
 
 class ModelVersionListResponse(BaseModel):
-    items: list[ModelVersionRecord]
+    items: List[ModelVersionRecord]
 
 
 class ModelDashboardResponse(BaseModel):
@@ -107,4 +107,3 @@ class ModelDashboardResponse(BaseModel):
     latestTaskStatus: str
     latestVersionName: str
     health: ModelHealthResponse
-

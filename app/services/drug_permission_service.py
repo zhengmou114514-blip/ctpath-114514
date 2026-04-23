@@ -85,7 +85,9 @@ def _load_records() -> list[dict[str, Any]]:
         with path.open("r", encoding="utf-8") as handle:
             payload = json.load(handle)
         if isinstance(payload, list):
-            return [item for item in payload if isinstance(item, dict)]
+            records = [item for item in payload if isinstance(item, dict)]
+            if records:
+                return records
     except Exception:
         return _default_records()
 

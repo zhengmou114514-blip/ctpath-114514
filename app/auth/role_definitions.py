@@ -13,6 +13,7 @@ class Role(str, Enum):
     ADMIN = "admin"
     DOCTOR = "doctor"
     NURSE = "nurse"
+    PHARMACIST = "pharmacist"
     ARCHIVIST = "archivist"
 
 
@@ -58,6 +59,14 @@ class Permission(str, Enum):
     DRUG_PERMISSION_CREATE = "drug_permission:create"
     DRUG_PERMISSION_UPDATE = "drug_permission:update"
 
+    PHARMACY_VIEW = "pharmacy:view"
+    PHARMACY_CREATE = "pharmacy:create"
+    PHARMACY_UPDATE = "pharmacy:update"
+
+    COORDINATION_VIEW = "coordination:view"
+    COORDINATION_CREATE = "coordination:create"
+    COORDINATION_UPDATE = "coordination:update"
+
     # 系统管理权限
     SYSTEM_CONFIG = "system:config"
     SYSTEM_MONITOR = "system:monitor"
@@ -94,6 +103,12 @@ ROLE_PERMISSIONS: Dict[Role, Set[Permission]] = {
         Permission.DRUG_PERMISSION_VIEW,
         Permission.DRUG_PERMISSION_CREATE,
         Permission.DRUG_PERMISSION_UPDATE,
+        Permission.PHARMACY_VIEW,
+        Permission.PHARMACY_CREATE,
+        Permission.PHARMACY_UPDATE,
+        Permission.COORDINATION_VIEW,
+        Permission.COORDINATION_CREATE,
+        Permission.COORDINATION_UPDATE,
         Permission.SYSTEM_CONFIG,
         Permission.SYSTEM_MONITOR,
         Permission.USER_MANAGE,
@@ -123,6 +138,9 @@ ROLE_PERMISSIONS: Dict[Role, Set[Permission]] = {
         Permission.DRUG_PERMISSION_VIEW,
         Permission.DRUG_PERMISSION_CREATE,
         Permission.DRUG_PERMISSION_UPDATE,
+        Permission.COORDINATION_VIEW,
+        Permission.COORDINATION_CREATE,
+        Permission.COORDINATION_UPDATE,
     },
 
     Role.NURSE: {
@@ -137,6 +155,28 @@ ROLE_PERMISSIONS: Dict[Role, Set[Permission]] = {
         Permission.FOLLOWUP_UPDATE,
         Permission.TASK_VIEW,
         Permission.TASK_UPDATE,
+        Permission.COORDINATION_VIEW,
+        Permission.COORDINATION_CREATE,
+        Permission.COORDINATION_UPDATE,
+    },
+
+    Role.PHARMACIST: {
+        Permission.PATIENT_VIEW,
+        Permission.EVENT_VIEW,
+        Permission.PREDICTION_VIEW,
+        Permission.ADVICE_VIEW,
+        Permission.FOLLOWUP_VIEW,
+        Permission.TASK_VIEW,
+        Permission.DRUG_VIEW,
+        Permission.DRUG_CREATE,
+        Permission.DRUG_UPDATE,
+        Permission.DRUG_PERMISSION_VIEW,
+        Permission.PHARMACY_VIEW,
+        Permission.PHARMACY_CREATE,
+        Permission.PHARMACY_UPDATE,
+        Permission.COORDINATION_VIEW,
+        Permission.COORDINATION_CREATE,
+        Permission.COORDINATION_UPDATE,
     },
 
     Role.ARCHIVIST: {
@@ -152,6 +192,10 @@ ROLE_PERMISSIONS: Dict[Role, Set[Permission]] = {
         Permission.TASK_VIEW,
         Permission.DRUG_VIEW,
         Permission.DRUG_PERMISSION_VIEW,
+        Permission.PHARMACY_VIEW,
+        Permission.PHARMACY_CREATE,
+        Permission.PHARMACY_UPDATE,
+        Permission.COORDINATION_VIEW,
     },
 }
 

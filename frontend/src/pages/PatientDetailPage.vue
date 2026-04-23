@@ -16,6 +16,7 @@ const routePatientId = computed(() => {
 })
 
 const selectedPatient = computed(() => workspace.selectedPatient)
+
 const latestPrediction = computed(() => {
   if (!selectedPatient.value || !workspace.predictionResult) return null
   return workspace.predictionResult.patientId === selectedPatient.value.patientId ? workspace.predictionResult : null
@@ -34,7 +35,7 @@ const evidence = computed(() => {
       eventCount: prediction.evidence.eventCount,
       relationCount: prediction.evidence.relationCount,
       supportLevel: prediction.evidence.supportLevel,
-      summary: prediction.supportSummary || '模型已结合当前病程事件和图谱路径生成证据摘要。',
+      summary: prediction.supportSummary || '系统已根据最新接口返回生成证据摘要，供当前患者风险评估参考。',
     }
   }
 
@@ -42,25 +43,26 @@ const evidence = computed(() => {
     eventCount: selectedPatient.value?.timeline.length ?? 0,
     relationCount: selectedPatient.value?.pathExplanation.length ?? 0,
     supportLevel: selectedPatient.value?.dataSupport ?? 'unknown',
-    summary: selectedPatient.value?.summary || '当前页面展示的是患者预置摘要，尚未触发真实预测。',
+    summary: selectedPatient.value?.summary || '当前展示的是患者预置摘要，用于页面初次打开时的占位说明。',
   }
 })
 
 const modelStatus = computed(() => {
-  if (workspace.modelUnavailable) return { label: '模型不可用', type: 'danger' as const }
-  if (workspace.health?.mode === 'demo') return { label: 'Demo 模式', type: 'warning' as const }
-  if (latestPrediction.value?.mode === 'model') return { label: '真实模型结果', type: 'success' as const }
+  if (workspace.modelUnavailable) return { label: '推理服务不可用', type: 'danger' as const }
+  if (workspace.health?.mode === 'demo') return { label: 'Demo 推理模式', type: 'warning' as const }
+  if (latestPrediction.value?.mode === 'model') return { label: '模型直连结果', type: 'success' as const }
   if (latestPrediction.value?.mode === 'similar-case') return { label: '相似病例回退', type: 'warning' as const }
-  return { label: '预置摘要', type: 'info' as const }
+  return { label: '预置摘要占位', type: 'info' as const }
 })
 
 const predictionButtonLabel = computed(() => (hasLatestPrediction.value ? '刷新预测' : '触发预测'))
+
 const predictionSource = computed(() => {
   if (workspace.loadingPredict) {
     return {
       label: '预测中',
       type: 'warning' as const,
-      note: '正在调用真实 /api/predict，请等待最新预测结果返回。',
+      note: '系统正在调用真实 /api/predict 接口，请等待最新预测结果返回。',
     }
   }
 
@@ -69,8 +71,8 @@ const predictionSource = computed(() => {
       label: '预测失败',
       type: 'danger' as const,
       note: hasLatestPrediction.value
-        ? `${workspace.predictionError}，当前仍显示上一次成功预测结果。`
-        : `${workspace.predictionError}，当前仍显示患者预置摘要。`,
+        ? `${workspace.predictionError}，页面仍保留最近一次成功预测结果。`
+        : `${workspace.predictionError}，页面当前仍展示预置摘要。`,
     }
   }
 
@@ -78,14 +80,14 @@ const predictionSource = computed(() => {
     return {
       label: '最新预测结果',
       type: 'success' as const,
-      note: `当前内容来自真实 /api/predict 调用，策略：${latestPrediction.value?.strategy ?? 'unknown'}。`,
+      note: `当前内容来自真实 /api/predict 响应，预测策略：${latestPrediction.value?.strategy ?? 'unknown'}。`,
     }
   }
 
   return {
     label: '初始预置摘要',
     type: 'info' as const,
-    note: '当前仅展示患者自带 predictions/careAdvice 作为占位内容，不代表已经调用真实预测。',
+    note: '当前展示的是患者自带的 predictions / careAdvice 预置摘要，不代表已经调用真实预测接口。',
   }
 })
 
@@ -94,7 +96,7 @@ const leftRailStats = computed(() => {
   if (stats.length) return stats.slice(0, 4)
 
   return [
-    { label: '心率', value: '88 bpm', trend: '' },
+    { label: '脉搏', value: '88 bpm', trend: '' },
     { label: '血压', value: '142/90 mmHg', trend: '' },
     { label: '血氧', value: '96%', trend: '' },
     { label: '体温', value: '37.0°C', trend: '' },
@@ -106,7 +108,7 @@ const labStats = computed(() => {
   if (stats.length > 4) return stats.slice(4, 6)
 
   return [
-    { label: '肌酐', value: '1.8 mg/dL', trend: '+0.4 from baseline' },
+    { label: '肌酐', value: '1.8 mg/dL', trend: '较上周 +0.4' },
     { label: '尿素氮', value: '28 mg/dL', trend: '' },
   ]
 })
@@ -147,8 +149,14 @@ function handleOpenFollowup() {
   void workspace.openFollowupModule(patientId, 'tasks')
 }
 
+function handleOpenArchive() {
+  const patientId = selectedPatient.value?.patientId || routePatientId.value
+  if (!patientId) return
+  void workspace.openArchiveInNewTab(patientId, 'overview')
+}
+
 function handleRunPrediction() {
-  void workspace.runPrediction()
+  void workspace.runPrediction(true)
 }
 
 watch(
@@ -163,8 +171,8 @@ watch(
 <template>
   <section class="patient-detail-page workstation-page">
     <section v-if="!selectedPatient" class="empty-state-card">
-      <h3>未找到患者详情</h3>
-      <p>请先从医生工作台选择一个患者，再进入当前详情页查看病程、预测和建议。</p>
+      <h3>患者信息加载中</h3>
+      <p>正在同步患者主信息、病程摘要和当前用药，请稍后再试。</p>
     </section>
 
     <template v-else>
@@ -173,7 +181,7 @@ watch(
           <p class="eyebrow">患者详情</p>
           <h1>{{ selectedPatient.name }}</h1>
           <p class="hero-meta">
-            {{ selectedPatient.gender }} / {{ selectedPatient.age }} 岁 / 病历号 {{ selectedPatient.medicalRecordNumber || selectedPatient.patientId }}
+            {{ selectedPatient.gender }} / {{ selectedPatient.age }} 岁 / 病案号 {{ selectedPatient.medicalRecordNumber || selectedPatient.patientId }}
           </p>
         </div>
 
@@ -183,6 +191,7 @@ watch(
             <el-icon><MagicStick /></el-icon>
             <span>{{ predictionButtonLabel }}</span>
           </button>
+          <button class="secondary-button" type="button" @click="handleOpenArchive">电子档案</button>
           <button class="secondary-button" type="button" @click="handleOpenFollowup">进入随访</button>
           <button class="secondary-button" type="button" @click="handleBack">
             <el-icon><ArrowLeft /></el-icon>
@@ -222,7 +231,7 @@ watch(
             <div class="insight-header">
               <div>
                 <p class="eyebrow">模型洞察</p>
-                <h2>当前患者预测与建议</h2>
+                <h2>当前患者风险评估与建议</h2>
               </div>
               <div class="insight-statuses">
                 <el-tag :type="riskTagType(selectedPatient.riskLevel)" effect="light">{{ selectedPatient.riskLevel }}</el-tag>
@@ -248,17 +257,15 @@ watch(
                 <p class="eyebrow">证据摘要</p>
                 <p class="block-body">{{ evidence.summary }}</p>
                 <ul class="bullet-list">
-                  <li>当前病程时间线事件数：{{ evidence.eventCount }}</li>
-                  <li>图谱推理路径节点数：{{ evidence.relationCount }}</li>
+                  <li>病程事件数：{{ evidence.eventCount }}</li>
+                  <li>关系证据数：{{ evidence.relationCount }}</li>
                 </ul>
               </article>
 
               <article class="insight-block">
                 <p class="eyebrow">路径说明</p>
                 <div class="path-box">
-                  <p v-for="item in pathList" :key="item">
-                    {{ item }}
-                  </p>
+                  <p v-for="item in pathList" :key="item">{{ item }}</p>
                 </div>
               </article>
             </section>
@@ -266,13 +273,13 @@ watch(
             <article class="care-advice-box">
               <p class="eyebrow">护理建议</p>
               <p class="care-advice-body">
-                {{ adviceList[0] || '尚未生成新的建议内容。' }}
+                {{ adviceList[0] || '当前暂无额外建议，请结合病程与用药记录进一步评估。' }}
               </p>
             </article>
 
             <div v-if="workspace.loadingPredict" class="prediction-state-shell prediction-loading">
               <strong>预测中</strong>
-              <p>系统正在调用真实预测接口，请等待最新结果返回。</p>
+              <p>系统正在等待真实预测接口返回结果，页面会在完成后自动刷新为最新预测内容。</p>
             </div>
 
             <div v-else-if="workspace.predictionError" class="prediction-state-shell prediction-error">
@@ -284,6 +291,7 @@ watch(
               <button class="primary-button" type="button" :disabled="workspace.loadingPredict" @click="handleRunPrediction">
                 {{ predictionButtonLabel }}
               </button>
+              <button class="secondary-button" type="button" @click="handleOpenArchive">电子档案</button>
               <button class="secondary-button" type="button" @click="handleOpenFollowup">进入随访</button>
               <button class="secondary-button" type="button" @click="handleBack">返回工作台</button>
             </div>
@@ -295,7 +303,11 @@ watch(
                 <div>
                   <h2>{{ hasLatestPrediction ? '最新预测结果' : '预置预测摘要' }}</h2>
                   <p>
-                    {{ hasLatestPrediction ? '当前区域展示的内容来自真实预测接口返回。' : '当前区域展示的是患者自带预测摘要，用于页面初始占位。' }}
+                    {{
+                      hasLatestPrediction
+                        ? '当前展示的是最近一次真实预测接口返回的结果。'
+                        : '当前展示的是页面预置摘要，用于说明尚未触发真实预测时的默认状态。'
+                    }}
                   </p>
                 </div>
               </div>
@@ -308,14 +320,14 @@ watch(
                 <el-progress :percentage="Math.round(topPrediction.score * 100)" :stroke-width="8" />
                 <p>{{ topPrediction.reason }}</p>
               </div>
-              <el-empty v-else description="当前没有可展示的预测结果。" />
+              <el-empty v-else description="当前暂无可展示的预测结果。" />
             </article>
 
             <article class="clinical-card timeline-card">
               <div class="section-header">
                 <div>
                   <h2>病程时间线</h2>
-                  <p>当前患者共有 {{ selectedPatient.timeline.length }} 条病程事件。</p>
+                  <p>当前患者共有 {{ selectedPatient.timeline.length }} 条关键病程记录。</p>
                 </div>
               </div>
               <el-timeline v-if="selectedPatient.timeline.length">
@@ -329,7 +341,7 @@ watch(
                   <p class="timeline-detail">{{ item.detail }}</p>
                 </el-timeline-item>
               </el-timeline>
-              <el-empty v-else description="当前没有病程时间线数据。" />
+              <el-empty v-else description="当前暂无病程时间线记录。" />
             </article>
           </section>
 
@@ -351,7 +363,6 @@ watch(
   justify-content: space-between;
   gap: 24px;
   padding: 30px 40px;
-  border-radius: 0;
   background: rgba(240, 244, 245, 0.8);
 }
 
@@ -521,91 +532,91 @@ watch(
 }
 
 .care-advice-box {
-  padding: 22px;
-  border-radius: 12px;
-  background: linear-gradient(180deg, rgba(207, 230, 242, 0.34), rgba(241, 244, 245, 0.92));
-  box-shadow: inset 4px 0 0 var(--ws-primary);
+  display: grid;
+  gap: 10px;
+  padding: 18px 20px;
+  border-radius: 14px;
+  background: rgba(0, 89, 187, 0.06);
 }
 
 .prediction-state-shell {
-  padding: 16px 18px;
+  display: grid;
+  gap: 8px;
   border-radius: 14px;
-}
-
-.prediction-state-shell strong {
-  display: block;
-  margin-bottom: 6px;
-  font-family: var(--ws-font-headline);
-  font-size: 16px;
-}
-
-.prediction-state-shell p {
-  margin: 0;
+  padding: 16px 18px;
 }
 
 .prediction-loading {
-  background: rgba(207, 230, 242, 0.65);
-  color: var(--ws-secondary);
+  background: rgba(255, 219, 201, 0.4);
 }
 
 .prediction-error {
-  background: rgba(255, 218, 214, 0.88);
-  color: var(--ws-error);
+  background: rgba(255, 218, 214, 0.6);
 }
 
 .insight-actions {
   display: flex;
-  flex-wrap: wrap;
   gap: 12px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(190, 200, 201, 0.52);
+  flex-wrap: wrap;
 }
 
 .patient-secondary-grid {
   display: grid;
-  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  grid-template-columns: minmax(0, 420px) minmax(0, 1fr);
   gap: 22px;
 }
 
 .prediction-card,
 .timeline-card {
   display: grid;
-  gap: 16px;
+  gap: 18px;
+}
+
+.section-header h2 {
+  margin: 0;
+}
+
+.section-header p {
+  margin: 8px 0 0;
+  color: #526772;
+  line-height: 1.65;
 }
 
 .prediction-box {
   display: grid;
-  gap: 14px;
+  gap: 16px;
 }
 
 .prediction-head {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
-  align-items: center;
 }
 
-.prediction-head strong,
-.prediction-head span {
-  font-size: 18px;
+.prediction-head strong {
+  font-family: var(--ws-font-headline);
+  font-size: 20px;
 }
 
-@media (max-width: 1240px) {
-  .patient-detail-layout,
-  .insight-grid,
+@media (max-width: 1180px) {
+  .patient-detail-layout {
+    grid-template-columns: 1fr;
+  }
+
   .patient-secondary-grid {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 900px) {
-  .patient-detail-hero {
-    display: grid;
-    padding: 24px;
+  .patient-detail-hero,
+  .insight-header {
+    flex-direction: column;
   }
 
-  .hero-actions {
-    justify-content: flex-start;
+  .insight-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

@@ -19,8 +19,6 @@ const trainingTasksCount = ref(0)
 const board = computed(() =>
   buildModelBoardSnapshot({
     modelMetrics: workspace.modelMetrics,
-    maintenance: workspace.maintenanceOverview,
-    patientCount: workspace.allPatients.length,
   })
 )
 
@@ -50,7 +48,7 @@ async function refreshOperations() {
   loading.value = true
   auditError.value = ''
   try {
-    await workspace.refreshGovernanceWorkspace()
+    await workspace.refreshModelMetrics()
     const auditResp = await getSystemAudit(120)
     auditRows.value = auditResp.items
     datasetsCount.value = listModelDatasets().length

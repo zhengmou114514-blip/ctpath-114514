@@ -1,19 +1,73 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+import json
+from datetime import datetime
 from hashlib import sha1
+from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
 from .demo_model_seed import DATASETS, MODEL_USERS, MODEL_VERSIONS, SERVICE_HEALTH, TRAINING_TASKS
 
-DATASET_STORE: list[dict[str, Any]] = [dict(item) for item in DATASETS]
-TASK_STORE: list[dict[str, Any]] = [dict(item) for item in TRAINING_TASKS]
-VERSION_STORE: list[dict[str, Any]] = [dict(item) for item in MODEL_VERSIONS]
-HEALTH_STORE: dict[str, Any] = dict(SERVICE_HEALTH)
+STATE_FILE = Path(__file__).resolve().parent.parent / "data" / "model_api" / "state.json"
 MODEL_TOKENS: dict[str, str] = {}
-MODEL_LOGIN_COUNT = 0
-MODEL_ACTIVITY_LOG: list[dict[str, Any]] = []
+
+
+def _default_state() -> dict[str, Any]:
+    return {
+        "datasets": [dict(item) for item in DATASETS],
+        "tasks": [dict(item) for item in TRAINING_TASKS],
+        "versions": [dict(item) for item in MODEL_VERSIONS],
+        "health": dict(SERVICE_HEALTH),
+        "loginCount": 0,
+        "activityLog": [],
+    }
+
+
+def _load_state() -> dict[str, Any]:
+    if not STATE_FILE.exists():
+        return _default_state()
+    try:
+        payload = json.loads(STATE_FILE.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return _default_state()
+
+    state = _default_state()
+    state["datasets"] = payload.get("datasets") or state["datasets"]
+    state["tasks"] = payload.get("tasks") or state["tasks"]
+    state["versions"] = payload.get("versions") or state["versions"]
+    state["health"] = payload.get("health") or state["health"]
+    state["loginCount"] = payload.get("loginCount", state["loginCount"])
+    state["activityLog"] = payload.get("activityLog") or state["activityLog"]
+    return state
+
+
+def _persist_state() -> None:
+    STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    STATE_FILE.write_text(
+        json.dumps(
+            {
+                "datasets": DATASET_STORE,
+                "tasks": TASK_STORE,
+                "versions": VERSION_STORE,
+                "health": HEALTH_STORE,
+                "loginCount": MODEL_LOGIN_COUNT,
+                "activityLog": MODEL_ACTIVITY_LOG,
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+
+_STATE = _load_state()
+DATASET_STORE: list[dict[str, Any]] = _STATE["datasets"]
+TASK_STORE: list[dict[str, Any]] = _STATE["tasks"]
+VERSION_STORE: list[dict[str, Any]] = _STATE["versions"]
+HEALTH_STORE: dict[str, Any] = _STATE["health"]
+MODEL_LOGIN_COUNT = int(_STATE["loginCount"])
+MODEL_ACTIVITY_LOG: list[dict[str, Any]] = _STATE["activityLog"]
 
 
 def _now() -> str:
@@ -78,6 +132,7 @@ def record_activity(action: str, detail: str, operator: str) -> None:
         },
     )
     del MODEL_ACTIVITY_LOG[30:]
+    _persist_state()
 
 
 def _create_version_from_task(task: dict[str, Any]) -> dict[str, Any]:
@@ -92,7 +147,7 @@ def _create_version_from_task(task: dict[str, Any]) -> dict[str, Any]:
         "publishedAt": None,
         "datasetId": task["datasetId"],
         "metrics": metrics,
-        "notes": "由训练任务自动生成。",
+        "notes": "由最新训练任务自动生成，等待评审后部署。",
         "deployed": False,
     }
     if not any(item["versionId"] == version_id for item in VERSION_STORE):
@@ -102,6 +157,7 @@ def _create_version_from_task(task: dict[str, Any]) -> dict[str, Any]:
 
 def advance_training_tasks() -> None:
     now = datetime.utcnow()
+    changed = False
     for task in TASK_STORE:
         created = datetime.fromisoformat(task["createdAt"].replace("Z", "+00:00"))
         elapsed = (now - created.replace(tzinfo=None)).total_seconds()
@@ -109,13 +165,17 @@ def advance_training_tasks() -> None:
         if task["status"] == "queued" and elapsed > 2:
             task["status"] = "running"
             task["startedAt"] = _now()
-            task["logs"].append("训练任务已开始运行。")
+            task["logs"].append("训练资源已分配，任务开始执行。")
+            changed = True
         elif task["status"] == "running" and elapsed > 8:
             task["status"] = "succeeded"
             task["finishedAt"] = _now()
             task["metrics"] = {"mrr": 0.6124, "hits1": 0.3982, "hits10": 0.8413}
-            task["logs"].append("训练完成，已生成可发布模型版本。")
+            task["logs"].append("训练结束，指标评估已生成并同步到模型版本库。")
             _create_version_from_task(task)
+            changed = True
+    if changed:
+        _persist_state()
 
 
 def list_datasets() -> list[dict[str, Any]]:
@@ -135,7 +195,7 @@ def import_dataset(dataset_name: str, file_name: str, content: str, uploaded_by:
         "source": "api",
     }
     DATASET_STORE.insert(0, record)
-    record_activity("dataset_import", f"导入数据集 {record['datasetName']}", uploaded_by)
+    record_activity("dataset_import", f"导入训练数据集：{record['datasetName']}", uploaded_by)
     HEALTH_STORE["last_sync_at"] = _now()
     return record
 
@@ -158,11 +218,11 @@ def create_training_task(input_data: dict[str, Any], triggered_by: str) -> dict[
         "triggeredBy": triggered_by,
         "params": input_data["params"],
         "metrics": None,
-        "logs": ["训练任务已创建，等待调度。"],
+        "logs": ["训练任务已创建，等待资源调度。"],
         "source": "api",
     }
     TASK_STORE.insert(0, task)
-    record_activity("training_created", f"创建训练任务 {task['modelName']}", triggered_by)
+    record_activity("training_created", f"创建训练任务：{task['modelName']}", triggered_by)
     HEALTH_STORE["last_sync_at"] = _now()
     return task
 
@@ -187,12 +247,14 @@ def deploy_version(version_id: str, operator: str) -> dict[str, Any]:
             version["publishedAt"] = _now()
     HEALTH_STORE["current_deployment"] = version_id
     HEALTH_STORE["last_sync_at"] = _now()
-    record_activity("version_deploy", f"发布版本 {found['versionName']}", operator)
+    record_activity("version_deploy", f"发布模型版本：{found['versionName']}", operator)
     return found
 
 
 def rollback_version(version_id: str, operator: str) -> dict[str, Any]:
-    return deploy_version(version_id, operator)
+    version = deploy_version(version_id, operator)
+    record_activity("version_rollback", f"回滚并切换到模型版本：{version['versionName']}", operator)
+    return version
 
 
 def get_dashboard_snapshot(current_user: str) -> dict[str, Any]:
@@ -207,8 +269,8 @@ def get_dashboard_snapshot(current_user: str) -> dict[str, Any]:
         "activeDatasetCount": len(DATASET_STORE),
         "runningTaskCount": len([item for item in tasks if item["status"] == "running"]),
         "deployedVersionCount": len([item for item in versions if item.get("deployed")]),
-        "latestTaskStatus": latest_task["status"] if latest_task else "无任务",
-        "latestVersionName": deployed["versionName"] if deployed else "无版本",
+        "latestTaskStatus": latest_task["status"] if latest_task else "no-task",
+        "latestVersionName": deployed["versionName"] if deployed else "未部署版本",
         "health": {
             "status": HEALTH_STORE["status"],
             "mode": HEALTH_STORE["mode"],
@@ -218,4 +280,3 @@ def get_dashboard_snapshot(current_user: str) -> dict[str, Any]:
             "last_sync_at": HEALTH_STORE.get("last_sync_at"),
         },
     }
-

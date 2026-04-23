@@ -1,13 +1,16 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router'
 import { useWorkspaceController } from '../composables/useWorkspaceController'
 import { provideWorkspaceContext } from '../composables/workspaceContext'
 import AppShell from '../layouts/AppShell.vue'
 import DoctorDashboardPage from './DoctorDashboardPage.vue'
+import EmrPage from './EmrPage.vue'
 import FollowupWorkbenchPage from './FollowupWorkbenchPage.vue'
+import RoleWorkspacePage from './RoleWorkspacePage.vue'
 import PatientArchivePage from './PatientArchivePage.vue'
 import SystemCenterPage from './SystemCenterPage.vue'
+import type { AppSection } from '../types/workspace'
 
 const workspace = useWorkspaceController()
 provideWorkspaceContext(workspace)
@@ -16,38 +19,80 @@ const route = useRoute()
 const router = useRouter()
 const redirectingToLogin = ref(false)
 
-const splitRouteSections: Record<
-  string,
-  | 'insights'
-  | 'model-dashboard'
-  | 'model-operations'
-  | 'training-center'
-  | 'governance'
-  | 'drug-management'
-  | 'drug-permission-management'
-  | 'tasks'
-> = {
+const splitRouteSections: Record<string, AppSection> = {
   'nurse-followups': 'tasks',
-  'model-insight': 'insights',
   'model-dashboard': 'model-dashboard',
-  'model-operations': 'model-operations',
   'training-center': 'training-center',
+  'model-operations': 'model-operations',
+  'model-insight': 'insights',
   governance: 'governance',
+  'role-workspaces': 'role-workspaces',
   'drug-management': 'drug-management',
   'drug-permission-management': 'drug-permission-management',
+  pharmacy: 'pharmacy',
+  coordination: 'coordination',
 }
 
-const sectionToRouteName: Partial<Record<string, string>> = {
+const sectionToRouteName: Partial<Record<AppSection, string>> = {
   tasks: 'nurse-followups',
   contacts: 'nurse-followups',
   flow: 'nurse-followups',
-  insights: 'model-insight',
   'model-dashboard': 'model-dashboard',
-  'model-operations': 'model-operations',
   'training-center': 'training-center',
+  'model-operations': 'model-operations',
+  insights: 'model-insight',
   governance: 'governance',
+  'role-workspaces': 'role-workspaces',
   'drug-management': 'drug-management',
   'drug-permission-management': 'drug-permission-management',
+  pharmacy: 'pharmacy',
+  coordination: 'coordination',
+}
+
+function buildRouteForSection(nextSection: AppSection): RouteLocationRaw {
+  if (nextSection === 'doctor') return { name: 'home' }
+
+  if (nextSection === 'archive' || nextSection === 'data-quality' || nextSection === 'system') {
+    return {
+      name: 'home',
+      query: {
+        module: nextSection,
+      },
+    }
+  }
+
+  if (nextSection === 'emr') {
+    return {
+      name: 'home',
+      query: {
+        module: 'emr',
+      },
+    }
+  }
+
+  if (nextSection === 'pharmacy' || nextSection === 'coordination') {
+    return {
+      name: nextSection,
+    }
+  }
+
+  if (nextSection === 'role-workspaces') {
+    return {
+      name: 'role-workspaces',
+    }
+  }
+
+  if (nextSection === 'tasks' || nextSection === 'contacts' || nextSection === 'flow') {
+    return {
+      name: 'nurse-followups',
+      query: {
+        module: nextSection,
+      },
+    }
+  }
+
+  const routeName = sectionToRouteName[nextSection] ?? 'home'
+  return { name: routeName }
 }
 
 const isSplitWorkspaceRoute = computed(() => {
@@ -56,12 +101,15 @@ const isSplitWorkspaceRoute = computed(() => {
     Object.prototype.hasOwnProperty.call(splitRouteSections, routeName) ||
     routeName === 'patient-detail' ||
     routeName === 'nurse-followups' ||
-    workspace.currentWorkspace === 'model-insight' ||
+    workspace.currentWorkspace === 'governance' ||
+    workspace.currentWorkspace === 'followup' ||
     workspace.currentWorkspace === 'model-dashboard' ||
     workspace.currentWorkspace === 'model-operations' ||
     workspace.currentWorkspace === 'training-center' ||
-    workspace.currentWorkspace === 'governance' ||
-    workspace.currentWorkspace === 'followup' ||
+    workspace.currentWorkspace === 'model-insight' ||
+    workspace.currentWorkspace === 'role-workspaces' ||
+    workspace.currentWorkspace === 'pharmacy' ||
+    workspace.currentWorkspace === 'coordination' ||
     workspace.currentWorkspace === 'drug-management' ||
     workspace.currentWorkspace === 'drug-permission-management'
   )
@@ -81,7 +129,32 @@ function syncWorkspaceFromRoute() {
   const routeName = typeof route.name === 'string' ? route.name : ''
   if (routeName === 'patient-detail') return
 
-  const nextSection = splitRouteSections[routeName] ?? 'doctor'
+  const moduleValue = typeof route.query.module === 'string' ? route.query.module : ''
+  const requestedSection =
+    moduleValue === 'archive' ||
+    moduleValue === 'data-quality' ||
+    moduleValue === 'system' ||
+    moduleValue === 'tasks' ||
+    moduleValue === 'contacts' ||
+    moduleValue === 'flow' ||
+    moduleValue === 'emr' ||
+    moduleValue === 'pharmacy' ||
+    moduleValue === 'coordination' ||
+    moduleValue === 'governance' ||
+    moduleValue === 'role-workspaces' ||
+    moduleValue === 'drug-management' ||
+    moduleValue === 'drug-permission-management'
+      ? moduleValue
+      : null
+
+  const nextSection =
+    routeName === 'home'
+      ? requestedSection ?? 'doctor'
+      : routeName === 'nurse-followups'
+        ? requestedSection && (requestedSection === 'tasks' || requestedSection === 'contacts' || requestedSection === 'flow')
+          ? requestedSection
+          : 'tasks'
+        : splitRouteSections[routeName] ?? 'doctor'
   if (workspace.section !== nextSection) {
     workspace.selectSection(nextSection)
   }
@@ -91,11 +164,9 @@ function syncRouteFromWorkspace() {
   if (!workspace.currentDoctor) return
   if (route.name === 'patient-detail') return
 
-  const targetRoute = sectionToRouteName[workspace.section] ?? 'home'
-  const currentRoute = typeof route.name === 'string' ? route.name : ''
-
-  if (currentRoute !== targetRoute) {
-    void router.replace({ name: targetRoute })
+  const targetRoute = buildRouteForSection(workspace.section)
+  if (router.resolve(targetRoute).fullPath !== route.fullPath) {
+    void router.replace(targetRoute)
   }
 }
 
@@ -116,10 +187,7 @@ function handleSelectSection(nextSection: Parameters<typeof workspace.selectSect
   workspace.selectSection(nextSection)
 
   if (currentRouteName === 'patient-detail') {
-    const targetRoute = sectionToRouteName[nextSection] ?? 'home'
-    if (targetRoute) {
-      void router.push({ name: targetRoute })
-    }
+    void router.push(buildRouteForSection(nextSection))
     return
   }
 
@@ -140,8 +208,17 @@ function handleOpenArchive(payload: { patientId: string; focus?: 'overview' | 'e
   void workspace.openArchiveInNewTab(payload.patientId, focus)
 }
 
-function handleOpenFollowup(payload: { patientId: string; section?: 'tasks' | 'contacts' | 'flow' }) {
-  void workspace.openFollowupModule(payload.patientId, payload.section ?? 'tasks')
+function handleOpenFollowup(payload: { patientId?: string; section?: 'tasks' | 'contacts' | 'flow' }) {
+  void workspace.openFollowupModule(payload.patientId || workspace.selectedPatientId || undefined, payload.section ?? 'tasks')
+}
+
+function handlePrintArchive(patientId?: string) {
+  const targetPatientId = patientId || workspace.selectedPatientId || workspace.allPatients[0]?.patientId
+  if (!targetPatientId) {
+    return
+  }
+
+  void router.push({ name: 'patient-archive-print', params: { patientId: targetPatientId } })
 }
 
 function handleDoctorOpenArchive(payload: { patientId: string; focus?: 'overview' | 'events' }) {
@@ -273,7 +350,7 @@ watch(
         @open="workspace.openPatient($event, 'archive')"
         @create="workspace.openCreateModule"
         @import="workspace.openImportModule"
-        @export="workspace.handleExportPatients"
+        @export="handlePrintArchive"
         @prev-page="workspace.prevArchivePage"
         @next-page="workspace.nextArchivePage"
         @submit-archive="workspace.submitArchive"
@@ -281,6 +358,18 @@ watch(
         @submit-import="workspace.submitImport"
         @prepare-new="workspace.openCreateModule"
         @back="workspace.backToArchiveList"
+        @open-followup="handleOpenFollowup"
+      />
+
+      <EmrPage
+        v-else-if="workspace.currentWorkspace === 'emr'"
+        :all-patients="workspace.allPatients"
+        :selected-patient="workspace.selectedPatient"
+        :followup-items="workspace.followupItems"
+        :loading="workspace.loadingPatients || workspace.loadingPatient"
+        @open-patient="workspace.openPatient($event, 'doctor')"
+        @open-archive="handleOpenArchive"
+        @open-followup="handleOpenFollowup"
       />
 
       <FollowupWorkbenchPage
@@ -294,12 +383,15 @@ watch(
         :doctor-role="workspace.currentDoctor.role"
         :no-permission="workspace.followupNoPermission"
         :model-unavailable="workspace.modelUnavailable"
+        :selected-patient="workspace.selectedPatient"
         @open-patient="workspace.openPatient($event, 'doctor')"
         @open-archive="workspace.openArchiveInNewTab"
         @complete-task="workspace.changeOutpatientTaskStatus($event.patientId, $event.taskId, workspace.taskStatusCompleted)"
         @close-task="workspace.changeOutpatientTaskStatus($event.patientId, $event.taskId, workspace.taskStatusClosed)"
         @submit-contact-log="workspace.submitContactLog"
       />
+
+      <RoleWorkspacePage v-else-if="workspace.currentWorkspace === 'role-workspaces'" />
 
       <SystemCenterPage
         v-else-if="workspace.currentWorkspace === 'system'"
@@ -308,8 +400,8 @@ watch(
       />
 
       <section v-else class="empty-state-card">
-        <h3>当前模块暂未接入独立页面</h3>
-        <p>请从左侧导航重新选择工作台模块，或回到医生工作台继续当前业务闭环。</p>
+        <h3>模块正在整理中</h3>
+        <p>当前工作区尚未挂载可展示内容，请返回医生工作台、患者档案或随访任务继续操作。</p>
       </section>
     </template>
   </AppShell>
