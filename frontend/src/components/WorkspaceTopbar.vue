@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { Search, UserFilled } from '@element-plus/icons-vue'
 import { roleSystemForRole, sectionLabel } from '../config/workspaceMenu'
 import type { DoctorUser, HealthResponse } from '../services/types'
@@ -11,6 +12,8 @@ const props = defineProps<{
   health: HealthResponse | null
   loading?: boolean
 }>()
+
+const route = useRoute()
 
 const placeholderMap: Partial<Record<AppSection, string>> = {
   doctor: '搜索待处理患者、档案号或风险标签',
@@ -41,11 +44,13 @@ const roleLabelMap: Record<DoctorUser['role'], string> = {
 
 const currentSystem = computed(() => roleSystemForRole(props.doctor.role))
 const serviceLabel = computed(() => (props.health?.status === 'ok' ? '业务服务正常' : '服务连接中'))
-const breadcrumb = computed(() => [
-  props.doctor.department || '慢病管理门诊',
-  roleLabelMap[props.doctor.role],
-  sectionLabel(props.section),
-])
+const breadcrumb = computed(() => {
+  const routeBreadcrumb = route.meta.breadcrumb
+  if (Array.isArray(routeBreadcrumb) && routeBreadcrumb.every((item) => typeof item === 'string')) {
+    return routeBreadcrumb
+  }
+  return [props.doctor.department || '慢病管理门诊', roleLabelMap[props.doctor.role], sectionLabel(props.section)]
+})
 </script>
 
 <template>

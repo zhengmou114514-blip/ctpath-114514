@@ -1,17 +1,18 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import {
   Document,
   FolderOpened,
   Grid,
-  Lock,
   Memo,
   Operation,
   SetUp,
   SwitchButton,
   Tickets,
 } from '@element-plus/icons-vue'
-import { ROLE_MENU_GROUPS, ROLE_WORKSPACE_MENUS, roleSystemForRole } from '../config/workspaceMenu'
+import { roleSystemForRole } from '../config/workspaceMenu'
+import { visibleNavigationGroups, type NavigationItem } from '../config/navigation'
 import type { DoctorUser, HealthResponse } from '../services/types'
 import type { AppSection } from '../types/workspace'
 
@@ -28,38 +29,37 @@ const emit = defineEmits<{
   (e: 'logout'): void
 }>()
 
-const iconMap: Partial<Record<AppSection, object>> = {
-  doctor: Grid,
-  archive: Document,
-  emr: Document,
-  tasks: Memo,
-  contacts: Operation,
-  flow: FolderOpened,
-  pharmacy: Tickets,
-  coordination: Operation,
-  insights: Grid,
-  governance: FolderOpened,
-  'data-quality': Document,
-  'drug-management': Tickets,
-  'drug-permission-management': Tickets,
-  'model-dashboard': Grid,
-  'training-center': Memo,
-  'model-operations': Operation,
-  'role-workspaces': Lock,
-  system: SetUp,
+const route = useRoute()
+const router = useRouter()
+
+const iconMap: Record<string, object> = {
+  Grid,
+  Document,
+  Memo,
+  Operation,
+  Tickets,
+  SetUp,
+  FolderOpened,
 }
 
-const navItems = computed(() => ROLE_WORKSPACE_MENUS[props.doctor.role] ?? [])
+const navigation = computed(() => visibleNavigationGroups(props.doctor.role))
 const currentSystem = computed(() => roleSystemForRole(props.doctor.role))
-const groupedNavItems = computed(() =>
-  ROLE_MENU_GROUPS[props.doctor.role]
-    .map((group) => ({
-      ...group,
-      items: navItems.value.filter((item) => group.sections.includes(item.section)),
-    }))
-    .filter((group) => group.items.length > 0)
-)
 const modeLabel = computed(() => (props.health?.status === 'ok' ? '业务运行中' : '服务连接中'))
+
+function isActive(item: NavigationItem) {
+  if (!item.path) return false
+  const basePath = item.path.split('?')[0]
+  return route.path === basePath || route.fullPath === item.path
+}
+
+function openItem(item: NavigationItem) {
+  if (item.section) {
+    emit('select', item.section)
+  }
+  if (item.path) {
+    void router.push(item.path)
+  }
+}
 </script>
 
 <template>
@@ -92,20 +92,20 @@ const modeLabel = computed(() => (props.health?.status === 'ok' ? '业务运行�
     </div>
 
     <nav class="sidenav-menu">
-      <section v-for="group in groupedNavItems" :key="group.title" class="sidenav-group">
+      <section v-for="group in navigation" :key="group.title" class="sidenav-group">
         <div class="sidenav-group-head">
+          <el-icon><component :is="iconMap[group.icon || 'Grid']" /></el-icon>
           <p>{{ group.title }}</p>
         </div>
         <button
-          v-for="item in group.items"
-          :key="item.section"
+          v-for="item in group.children"
+          :key="`${group.title}-${item.title}-${item.path}`"
           class="sidenav-item"
-          :class="{ active: item.section === activeSection }"
+          :class="{ active: isActive(item) }"
           type="button"
-          @click="emit('select', item.section)"
+          @click="openItem(item)"
         >
-          <el-icon><component :is="iconMap[item.section]" /></el-icon>
-          <span>{{ item.label }}</span>
+          <span>{{ item.title }}</span>
         </button>
       </section>
     </nav>
@@ -194,12 +194,6 @@ const modeLabel = computed(() => (props.health?.status === 'ok' ? '业务运行�
   font-weight: 700;
 }
 
-.meta-pill-muted {
-  background: rgba(0, 89, 187, 0.1);
-  border-color: rgba(0, 89, 187, 0.16);
-  color: #0059bb;
-}
-
 .meta-user {
   display: flex;
   align-items: center;
@@ -253,34 +247,30 @@ const modeLabel = computed(() => (props.health?.status === 'ok' ? '业务运行�
 }
 
 .sidenav-group-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
   border-bottom: 1px solid #e1e7e9;
   padding: 2px 4px 5px;
+  color: #003434;
 }
 
 .sidenav-group-head p {
-  margin: 0 0 4px;
+  margin: 0;
   color: #003434;
   font-size: 12px;
   font-weight: 800;
 }
 
-.sidenav-group-subtitle {
-  padding: 3px 4px 5px;
-  color: #668797;
-  font-size: 11px;
-  line-height: 1.4;
-}
-
 .sidenav-item {
   position: relative;
   display: flex;
-  min-height: 34px;
+  min-height: 32px;
   align-items: center;
-  gap: 9px;
   border: 0;
   border-radius: 3px;
   background: transparent;
-  padding: 0 8px;
+  padding: 0 8px 0 24px;
   color: #3f4848;
   font-family: var(--ws-font-headline);
   font-size: 13px;

@@ -385,8 +385,8 @@ watch(selectedDrug, (drug) => {
       <template #header>
         <div class="section-header">
           <div>
-            <h4>Backend Assessment Result</h4>
-            <span>{{ assessment?.source || '--' }}</span>
+            <h4>用药充分性评估结果</h4>
+            <span>{{ assessment?.source || '规则评估' }}</span>
           </div>
         </div>
       </template>
@@ -394,27 +394,27 @@ watch(selectedDrug, (drug) => {
       <el-row v-if="assessment" :gutter="12" class="assessment-row">
         <el-col :xs="24" :sm="6">
           <el-tag :type="assessmentTagType(assessment.hasDuplicateMedication, false)" effect="light">
-            Duplicate: {{ assessment.hasDuplicateMedication ? 'Warning' : 'Clear' }}
+            重复用药：{{ assessment.hasDuplicateMedication ? '需关注' : '未发现' }}
           </el-tag>
         </el-col>
         <el-col :xs="24" :sm="6">
           <el-tag :type="assessmentTagType(assessment.coversBaselineTherapy)" effect="light">
-            Baseline: {{ assessment.coversBaselineTherapy ? 'Covered' : 'Needs review' }}
+            基础治疗：{{ assessment.coversBaselineTherapy ? '已覆盖' : '需复核' }}
           </el-tag>
         </el-col>
         <el-col :xs="24" :sm="6">
           <el-tag :type="assessmentTagType(assessment.alignsWithModelAdvice)" effect="light">
-            Advice: {{ assessment.alignsWithModelAdvice ? 'Aligned' : 'Review' }}
+            建议匹配：{{ assessment.alignsWithModelAdvice ? '匹配' : '需复核' }}
           </el-tag>
         </el-col>
         <el-col :xs="24" :sm="6">
           <el-tag :type="assessmentTagType(assessment.needsPharmacistReview, false)" effect="light">
-            Pharmacist: {{ assessment.needsPharmacistReview ? 'Suggested' : 'Not required' }}
+            药师复核：{{ assessment.needsPharmacistReview ? '建议复核' : '无需复核' }}
           </el-tag>
         </el-col>
       </el-row>
 
-      <el-empty v-else description="No assessment result loaded." />
+      <el-empty v-else description="暂无用药评估结果。" />
 
       <ul v-if="assessment?.notes.length" class="note-list">
         <li v-for="note in assessment.notes" :key="note">{{ note }}</li>

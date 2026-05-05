@@ -43,6 +43,28 @@ const splitRouteSections: Record<string, AppSection> = {
   'drug-permission-management': 'drug-permission-management',
   pharmacy: 'pharmacy',
   coordination: 'coordination',
+  'doctor-risk': 'insights',
+  'patient-overview': 'archive',
+  'patient-profile': 'archive',
+  'patient-contacts': 'archive',
+  'patient-timeline': 'archive',
+  'patient-attachments': 'archive',
+  'patient-medications': 'archive',
+  'patient-risk': 'insights',
+  'patient-followups': 'archive',
+  'nurse-followups-today': 'flow',
+  'nurse-followups-missed': 'contacts',
+  'nurse-followups-records': 'contacts',
+  'nurse-followups-review': 'coordination',
+  'nurse-followups-stats': 'tasks',
+  'pharmacy-drug-catalog': 'drug-management',
+  'pharmacy-drug-status': 'drug-management',
+  'pharmacy-medication-review': 'pharmacy',
+  'admin-permissions': 'role-workspaces',
+  'admin-drug-permissions': 'drug-permission-management',
+  'admin-model-dashboard': 'model-dashboard',
+  'admin-governance': 'governance',
+  'admin-governance-issues': 'governance',
 }
 
 const sectionToRouteName: Partial<Record<AppSection, string>> = {
@@ -62,15 +84,12 @@ const sectionToRouteName: Partial<Record<AppSection, string>> = {
 }
 
 function buildRouteForSection(nextSection: AppSection): RouteLocationRaw {
-  if (nextSection === 'doctor') return { name: 'home' }
+  if (nextSection === 'doctor') return { name: 'doctor-workbench' }
 
   if (nextSection === 'archive' || nextSection === 'data-quality' || nextSection === 'system') {
-    return {
-      name: 'home',
-      query: {
-        module: nextSection,
-      },
-    }
+    if (nextSection === 'archive') return { name: 'doctor-patients' }
+    if (nextSection === 'system') return { path: '/admin/audit' }
+    return { name: 'home', query: { module: nextSection } }
   }
 
   if (nextSection === 'emr') {
@@ -82,26 +101,29 @@ function buildRouteForSection(nextSection: AppSection): RouteLocationRaw {
     }
   }
 
-  if (nextSection === 'pharmacy' || nextSection === 'coordination') {
-    return {
-      name: nextSection,
-    }
+  if (nextSection === 'pharmacy') {
+    return { name: 'pharmacy-medication-review' }
+  }
+
+  if (nextSection === 'coordination') {
+    return workspace.currentDoctor?.role === 'nurse' ? { name: 'nurse-followups-review' } : { name: 'coordination' }
   }
 
   if (nextSection === 'role-workspaces') {
-    return {
-      name: 'role-workspaces',
-    }
+    return { name: 'admin-permissions' }
   }
 
   if (nextSection === 'tasks' || nextSection === 'contacts' || nextSection === 'flow') {
-    return {
-      name: 'nurse-followups',
-      query: {
-        module: nextSection,
-      },
-    }
+    if (nextSection === 'flow') return { name: 'nurse-followups-today' }
+    if (nextSection === 'contacts') return { name: 'nurse-followups-records' }
+    return { name: 'nurse-followups' }
   }
+
+  if (nextSection === 'drug-management') return { name: 'pharmacy-drug-catalog' }
+  if (nextSection === 'drug-permission-management') return { name: 'admin-drug-permissions' }
+  if (nextSection === 'model-dashboard') return { name: 'admin-model-dashboard' }
+  if (nextSection === 'governance') return { name: 'admin-governance' }
+  if (nextSection === 'insights') return { name: 'doctor-risk' }
 
   const routeName = sectionToRouteName[nextSection] ?? 'home'
   return { name: routeName }
@@ -110,6 +132,7 @@ function buildRouteForSection(nextSection: AppSection): RouteLocationRaw {
 const isSplitWorkspaceRoute = computed(() => {
   const routeName = typeof route.name === 'string' ? route.name : ''
   return (
+    (Boolean(route.meta.section) && routeName !== 'doctor-workbench' && routeName !== 'doctor-patients' && routeName !== 'admin-audit') ||
     Object.prototype.hasOwnProperty.call(splitRouteSections, routeName) ||
     routeName === 'patient-detail' ||
     routeName === 'nurse-followups' ||
@@ -139,7 +162,7 @@ function syncWorkspaceFromRoute() {
   }
 
   const routeName = typeof route.name === 'string' ? route.name : ''
-  if (routeName === 'patient-detail') return
+  if (routeName === 'patient-detail' || routeName.startsWith('patient-')) return
 
   const moduleValue = typeof route.query.module === 'string' ? route.query.module : ''
   const requestedSection =
@@ -162,11 +185,15 @@ function syncWorkspaceFromRoute() {
   const nextSection =
     routeName === 'home'
       ? requestedSection ?? 'doctor'
+      : routeName === 'doctor-workbench'
+        ? 'doctor'
+        : routeName === 'doctor-patients'
+          ? 'archive'
       : routeName === 'nurse-followups'
         ? requestedSection && (requestedSection === 'tasks' || requestedSection === 'contacts' || requestedSection === 'flow')
           ? requestedSection
           : 'tasks'
-        : splitRouteSections[routeName] ?? 'doctor'
+        : (route.meta.section as AppSection | undefined) ?? splitRouteSections[routeName] ?? 'doctor'
   const safeSection = allowedSections.value.includes(nextSection) ? nextSection : defaultSectionForCurrentRole()
   if (workspace.section !== safeSection) {
     workspace.selectSection(safeSection)
@@ -175,7 +202,8 @@ function syncWorkspaceFromRoute() {
 
 function syncRouteFromWorkspace() {
   if (!workspace.currentDoctor) return
-  if (route.name === 'patient-detail') return
+  const routeName = typeof route.name === 'string' ? route.name : ''
+  if (routeName === 'patient-detail' || routeName.startsWith('patient-')) return
 
   const targetRoute = buildRouteForSection(workspace.section)
   if (router.resolve(targetRoute).fullPath !== route.fullPath) {
@@ -203,20 +231,20 @@ function handleSelectSection(nextSection: Parameters<typeof workspace.selectSect
   }
   workspace.selectSection(nextSection)
 
-  if (currentRouteName === 'patient-detail') {
+  if (currentRouteName === 'patient-detail' || currentRouteName.startsWith('patient-')) {
     void router.push(buildRouteForSection(nextSection))
     return
   }
 
   if (nextSection === 'doctor') {
-    void router.push({ name: 'home' })
+    void router.push({ name: 'doctor-workbench' })
   }
 }
 
 async function handleOpenPatientDetail(patientId: string) {
   const loaded = await workspace.openPatient(patientId, 'doctor')
   if (loaded) {
-    void router.push({ name: 'patient-detail', params: { patientId } })
+    void router.push({ name: 'patient-overview', params: { patientId } })
   }
 }
 

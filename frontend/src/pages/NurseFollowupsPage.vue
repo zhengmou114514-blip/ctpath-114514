@@ -27,6 +27,8 @@ const flowRows = ref<FlowBoardRow[]>([])
 const contactLogs = ref<ContactLogRow[]>([])
 const patients = ref<PatientSummary[]>([])
 const selectedTaskKey = ref('')
+const currentPage = ref(1)
+const pageSize = 6
 const showCreateDialog = ref(false)
 const showContactDialog = ref(false)
 const showStatusDialog = ref(false)
@@ -93,6 +95,11 @@ const doctorReviewRows = computed(() =>
   )
 )
 const completedTasks = computed(() => followups.value.filter((item) => isClosedStatus(item.status)))
+const totalPages = computed(() => Math.max(1, Math.ceil(followups.value.length / pageSize)))
+const pagedFollowups = computed(() => {
+  const start = (currentPage.value - 1) * pageSize
+  return followups.value.slice(start, start + pageSize)
+})
 
 function taskKey(item: FollowupTaskRow) {
   return item.taskId || `${item.patientId}-${item.taskType}-${item.dueDate}`
@@ -186,6 +193,7 @@ async function reload() {
   try {
     const [worklist, flowBoard, patientList] = await Promise.all([getFollowupWorklist(), getFlowBoard(), getPatients()])
     followups.value = worklist.items
+    currentPage.value = 1
     flowRows.value = flowBoard.items
     patients.value = patientList
     await loadContactLogs(worklist.items)
@@ -384,7 +392,7 @@ onMounted(() => {
           </thead>
           <tbody>
             <tr
-              v-for="item in followups"
+              v-for="item in pagedFollowups"
               :key="taskKey(item)"
               :class="{ selected: taskKey(item) === taskKey(selectedTask || item) }"
               @click="selectTask(item)"
@@ -407,6 +415,12 @@ onMounted(() => {
             </tr>
           </tbody>
         </table>
+
+        <div v-if="followups.length > pageSize" class="followup-pagination">
+          <button class="secondary-button" type="button" :disabled="currentPage <= 1" @click="currentPage -= 1">上一页</button>
+          <span>第 {{ currentPage }} / {{ totalPages }} 页，共 {{ followups.length }} 条</span>
+          <button class="secondary-button" type="button" :disabled="currentPage >= totalPages" @click="currentPage += 1">下一页</button>
+        </div>
       </main>
 
       <aside class="clinical-card task-detail-card">
@@ -673,6 +687,15 @@ onMounted(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 4px 8px;
+}
+
+.followup-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  color: #526772;
+  font-weight: 700;
 }
 
 .text-action {
