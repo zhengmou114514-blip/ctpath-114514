@@ -7,6 +7,8 @@ import type {
   BusinessClosureSummary,
   BusinessWorkspaceRole,
   ContactLogCreatePayload,
+  DoctorWorkbenchStatusPayload,
+  DoctorWorkbenchStatusResponse,
   DrugCatalogRecord,
   DrugCatalogStatus,
   DrugCatalogUpsertRequest,
@@ -504,6 +506,9 @@ export async function getMaintenanceOverview(): Promise<MaintenanceOverview> { r
 export async function getGovernanceModules(): Promise<GovernanceModulesResponse> { return request('/governance/modules', { method: 'GET' }) }
 export async function getFollowupWorklist(): Promise<FollowupWorklistResponse> { return request('/worklists/followups', { method: 'GET' }) }
 export async function getFlowBoard(): Promise<FlowBoardResponse> { return request('/worklists/flow-board', { method: 'GET' }) }
+export async function updateDoctorWorkbenchPatientStatus(patientId: string, payload: DoctorWorkbenchStatusPayload): Promise<DoctorWorkbenchStatusResponse> {
+  return request(`/worklists/patients/${patientId}/status`, { method: 'PATCH', body: JSON.stringify(payload) })
+}
 export async function getPharmacyDashboard(): Promise<PharmacyDashboardResponse> { return request('/pharmacy/dashboard', { method: 'GET' }) }
 export async function getPharmacyInventory(params: { keyword?: string; warehouse?: string; status?: PharmacyInventoryStatus; lowStockOnly?: boolean } = {}): Promise<PharmacyInventoryRecord[]> {
   const query = new URLSearchParams()

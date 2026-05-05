@@ -200,6 +200,12 @@ export interface PatientCase {
   auditLogs: PatientAuditLog[]
   recommendationMode: 'model' | 'similar-case'
   dataSupport: 'high' | 'medium' | 'low'
+  queueStatus?: string
+  reviewStatus?: string
+  followupStatus?: string
+  modelCoverageStatus?: string
+  latestAssessmentAt?: string | null
+  lastOpenedAt?: string | null
   careAdvice: string[]
   similarCases: SimilarCase[]
 }
@@ -231,6 +237,12 @@ export interface PatientSummary {
   lastVisit: string
   summary: string
   dataSupport: 'high' | 'medium' | 'low'
+  queueStatus?: string
+  reviewStatus?: string
+  followupStatus?: string
+  modelCoverageStatus?: string
+  latestAssessmentAt?: string | null
+  lastOpenedAt?: string | null
 }
 
 export interface PredictResponse {
@@ -703,6 +715,33 @@ export interface FollowupTaskRow {
 export interface FollowupWorklistResponse {
   mode: string
   items: FollowupTaskRow[]
+}
+
+export type DoctorWorkbenchAction =
+  | 'mark_viewed'
+  | 'complete_processing'
+  | 'complete_high_risk_review'
+  | 'create_followup'
+  | 'refresh_risk_status'
+
+export interface DoctorWorkbenchStatusPayload {
+  action: DoctorWorkbenchAction
+  note?: string
+}
+
+export interface DoctorDashboardStats {
+  pendingCount: number
+  highRiskReviewCount: number
+  followupDueCount: number
+  modelStaleCount: number
+  modelCoverageRate: number
+}
+
+export interface DoctorWorkbenchStatusResponse {
+  patient: PatientSummary
+  dashboardStats: DoctorDashboardStats
+  createdFollowup?: FollowupTaskRow | null
+  audit: string
 }
 
 export interface FlowBoardRow {

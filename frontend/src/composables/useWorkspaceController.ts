@@ -23,6 +23,7 @@ import {
   restoreAuthSession,
   savePatient,
   updatePatient,
+  updateDoctorWorkbenchPatientStatus,
   updatePatientEncounterStatus,
   updatePatientOutpatientTaskStatus,
 } from '../services/api'
@@ -30,6 +31,7 @@ import type {
   AuthzCapabilityResponse,
   ContactLogCreatePayload,
   DoctorUser,
+  DoctorWorkbenchAction,
   FlowBoardRow,
   FollowupTaskRow,
   GovernanceModulesResponse,
@@ -129,6 +131,7 @@ export function useWorkspaceController() {
   const loadingPatient = ref(false)
   const loadingPredict = ref(false)
   const loadingBoards = ref(false)
+  const loadingWorkbenchAction = ref(false)
   const loadingOpenArchive = ref(false)
   const loadingOpenFollowup = ref(false)
   const loadingEncounterStatus = ref(false)
@@ -215,7 +218,14 @@ export function useWorkspaceController() {
   }
 
   function logAudit(
-    action: 'login' | 'view_patient_detail' | 'trigger_prediction' | 'generate_advice' | 'create_followup_task' | 'modify_archive',
+    action:
+      | 'login'
+      | 'view_patient_detail'
+      | 'trigger_prediction'
+      | 'generate_advice'
+      | 'create_followup_task'
+      | 'doctor_workbench_status'
+      | 'modify_archive',
     target: { type: string; id: string; label?: string },
     result: 'success' | 'failed' | 'degraded',
     detail: string,
@@ -1125,6 +1135,51 @@ export function useWorkspaceController() {
     }
   }
 
+  async function updateDoctorWorkbenchStatus(patientId: string, action: DoctorWorkbenchAction, note = '') {
+    if (!patientId) return
+    if (!canUseDoctorWorkspace()) {
+      setPermissionError('当前角色暂无医生工作台处理权限。')
+      return
+    }
+
+    loadingWorkbenchAction.value = true
+    archiveSuccess.value = ''
+    screenError.value = ''
+
+    try {
+      const result = await updateDoctorWorkbenchPatientStatus(patientId, { action, note })
+      allPatients.value = sortPatients(await getPatients())
+      await loadOperationalBoards()
+
+      if (selectedPatientId.value === patientId) {
+        selectedPatient.value = await getPatientCase(patientId)
+        syncPatientForm(selectedPatient.value)
+      }
+
+      if (result.createdFollowup) {
+        followupFocusPatientId.value = patientId
+      }
+
+      archiveSuccess.value = result.audit || '医生工作台状态已更新。'
+      logAudit(
+        'doctor_workbench_status',
+        { type: 'patient', id: patientId, label: result.patient.name },
+        'success',
+        result.audit || action
+      )
+    } catch (error) {
+      screenError.value = error instanceof Error ? error.message : '医生工作台状态更新失败。'
+      logAudit(
+        'doctor_workbench_status',
+        { type: 'patient', id: patientId },
+        'failed',
+        error instanceof Error ? error.message : '医生工作台状态更新失败。'
+      )
+    } finally {
+      loadingWorkbenchAction.value = false
+    }
+  }
+
   async function runMedicationPlan(patientId: string, payload: MedicationPlanGeneratePayload) {
     if (!patientId) return
     if (!canUseDoctorWorkspace()) {
@@ -1522,6 +1577,7 @@ export function useWorkspaceController() {
     loadingPatient,
     loadingPredict,
     loadingBoards,
+    loadingWorkbenchAction,
     loadingOpenArchive,
     loadingOpenFollowup,
     loadingEncounterStatus,
@@ -1577,6 +1633,7 @@ export function useWorkspaceController() {
     submitEvent,
     submitImport,
     runPrediction,
+    updateDoctorWorkbenchStatus,
     runMedicationPlan,
     submitContactLog,
     applyEncounterStatus,

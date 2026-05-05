@@ -12,7 +12,10 @@ from .security import hash_password, is_hashed_password, verify_password
 from .schemas import (
     ContactLog,
     ContactLogCreateRequest,
+    DoctorDashboardStats,
     DoctorPublic,
+    DoctorWorkbenchStatusRequest,
+    DoctorWorkbenchStatusResponse,
     EncounterStatusUpdateRequest,
     ExperimentMetric,
     FlowBoardResponse,
@@ -34,6 +37,7 @@ from .schemas import (
     PatientCase,
     PatientEventCreateRequest,
     PatientQuadruple,
+    PatientSummary,
     PatientUpsertRequest,
     RegisterRequest,
     TimelineEvent,
@@ -65,6 +69,19 @@ RELATION_LABELS = {
     "bmi_bin": "BMI 分层",
     "cholesterol_bin": "胆固醇分层",
 }
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+
+
+def _now_event_time() -> str:
+    return _now_iso().replace("T", " ").replace("+00:00", "")
+
+
+def _is_high_risk(value: str) -> bool:
+    lowered = str(value or "").lower()
+    return "高" in str(value or "") or "high" in lowered
 
 
 class MySQLStore:
@@ -1286,11 +1303,111 @@ def get_doctor_by_token(token: Optional[str]) -> Optional[DoctorPublic]:
     return get_doctor(username)
 
 
+def _event_timestamp(row: Dict[str, Any]) -> str:
+    return str(row.get("event_time") or row.get("eventTime") or "")
+
+
+def _event_object_value(row: Dict[str, Any]) -> str:
+    return str(row.get("object_value") or row.get("objectValue") or "")
+
+
+def _workflow_events(patient_id: str) -> List[Dict[str, Any]]:
+    store = _current_store()
+    if store:
+        return store.get_events(patient_id)
+    return [
+        {
+            "event_time": item["event_time"],
+            "relation": item["relation"],
+            "object_value": item["object_value"],
+            "note": item.get("note", ""),
+            "source": item.get("source", "demo"),
+        }
+        for item in demo_store.list_event_rows(patient_id)
+    ]
+
+
+def _latest_event(patient_id: str, *relations: str) -> Optional[Dict[str, Any]]:
+    rows = [row for row in _workflow_events(patient_id) if str(row.get("relation")) in relations]
+    if not rows:
+        return None
+    rows.sort(key=_event_timestamp)
+    return rows[-1]
+
+
+def _raw_patient_case(patient_id: str) -> Optional[PatientCase]:
+    store = _current_store()
+    if store:
+        return _patient_case_from_db(store, patient_id)
+    return demo_store.get_patient(patient_id)
+
+
+def _has_open_followup(patient_id: str) -> bool:
+    patient = _raw_patient_case(patient_id)
+    if not patient:
+        return False
+    if patient.followUps:
+        return True
+    return any(item.status not in {"已完成", "已关闭", "Completed", "Closed"} for item in patient.outpatientTasks)
+
+
+def _augment_patient_workflow_state(item: Dict[str, Any]) -> Dict[str, Any]:
+    patient_id = str(item["patientId"])
+    workflow_event = _latest_event(patient_id, "workflow_status")
+    review_event = _latest_event(patient_id, "risk_review")
+    followup_event = _latest_event(patient_id, "followup_status", "followup_created")
+    assessment_event = _latest_event(patient_id, "risk_status_refresh", "risk_assessment")
+    opened_event = _latest_event(patient_id, "patient_opened")
+
+    queue_status = "completed" if workflow_event and _event_object_value(workflow_event) == "completed" else "pending"
+    review_status = "completed" if review_event and _event_object_value(review_event) == "completed" else "pending"
+
+    followup_status = "none"
+    if followup_event:
+      followup_status = "pending"
+    elif _has_open_followup(patient_id):
+      followup_status = "pending"
+
+    latest_assessment_at = _event_timestamp(assessment_event)[:19].replace(" ", "T") if assessment_event else None
+    model_coverage_status = "covered" if latest_assessment_at else "stale"
+
+    return {
+        **item,
+        "queueStatus": queue_status,
+        "reviewStatus": review_status,
+        "followupStatus": followup_status,
+        "modelCoverageStatus": model_coverage_status,
+        "latestAssessmentAt": latest_assessment_at,
+        "lastOpenedAt": _event_timestamp(opened_event)[:19].replace(" ", "T") if opened_event else None,
+    }
+
+
+def calculate_doctor_dashboard_stats() -> DoctorDashboardStats:
+    patients = list_patients()
+    total = len(patients)
+    covered = sum(1 for item in patients if item.get("modelCoverageStatus") == "covered" or item.get("latestAssessmentAt"))
+    return DoctorDashboardStats(
+        pendingCount=sum(1 for item in patients if item.get("queueStatus") == "pending"),
+        highRiskReviewCount=sum(
+            1
+            for item in patients
+            if _is_high_risk(str(item.get("riskLevel", ""))) and item.get("reviewStatus") != "completed"
+        ),
+        followupDueCount=sum(1 for item in patients if item.get("followupStatus") in {"pending", "due"}),
+        modelStaleCount=sum(
+            1
+            for item in patients
+            if item.get("modelCoverageStatus") == "stale" or not item.get("latestAssessmentAt")
+        ),
+        modelCoverageRate=(covered / total if total else 0.0),
+    )
+
+
 def list_patients() -> List[dict]:
     store = _current_store()
     if store:
-        return store.list_patients()
-    return demo_store.list_patients()
+        return [_augment_patient_workflow_state(item) for item in store.list_patients()]
+    return [_augment_patient_workflow_state(item) for item in demo_store.list_patients()]
 
 
 def get_timeline(patient_id: str) -> Optional[List[TimelineEvent]]:
@@ -1337,10 +1454,20 @@ def get_patient_quadruples(patient_id: str) -> Optional[List[PatientQuadruple]]:
 
 
 def get_patient(patient_id: str) -> Optional[PatientCase]:
-    store = _current_store()
-    if store:
-        return _patient_case_from_db(store, patient_id)
-    return demo_store.get_patient(patient_id)
+    patient = _raw_patient_case(patient_id)
+    if patient is None:
+        return None
+    state = _augment_patient_workflow_state(patient.model_dump())
+    return patient.model_copy(
+        update={
+            "queueStatus": state["queueStatus"],
+            "reviewStatus": state["reviewStatus"],
+            "followupStatus": state["followupStatus"],
+            "modelCoverageStatus": state["modelCoverageStatus"],
+            "latestAssessmentAt": state["latestAssessmentAt"],
+            "lastOpenedAt": state["lastOpenedAt"],
+        }
+    )
 
 
 def save_patient(payload: PatientUpsertRequest) -> Optional[PatientCase]:
@@ -1410,6 +1537,100 @@ def update_outpatient_task_status(
             patient = _patient_case_from_db(store, patient_id)
         return patient
     return demo_store.update_outpatient_task_status(patient_id, task_id, payload)
+
+
+def update_doctor_workbench_status(
+    patient_id: str,
+    payload: DoctorWorkbenchStatusRequest,
+) -> Optional[DoctorWorkbenchStatusResponse]:
+    patient = get_patient(patient_id)
+    if not patient:
+        return None
+
+    actor_username = payload.actorUsername
+    actor_name = payload.actorName
+    note = payload.note.strip()
+    created_followup: Optional[FollowupTaskRow] = None
+
+    def write_event(relation: str, object_value: str, default_note: str) -> Optional[PatientCase]:
+        return add_patient_event(
+            patient_id,
+            PatientEventCreateRequest(
+                eventTime=_now_event_time(),
+                relation=relation,
+                objectValue=object_value,
+                note=note or default_note,
+                source="doctor_workbench",
+                actorUsername=actor_username,
+                actorName=actor_name,
+            ),
+        )
+
+    audit_text = ""
+
+    if payload.action == "mark_viewed":
+        write_event("patient_opened", "viewed", "医生已查看患者工作台摘要。")
+        audit_text = "已记录患者查看时间"
+    elif payload.action == "complete_processing":
+        write_event("workflow_status", "completed", "医生已完成该患者工作台处理。")
+        audit_text = "已完成待处理患者"
+    elif payload.action == "complete_high_risk_review":
+        write_event("risk_review", "completed", "医生已完成高风险复核，风险等级保留原值。")
+        audit_text = "已完成高风险复核"
+    elif payload.action == "create_followup":
+        due_date = datetime.now(timezone.utc).date().isoformat()
+        updated = create_outpatient_task(
+            patient_id,
+            OutpatientTaskCreateRequest(
+                category="followup",
+                title="慢病随访任务",
+                owner="护士站",
+                dueDate=due_date,
+                priority="high" if _is_high_risk(patient.riskLevel) else "medium",
+                note=note or "医生工作台发起随访，请护士联系患者并记录随访结果。",
+                status="待执行",
+                source="doctor_workbench",
+                actorUsername=actor_username,
+                actorName=actor_name,
+            ),
+        )
+        write_event("followup_created", "pending", "医生已发起随访任务。")
+        if updated:
+            for task in updated.outpatientTasks:
+                if task.source == "doctor_workbench" and task.status == "待执行":
+                    created_followup = FollowupTaskRow(
+                        taskId=task.taskId,
+                        patientId=updated.patientId,
+                        patientName=updated.name,
+                        primaryDisease=updated.primaryDisease,
+                        riskLevel=updated.riskLevel,
+                        dataSupport=updated.dataSupport,
+                        dueDate=task.dueDate,
+                        owner=task.owner,
+                        priority=task.priority,
+                        taskType="随访任务",
+                        status=task.status,
+                        source="outpatient-task",
+                        lastActionBy=task.updatedBy,
+                        lastActionAt=task.updatedAt,
+                    )
+                    break
+        audit_text = "已创建随访任务"
+    elif payload.action == "refresh_risk_status":
+        write_event("risk_status_refresh", "covered", "医生已刷新模型覆盖状态。")
+        audit_text = "已刷新模型状态"
+    else:
+        return None
+
+    latest = next((item for item in list_patients() if item["patientId"] == patient_id), None)
+    if not latest:
+        return None
+    return DoctorWorkbenchStatusResponse(
+        patient=PatientSummary(**latest),
+        dashboardStats=calculate_doctor_dashboard_stats(),
+        createdFollowup=created_followup,
+        audit=audit_text,
+    )
 
 
 def predict_for_patient(patient_id: str, topk: int, as_of_time: Optional[str] = None) -> Optional[dict]:

@@ -6,6 +6,7 @@ export type AuditActionType =
   | 'confirm_advice'
   | 'reject_advice'
   | 'create_followup_task'
+  | 'doctor_workbench_status'
   | 'modify_archive'
 
 export type AuditResult = 'success' | 'failed' | 'degraded'

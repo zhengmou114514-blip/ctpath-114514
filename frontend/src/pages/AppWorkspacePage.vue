@@ -369,6 +369,7 @@ watch(
         :selected-patient="workspace.selectedPatient"
         :loading-patients="workspace.loadingPatients"
         :loading-patient="workspace.loadingPatient"
+        :loading-action="workspace.loadingWorkbenchAction"
         :no-permission="workspace.doctorNoPermission"
         :search-text="workspace.workspaceSearchText"
         :risk-filter="workspace.workspaceRiskFilter"
@@ -380,6 +381,7 @@ watch(
         @open-archive="handleDoctorOpenArchive"
         @open-followup="handleDoctorOpenFollowup"
         @open-model="handleDoctorOpenModel"
+        @workflow-action="workspace.updateDoctorWorkbenchStatus($event.patientId, $event.action)"
       />
 
       <PatientArchivePage

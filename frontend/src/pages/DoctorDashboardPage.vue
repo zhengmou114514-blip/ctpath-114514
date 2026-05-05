@@ -10,6 +10,7 @@ const props = defineProps<{
   selectedPatient: PatientCase | null
   loadingPatients: boolean
   loadingPatient: boolean
+  loadingAction?: boolean
   noPermission: boolean
   searchText: string
   riskFilter: string
@@ -24,6 +25,7 @@ const emit = defineEmits<{
   (e: 'open-archive', payload: { patientId: string; focus?: 'overview' | 'events' }): void
   (e: 'open-followup', payload: { patientId: string; section?: 'tasks' | 'contacts' | 'flow' }): void
   (e: 'open-model', patientId: string): void
+  (e: 'workflow-action', payload: { patientId: string; action: 'complete_processing' | 'complete_high_risk_review' | 'create_followup' | 'refresh_risk_status' }): void
 }>()
 
 type WorkbenchView = 'overview' | 'pending' | 'high-risk-review' | 'followup-due' | 'model-stale' | 'current'
@@ -61,18 +63,19 @@ function isHighRisk(patient: PatientSummary | PatientCase) {
 }
 
 function isFollowupDue(patient: PatientSummary | PatientCase) {
+  if (patient.followupStatus === 'pending' || patient.followupStatus === 'due') return true
   const text = `${patient.summary} ${patient.lastVisit}`.toLowerCase()
   return text.includes('随访') || text.includes('复诊') || text.includes('follow')
 }
 
 function isModelStale(patient: PatientSummary | PatientCase) {
-  return patient.dataSupport === 'low'
+  return patient.modelCoverageStatus === 'stale' || !patient.latestAssessmentAt
 }
 
-const pendingSource = computed(() => (props.patients.length ? props.patients : props.allPatients))
+const pendingSource = computed(() => (props.patients.length ? props.patients : props.allPatients).filter((patient) => (patient.queueStatus ?? 'pending') === 'pending'))
 
 const viewPatients = computed<(PatientSummary | PatientCase)[]>(() => {
-  if (workbenchView.value === 'high-risk-review') return props.allPatients.filter(isHighRisk)
+  if (workbenchView.value === 'high-risk-review') return props.allPatients.filter((patient) => isHighRisk(patient) && (patient.reviewStatus ?? 'pending') !== 'completed')
   if (workbenchView.value === 'followup-due') return props.allPatients.filter(isFollowupDue)
   if (workbenchView.value === 'model-stale') return props.allPatients.filter(isModelStale)
   if (workbenchView.value === 'current') return props.selectedPatient ? [props.selectedPatient] : pendingSource.value.slice(0, 1)
@@ -144,6 +147,8 @@ function completeness(patient: PatientSummary | PatientCase) {
 }
 
 function todoText(patient: PatientSummary | PatientCase) {
+  if (patient.queueStatus === 'completed') return '已处理'
+  if (isModelStale(patient)) return '刷新模型状态'
   if (patient.riskLevel.includes('高') || patient.riskLevel.toLowerCase().includes('high')) return '风险复核'
   if (patient.dataSupport === 'low') return '补全档案'
   if (patient.summary.includes('随访') || patient.summary.includes('复诊')) return '随访跟进'
@@ -180,6 +185,29 @@ function openPatientDetail(patientId: string) {
 function openModel(patientId: string) {
   emit('open', patientId)
   emit('open-model', patientId)
+}
+
+function primaryAction(patientId: string) {
+  if (workbenchView.value === 'high-risk-review') {
+    emit('workflow-action', { patientId, action: 'complete_high_risk_review' })
+    return
+  }
+  if (workbenchView.value === 'followup-due') {
+    emit('workflow-action', { patientId, action: 'create_followup' })
+    return
+  }
+  if (workbenchView.value === 'model-stale') {
+    emit('workflow-action', { patientId, action: 'refresh_risk_status' })
+    return
+  }
+  emit('workflow-action', { patientId, action: 'complete_processing' })
+}
+
+function primaryActionLabel() {
+  if (workbenchView.value === 'high-risk-review') return '完成复核'
+  if (workbenchView.value === 'followup-due') return '发起随访'
+  if (workbenchView.value === 'model-stale') return '刷新状态'
+  return '完成处理'
 }
 </script>
 
@@ -268,9 +296,33 @@ function openModel(patientId: string) {
                 <td>{{ todoText(patient) }}</td>
                 <td>
                   <div class="row-actions">
-                    <button class="text-action" type="button" :disabled="loadingPatient" @click.stop="openPatientDetail(patient.patientId)">进入详情</button>
-                    <button class="text-action" type="button" @click.stop="openModel(patient.patientId)">风险评估</button>
-                    <button class="text-action" type="button" @click.stop="emit('open-followup', { patientId: patient.patientId, section: 'tasks' })">发起随访</button>
+                    <button
+                      v-if="workbenchView !== 'model-stale'"
+                      class="text-action"
+                      type="button"
+                      :disabled="loadingPatient || loadingAction"
+                      @click.stop="openPatientDetail(patient.patientId)"
+                    >
+                      进入详情
+                    </button>
+                    <button class="text-action" type="button" :disabled="loadingAction" @click.stop="openModel(patient.patientId)">风险评估</button>
+                    <button
+                      class="text-action"
+                      type="button"
+                      :disabled="loadingAction"
+                      @click.stop="primaryAction(patient.patientId)"
+                    >
+                      {{ primaryActionLabel() }}
+                    </button>
+                    <button
+                      v-if="workbenchView === 'model-stale'"
+                      class="text-action"
+                      type="button"
+                      :disabled="loadingPatient || loadingAction"
+                      @click.stop="openPatientDetail(patient.patientId)"
+                    >
+                      进入详情
+                    </button>
                   </div>
                 </td>
               </tr>

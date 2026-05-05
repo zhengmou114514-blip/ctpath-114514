@@ -11,7 +11,7 @@ PredictionStrategy = Literal["direct-model", "proxy-model", "rules", "similar-ca
 SupportLevel = Literal["strong", "limited", "minimal"]
 AdviceSource = Literal["placeholder", "deepseek", "fallback"]
 EncounterStatus = Literal["waiting", "in_progress", "pending_review", "completed"]
-OutpatientTaskCategory = Literal["exam", "recheck"]
+OutpatientTaskCategory = Literal["exam", "recheck", "followup"]
 OutpatientTaskStatus = Literal["待执行", "已完成", "已关闭"]
 ContactType = Literal["phone", "family", "wechat", "outpatient"]
 ContactTarget = Literal["patient", "emergency_contact"]
@@ -73,6 +73,12 @@ class PatientSummary(BaseModel):
     lastVisit: str
     summary: str
     dataSupport: DataSupport
+    queueStatus: str = "pending"
+    reviewStatus: str = "pending"
+    followupStatus: str = "none"
+    modelCoverageStatus: str = "stale"
+    latestAssessmentAt: Optional[str] = None
+    lastOpenedAt: Optional[str] = None
 
 
 class TimelineEvent(BaseModel):
@@ -763,6 +769,37 @@ class FollowupTaskRow(BaseModel):
 class FollowupWorklistResponse(BaseModel):
     mode: str
     items: List[FollowupTaskRow]
+
+
+DoctorWorkbenchAction = Literal[
+    "mark_viewed",
+    "complete_processing",
+    "complete_high_risk_review",
+    "create_followup",
+    "refresh_risk_status",
+]
+
+
+class DoctorWorkbenchStatusRequest(BaseModel):
+    action: DoctorWorkbenchAction
+    note: str = ""
+    actorUsername: Optional[str] = None
+    actorName: Optional[str] = None
+
+
+class DoctorDashboardStats(BaseModel):
+    pendingCount: int
+    highRiskReviewCount: int
+    followupDueCount: int
+    modelStaleCount: int
+    modelCoverageRate: float
+
+
+class DoctorWorkbenchStatusResponse(BaseModel):
+    patient: PatientSummary
+    dashboardStats: DoctorDashboardStats
+    createdFollowup: Optional[FollowupTaskRow] = None
+    audit: str
 
 
 class FlowBoardRow(BaseModel):
