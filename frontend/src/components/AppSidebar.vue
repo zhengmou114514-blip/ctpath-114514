@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import {
   Document,
   FolderOpened,
@@ -22,6 +23,7 @@ const props = defineProps<{
   health: HealthResponse | null
   patientCount: number
   followupCount: number
+  selectedPatientId?: string
 }>()
 
 const emit = defineEmits<{
@@ -47,15 +49,32 @@ const currentSystem = computed(() => roleSystemForRole(props.doctor.role))
 const modeLabel = computed(() => (props.health?.status === 'ok' ? '业务运行中' : '服务连接中'))
 
 function isActive(item: NavigationItem) {
+  if (item.routeName) {
+    const sameRoute = route.name === item.routeName
+    const sameQuery = Object.entries(item.query ?? {}).every(([key, value]) => route.query[key] === value)
+    return sameRoute && sameQuery
+  }
   if (!item.path) return false
   const basePath = item.path.split('?')[0]
   return route.path === basePath || route.fullPath === item.path
 }
 
 function openItem(item: NavigationItem) {
-  if (item.section) {
-    emit('select', item.section)
+  if (item.requirePatient && !props.selectedPatientId) {
+    ElMessage.info('请先选择患者')
+    void router.push({ name: 'doctor-patients' })
+    return
   }
+
+  if (item.routeName) {
+    void router.push({
+      name: item.routeName,
+      params: item.requirePatient ? { patientId: props.selectedPatientId } : undefined,
+      query: item.query,
+    })
+    return
+  }
+
   if (item.path) {
     void router.push(item.path)
   }
@@ -99,7 +118,7 @@ function openItem(item: NavigationItem) {
         </div>
         <button
           v-for="item in group.children"
-          :key="`${group.title}-${item.title}-${item.path}`"
+          :key="`${group.title}-${item.title}-${item.routeName || item.path}`"
           class="sidenav-item"
           :class="{ active: isActive(item) }"
           type="button"

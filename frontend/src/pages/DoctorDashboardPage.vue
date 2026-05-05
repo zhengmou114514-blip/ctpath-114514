@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { Aim, Files, FirstAidKit, TrendCharts } from '@element-plus/icons-vue'
 import type { PatientCase, PatientSummary } from '../services/types'
 
@@ -25,10 +26,61 @@ const emit = defineEmits<{
   (e: 'open-model', patientId: string): void
 }>()
 
+type WorkbenchView = 'overview' | 'pending' | 'high-risk-review' | 'followup-due' | 'model-stale' | 'current'
+
+const route = useRoute()
+const router = useRouter()
+
 const selectedPatientId = computed(() => props.selectedPatient?.patientId ?? '')
+const workbenchView = computed<WorkbenchView>(() => {
+  const raw = typeof route.query.view === 'string' ? route.query.view : 'overview'
+  if (
+    raw === 'pending' ||
+    raw === 'high-risk-review' ||
+    raw === 'followup-due' ||
+    raw === 'model-stale' ||
+    raw === 'current'
+  ) {
+    return raw
+  }
+  return 'overview'
+})
+
+const viewLabelMap: Record<WorkbenchView, string> = {
+  overview: '全部待处理',
+  pending: '待处理患者',
+  'high-risk-review': '待复核高风险',
+  'followup-due': '待随访患者',
+  'model-stale': '模型待刷新',
+  current: '当前关注患者',
+}
+
+function isHighRisk(patient: PatientSummary | PatientCase) {
+  const raw = patient.riskLevel.toLowerCase()
+  return patient.riskLevel.includes('高') || raw.includes('high')
+}
+
+function isFollowupDue(patient: PatientSummary | PatientCase) {
+  const text = `${patient.summary} ${patient.lastVisit}`.toLowerCase()
+  return text.includes('随访') || text.includes('复诊') || text.includes('follow')
+}
+
+function isModelStale(patient: PatientSummary | PatientCase) {
+  return patient.dataSupport === 'low'
+}
+
+const pendingSource = computed(() => (props.patients.length ? props.patients : props.allPatients))
+
+const viewPatients = computed<(PatientSummary | PatientCase)[]>(() => {
+  if (workbenchView.value === 'high-risk-review') return props.allPatients.filter(isHighRisk)
+  if (workbenchView.value === 'followup-due') return props.allPatients.filter(isFollowupDue)
+  if (workbenchView.value === 'model-stale') return props.allPatients.filter(isModelStale)
+  if (workbenchView.value === 'current') return props.selectedPatient ? [props.selectedPatient] : pendingSource.value.slice(0, 1)
+  return pendingSource.value
+})
 
 const filteredPatients = computed(() => {
-  const source = props.patients.length ? props.patients : props.allPatients
+  const source = viewPatients.value
   const keyword = props.searchText.trim().toLowerCase()
   const risk = props.riskFilter
   const allRisk = !risk || props.riskOptions[0] === risk
@@ -43,16 +95,10 @@ const filteredPatients = computed(() => {
 const queuePatients = computed(() => filteredPatients.value.slice(0, 8))
 const focusPatient = computed<PatientCase | PatientSummary | null>(() => props.selectedPatient ?? queuePatients.value[0] ?? null)
 
-const highRiskCount = computed(() =>
-  props.allPatients.filter((patient) => patient.riskLevel.includes('高') || patient.riskLevel.toLowerCase().includes('high')).length
-)
+const highRiskCount = computed(() => props.allPatients.filter(isHighRisk).length)
 
-const followupCount = computed(() =>
-  props.allPatients.filter((patient) => {
-    const text = `${patient.summary} ${patient.lastVisit}`.toLowerCase()
-    return text.includes('随访') || text.includes('复诊') || text.includes('follow')
-  }).length
-)
+const followupCount = computed(() => props.allPatients.filter(isFollowupDue).length)
+const modelStaleCount = computed(() => props.allPatients.filter(isModelStale).length)
 
 const modelCoverage = computed(() => {
   if (!props.allPatients.length) return '0%'
@@ -61,11 +107,18 @@ const modelCoverage = computed(() => {
 })
 
 const overviewCards = computed(() => [
-  { label: '待处理患者', value: String(queuePatients.value.length), hint: '当前筛选队列', icon: Files },
-  { label: '高风险患者', value: String(highRiskCount.value), hint: '需优先复核', icon: FirstAidKit },
-  { label: '待随访患者', value: String(followupCount.value), hint: '需发起或查看随访', icon: Aim },
-  { label: '模型覆盖率', value: modelCoverage.value, hint: '按患者数据支持度估算', icon: TrendCharts },
+  { label: '待处理患者', value: String(pendingSource.value.length), hint: '当前需处理队列', icon: Files, view: 'pending' as const },
+  { label: '待复核高风险', value: String(highRiskCount.value), hint: '需医生优先复核', icon: FirstAidKit, view: 'high-risk-review' as const },
+  { label: '待随访患者', value: String(followupCount.value), hint: '需发起或查看随访', icon: Aim, view: 'followup-due' as const },
+  { label: '模型待刷新', value: String(modelStaleCount.value), hint: `覆盖率 ${modelCoverage.value}`, icon: TrendCharts, view: 'model-stale' as const },
 ])
+
+function switchWorkbenchView(view: WorkbenchView) {
+  void router.push({
+    name: 'doctor-workbench',
+    query: view === 'overview' ? { view: 'overview' } : { view },
+  })
+}
 
 function riskClass(level: string) {
   const raw = (level || '').toLowerCase()
@@ -139,14 +192,21 @@ function openModel(patientId: string) {
 
     <template v-else>
       <section class="overview-strip" aria-label="医生工作台概览">
-        <article v-for="card in overviewCards" :key="card.label" class="overview-card">
+        <button
+          v-for="card in overviewCards"
+          :key="card.label"
+          class="overview-card"
+          :class="{ active: workbenchView === card.view }"
+          type="button"
+          @click="switchWorkbenchView(card.view)"
+        >
           <el-icon><component :is="card.icon" /></el-icon>
           <div>
             <span>{{ card.label }}</span>
             <strong>{{ card.value }}</strong>
             <small>{{ card.hint }}</small>
           </div>
-        </article>
+        </button>
       </section>
 
       <section class="doctor-station-layout">
@@ -155,6 +215,7 @@ function openModel(patientId: string) {
             <div>
               <p class="eyebrow">慢病门诊医生站</p>
               <h2>待处理患者队列</h2>
+              <small class="filter-label">当前筛选：{{ viewLabelMap[workbenchView] }}</small>
             </div>
 
             <div class="queue-toolbar">
@@ -174,7 +235,7 @@ function openModel(patientId: string) {
           </div>
 
           <div v-if="loadingPatients" class="queue-state">正在加载患者队列...</div>
-          <div v-else-if="!queuePatients.length" class="queue-state">当前没有符合条件的待处理患者。</div>
+          <div v-else-if="!queuePatients.length" class="queue-state">当前没有符合“{{ viewLabelMap[workbenchView] }}”条件的患者。</div>
 
           <table v-else class="patient-queue-table">
             <thead>
@@ -208,7 +269,7 @@ function openModel(patientId: string) {
                 <td>
                   <div class="row-actions">
                     <button class="text-action" type="button" :disabled="loadingPatient" @click.stop="openPatientDetail(patient.patientId)">进入详情</button>
-                    <button class="text-action" type="button" @click.stop="openModel(patient.patientId)">查看模型</button>
+                    <button class="text-action" type="button" @click.stop="openModel(patient.patientId)">风险评估</button>
                     <button class="text-action" type="button" @click.stop="emit('open-followup', { patientId: patient.patientId, section: 'tasks' })">发起随访</button>
                   </div>
                 </td>
@@ -243,7 +304,7 @@ function openModel(patientId: string) {
 
             <div class="focus-actions">
               <button class="primary-button" type="button" @click="openPatientDetail(focusPatient.patientId)">进入详情</button>
-              <button class="secondary-button" type="button" @click="openModel(focusPatient.patientId)">查看模型</button>
+              <button class="secondary-button" type="button" @click="openModel(focusPatient.patientId)">风险评估</button>
               <button class="secondary-button" type="button" @click="emit('open-followup', { patientId: focusPatient.patientId, section: 'tasks' })">发起随访</button>
             </div>
           </article>
@@ -273,6 +334,19 @@ function openModel(patientId: string) {
   border-radius: 6px;
   background: #fff;
   padding: 12px 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.overview-card:hover,
+.overview-card.active {
+  border-color: #008a9b;
+  background: #f2fbfd;
+  box-shadow: 0 8px 18px rgba(0, 92, 97, 0.08);
+}
+
+.overview-card.active {
+  outline: 2px solid rgba(0, 138, 155, 0.14);
 }
 
 .overview-card :deep(.el-icon) {
@@ -328,6 +402,14 @@ function openModel(patientId: string) {
   color: #003434;
   font-family: var(--ws-font-headline);
   font-size: 24px;
+}
+
+.filter-label {
+  display: inline-block;
+  margin-top: 4px;
+  color: #526772;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .queue-toolbar {

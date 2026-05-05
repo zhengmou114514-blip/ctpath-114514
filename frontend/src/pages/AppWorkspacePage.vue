@@ -162,7 +162,7 @@ function syncWorkspaceFromRoute() {
   }
 
   const routeName = typeof route.name === 'string' ? route.name : ''
-  if (routeName === 'patient-detail' || routeName.startsWith('patient-')) return
+  if (routeName === 'patient-detail') return
 
   const moduleValue = typeof route.query.module === 'string' ? route.query.module : ''
   const requestedSection =
@@ -204,6 +204,7 @@ function syncRouteFromWorkspace() {
   if (!workspace.currentDoctor) return
   const routeName = typeof route.name === 'string' ? route.name : ''
   if (routeName === 'patient-detail' || routeName.startsWith('patient-')) return
+  if (routeName !== 'home' && route.meta.section) return
 
   const targetRoute = buildRouteForSection(workspace.section)
   if (router.resolve(targetRoute).fullPath !== route.fullPath) {
@@ -277,7 +278,7 @@ function handleDoctorOpenFollowup(payload: { patientId: string; section?: 'tasks
 async function handleDoctorOpenModel(patientId: string) {
   await workspace.openPatient(patientId, 'doctor')
   workspace.selectSection('insights')
-  void router.push({ name: 'model-insight' })
+  void router.push({ name: 'patient-risk', params: { patientId } })
 }
 
 function handleBackToList() {
@@ -306,7 +307,7 @@ onMounted(async () => {
 })
 
 watch(
-  () => route.name,
+  () => route.fullPath,
   () => {
     syncWorkspaceFromRoute()
   },

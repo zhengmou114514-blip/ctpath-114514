@@ -90,6 +90,7 @@ watch(
       :health="health"
       :patient-count="patientCount"
       :followup-count="followupCount"
+      :selected-patient-id="selectedPatient?.patientId"
       @select="emit('select', $event)"
       @logout="emit('logout')"
     />
