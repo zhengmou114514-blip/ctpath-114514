@@ -173,6 +173,20 @@ const selectedFlowSnapshot = computed(() => {
 const pendingCount = computed(() => filteredTasks.value.filter((item) => !item.completed).length)
 const urgentCount = computed(() => filteredTasks.value.filter((item) => item.riskKey === 'high' || item.needsReview).length)
 const completedCount = computed(() => filteredTasks.value.filter((item) => item.completed).length)
+const flowRows = computed<FlowBoardRow[]>(() => {
+  if (props.flowBoardItems.length) return props.flowBoardItems
+  return mergedTasks.value.map((item) => ({
+    patientId: item.patientId,
+    patientName: item.patientName,
+    primaryDisease: item.primaryDisease,
+    currentStage: item.flow?.currentStage || '--',
+    riskLevel: item.riskLevel,
+    dataSupport: item.dataSupport,
+    lastVisit: item.dueDate,
+    flowStatus: item.localStatus || item.status,
+    nextAction: item.taskType || '随访跟进',
+  }))
+})
 
 const boardColumns = computed(() => {
   const pending = filteredTasks.value.filter((item) => item.localStatus.toLowerCase().includes('pending') || item.unreached)
@@ -312,7 +326,6 @@ watch(selectedTask, (task) => {
       <div>
         <p class="eyebrow">随访工作台 / 联系闭环</p>
         <h1>随访账本与联系记录</h1>
-        <p>集中处理待联系患者、病程流转、联系记录与任务状态更新，不把模型治理或档案管理内容混进本工作区。</p>
       </div>
       <div class="header-actions">
         <label class="field compact">
@@ -353,6 +366,32 @@ watch(selectedTask, (task) => {
         <span>已完成</span>
         <strong>{{ completedCount }}</strong>
       </article>
+    </section>
+
+    <section class="clinical-card flow-overview-panel">
+      <div class="section-header">
+        <div>
+          <p class="eyebrow">病程流转</p>
+          <h2>患者流转总览</h2>
+        </div>
+      </div>
+
+      <div v-if="flowRows.length" class="flow-table">
+        <button
+          v-for="row in flowRows"
+          :key="row.patientId"
+          class="flow-row"
+          type="button"
+          @click="emit('open-patient', row.patientId)"
+        >
+          <strong>{{ row.patientName }}</strong>
+          <span>{{ row.primaryDisease }} / {{ row.currentStage }}</span>
+          <span>{{ row.flowStatus }}</span>
+          <span>{{ row.nextAction }}</span>
+          <span>{{ row.lastVisit }}</span>
+        </button>
+      </div>
+      <div v-else class="empty-state-card compact-empty">暂无病程流转记录。</div>
     </section>
 
     <section class="followup-ledger-layout">
@@ -531,22 +570,61 @@ watch(selectedTask, (task) => {
 .ledger-stack,
 .history-list {
   display: grid;
-  gap: 22px;
+  gap: 12px;
 }
 
 .followup-ledger-layout {
-  grid-template-columns: minmax(0, 1.4fr) 480px;
+  grid-template-columns: minmax(0, 1.5fr) 380px;
   align-items: start;
 }
 
 .ledger-board {
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
+  gap: 10px;
 }
 
 .ledger-column {
   display: grid;
-  gap: 14px;
+  gap: 8px;
+}
+
+.flow-overview-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.flow-table {
+  display: grid;
+  border: 1px solid #b7d1de;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.flow-row {
+  display: grid;
+  grid-template-columns: 1fr 1.35fr 1fr 1.8fr 0.9fr;
+  gap: 10px;
+  align-items: center;
+  min-height: 38px;
+  border: 0;
+  border-bottom: 1px solid #d5e6ef;
+  background: #fff;
+  padding: 7px 10px;
+  color: #253f4c;
+  text-align: left;
+}
+
+.flow-row:nth-child(even) {
+  background: #f7fbfd;
+}
+
+.flow-row:hover {
+  background: #e8f6fd;
+}
+
+.flow-row span {
+  color: #526772;
+  font-size: 12px;
 }
 
 .ledger-column-head {
@@ -629,16 +707,16 @@ watch(selectedTask, (task) => {
 
 .contact-entry-panel {
   display: grid;
-  gap: 18px;
-  padding: 26px 28px;
+  gap: 10px;
+  padding: 14px;
 }
 
 .contact-relationship-card,
 .contact-flow-card {
   display: grid;
-  gap: 14px;
-  padding: 18px;
-  border-radius: 20px;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 6px;
   background: rgba(246, 248, 248, 0.95);
   border: 1px solid rgba(198, 208, 210, 0.85);
 }
@@ -657,7 +735,7 @@ watch(selectedTask, (task) => {
 .relationship-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 8px;
 }
 
 .relationship-grid.single-row {
@@ -666,9 +744,9 @@ watch(selectedTask, (task) => {
 
 .relationship-item {
   display: grid;
-  gap: 6px;
-  padding: 14px;
-  border-radius: 16px;
+  gap: 4px;
+  padding: 9px;
+  border-radius: 6px;
   background: rgba(255, 255, 255, 0.88);
   border: 1px solid rgba(210, 217, 219, 0.95);
 }
@@ -684,7 +762,7 @@ watch(selectedTask, (task) => {
 
 .entry-field {
   display: grid;
-  gap: 8px;
+  gap: 5px;
 }
 
 .entry-field span {
@@ -699,18 +777,18 @@ watch(selectedTask, (task) => {
 .entry-field select,
 .entry-field textarea {
   width: 100%;
-  min-height: 48px;
+  min-height: 34px;
   border: 1px solid #d5dde0;
-  border-radius: 14px;
+  border-radius: 4px;
   background: #fff;
-  padding: 0 14px;
+  padding: 0 9px;
   font: inherit;
   color: #181c1e;
 }
 
 .entry-field textarea {
-  min-height: 120px;
-  padding: 14px;
+  min-height: 76px;
+  padding: 9px;
   resize: vertical;
 }
 
@@ -737,10 +815,10 @@ watch(selectedTask, (task) => {
 
 .history-row {
   display: grid;
-  gap: 6px;
-  border-radius: 14px;
+  gap: 4px;
+  border-radius: 6px;
   background: rgba(241, 244, 245, 0.92);
-  padding: 14px 16px;
+  padding: 10px;
 }
 
 .compact-empty {
@@ -754,7 +832,8 @@ watch(selectedTask, (task) => {
 }
 
 @media (max-width: 1100px) {
-  .ledger-board {
+  .ledger-board,
+  .flow-row {
     grid-template-columns: 1fr;
   }
 }

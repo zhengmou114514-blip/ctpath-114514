@@ -70,7 +70,7 @@
 
 关键入口：
 
-- `app/main.py`
+- `backend/app/main.py`
 - `app/schemas.py`
 - `app/store.py`
 - `app/demo_store.py`
@@ -369,7 +369,7 @@
 
 ### 当前挂载 router
 
-在 `app/main.py` 中挂载：
+在 `backend/app/main.py` 中挂载：
 
 - `analytics`
 - `attachments`
@@ -386,7 +386,7 @@
 
 ### 当前中间件链路
 
-`app/main.py` 中实际加入：
+`backend/app/main.py` 中实际加入：
 
 - `CORSMiddleware`
 - `JWTAuthMiddleware`
@@ -514,6 +514,8 @@ TraceIdMiddleware -> GlobalExceptionMiddleware -> JWTAuthMiddleware -> CORSMiddl
 ```powershell
 cd E:\CTpath-master
 conda activate ctpath
+cd E:\\CTpath-master\\backend
+cd E:\CTpath-master\backend
 uvicorn app.main:app --reload
 ```
 
@@ -605,3 +607,5 @@ The shared workstation visual contract lives in `frontend/src/styles/workstation
 ## Recent Verification
 
 After the frontend closure pass, `cd frontend && npm run build` completed successfully. Vite reported a chunk size warning only; this is not a build failure.
+
+

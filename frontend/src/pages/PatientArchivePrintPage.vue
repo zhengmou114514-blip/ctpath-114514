@@ -70,6 +70,19 @@ function attachmentLabel(value: string) {
   return value || '--'
 }
 
+function actorLabel(value?: string | null) {
+  if (!value) return '--'
+  const labels: Record<string, string> = {
+    demo_clinic: '门诊医生',
+    demo_nurse: '主管护士',
+    demo_pharmacist: '主管药师',
+    demo_admin: '系统管理员',
+    demo_archivist: '档案管理员',
+    demo_specialist: '专科医生',
+  }
+  return labels[value] ?? value
+}
+
 async function load() {
   if (!patientId.value) {
     error.value = '缺少患者编号，无法打开档案打印页。'
@@ -123,7 +136,7 @@ watch(patientId, () => {
       <div>
         <p class="eyebrow">电子档案 / 可打印文档</p>
         <h1>患者档案打印页</h1>
-        <p>按 openhis 风格输出为可打印文档，展示患者身份、联系方式、病程、附件、用药和随访闭环信息。</p>
+        <p>患者身份、联系方式、病程、附件、用药和随访闭环信息。</p>
       </div>
       <div class="toolbar-actions">
         <button class="secondary-button" type="button" @click="backToArchive">返回档案</button>
@@ -247,7 +260,7 @@ watch(patientId, () => {
               <tr v-for="item in attachments" :key="item.attachmentId">
                 <td>{{ attachmentLabel(item.type) }}</td>
                 <td>{{ item.fileName }}</td>
-                <td>{{ item.uploadedBy }}</td>
+                <td>{{ actorLabel(item.uploadedBy) }}</td>
                 <td>{{ datetime(item.uploadedAt) }}</td>
               </tr>
             </tbody>

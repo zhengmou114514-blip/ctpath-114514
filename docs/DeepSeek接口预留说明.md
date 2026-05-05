@@ -50,6 +50,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\start-backend.ps1
 或直接：
 
 ```powershell
+cd E:\\CTpath-master\\backend
+cd E:\CTpath-master\backend
 uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
@@ -84,3 +86,5 @@ uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 
 - `adviceMeta.source = "placeholder"`
 - `adviceMeta.connected = false`
+
+

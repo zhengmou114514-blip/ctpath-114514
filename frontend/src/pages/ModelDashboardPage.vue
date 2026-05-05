@@ -1,11 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { useWorkspaceContext } from '../composables/workspaceContext'
 import { buildModelBoardSnapshot } from '../services/modelBoardAdapter'
 
 const workspace = useWorkspaceContext()
-const router = useRouter()
 
 const board = computed(() =>
   buildModelBoardSnapshot({
@@ -14,88 +12,118 @@ const board = computed(() =>
 )
 
 const modelHealth = computed(() => {
-  if (!workspace.health) return { label: '状态待加载', type: 'info' as const }
-  if (workspace.health.model_available) return { label: '模型可用', type: 'success' as const }
-  if (workspace.health.model_error) return { label: '降级运行', type: 'warning' as const }
-  return { label: '模型不可用', type: 'danger' as const }
+  if (!workspace.health) return { label: '状态待加载', tone: 'neutral' }
+  if (workspace.health.model_available) return { label: '健康', tone: 'ok' }
+  if (workspace.health.model_error) return { label: '降级运行', tone: 'warning' }
+  return { label: '不可用', tone: 'danger' }
 })
 
 const loading = computed(() => workspace.loadingModelMetrics)
+const dataSupportCoverage = computed(() => board.value.datasetCoverage)
+const recentAnomalies = computed(() => {
+  const items = []
+  if (workspace.health?.model_error) {
+    items.push({
+      time: '最近一次健康检查',
+      level: 'warning',
+      title: '模型服务降级',
+      detail: workspace.health.model_error,
+    })
+  }
+  if ((board.value.fallbackRatio ?? 0) >= 0.1) {
+    items.push({
+      time: '近 7 天',
+      level: 'warning',
+      title: '回退比例偏高',
+      detail: '部分请求回退到相似病例或规则摘要，需要关注模型服务稳定性。',
+    })
+  }
+  if (dataSupportCoverage.value < 0.7) {
+    items.push({
+      time: '当前快照',
+      level: 'notice',
+      title: '数据支持覆盖不足',
+      detail: '部分患者病程事件或关系证据不足，可能影响预测解释完整度。',
+    })
+  }
+  return items.length
+    ? items
+    : [
+        {
+          time: '当前快照',
+          level: 'ok',
+          title: '暂无明显异常',
+          detail: '模型服务、数据支持覆盖和回退比例处于可演示状态。',
+        },
+      ]
+})
 
 function formatPercent(value: number | null | undefined) {
-  if (value === null || value === undefined || Number.isNaN(value)) return '--'
+  if (value === null || value === undefined || Number.isNaN(value)) return '待统计'
   return `${(value * 100).toFixed(1)}%`
 }
 
+function formatNumber(value: number | null | undefined) {
+  if (value === null || value === undefined || Number.isNaN(value)) return '待统计'
+  return String(value)
+}
+
 function formatDateTime(value: string | undefined) {
-  if (!value || value === '--') return '--'
+  if (!value || value === '--') return '待同步'
   return value.replace('T', ' ').slice(0, 16)
 }
 
-function handleRefresh() {
-  void workspace.refreshModelMetrics()
-}
-
-function handleOpenTrainingCenter() {
-  workspace.selectSection('training-center')
-  void router.push({ name: 'training-center' })
-}
-
-function handleOpenOperations() {
-  workspace.selectSection('model-operations')
-  void router.push({ name: 'model-operations' })
+async function handleRefresh() {
+  await workspace.refreshModelMetrics()
 }
 
 onMounted(() => {
   if (!workspace.currentDoctor) return
-  if (!workspace.modelMetrics) {
-    void workspace.refreshModelMetrics()
-  }
+  void handleRefresh()
 })
 </script>
 
 <template>
   <section class="workspace-page model-dashboard-page">
-    <header class="workstation-page-header">
+    <header class="workstation-page-header dashboard-header">
       <div>
-        <p class="eyebrow">模型中心</p>
+        <p class="eyebrow">模型辅助模块 / 管理员</p>
         <h1>模型看板</h1>
-        <p>这里仅承接模型治理与监控信息，不展示当前患者详情、治理缺陷列表或训练中心内容。训练和调试通过独立入口进入。</p>
+        <p>展示模型版本、运行指标、调用量、回退比例、健康状态和数据支持覆盖率。</p>
       </div>
-      <div class="header-actions">
-        <button class="secondary-button" type="button" @click="handleOpenOperations">进入模型调试台</button>
-        <button class="secondary-button" type="button" @click="handleOpenTrainingCenter">进入训练中心</button>
-        <button class="primary-button" type="button" :disabled="loading" @click="handleRefresh">刷新看板</button>
-      </div>
+      <button class="primary-button" type="button" :disabled="loading" @click="handleRefresh">
+        {{ loading ? '刷新中...' : '刷新看板' }}
+      </button>
     </header>
 
-    <section class="metric-grid">
+    <section class="dashboard-metrics">
       <article class="clinical-card metric-card">
         <span>模型版本</span>
         <strong>{{ board.currentModelVersion }}</strong>
         <small>{{ board.currentModelName }}</small>
       </article>
       <article class="clinical-card metric-card">
-        <span>最近训练</span>
-        <strong>{{ formatDateTime(board.recentTrainingTime) }}</strong>
-        <small>最新任务状态：{{ board.recentTrainingTaskStatus }}</small>
+        <span>健康状态</span>
+        <strong :class="`tone-${modelHealth.tone}`">{{ modelHealth.label }}</strong>
+        <small>{{ workspace.health?.status === 'ok' ? '业务服务正常' : '服务状态待确认' }}</small>
       </article>
       <article class="clinical-card metric-card">
-        <span>模型健康</span>
-        <strong>{{ modelHealth.label }}</strong>
-        <small>运行模式：{{ workspace.health?.mode ?? '--' }}</small>
+        <span>调用量</span>
+        <strong>{{ formatNumber(board.recentInferenceCalls) }}</strong>
+        <small>最近 7 天预测调用</small>
       </article>
       <article class="clinical-card metric-card">
-        <span>数据集覆盖</span>
-        <strong>{{ formatPercent(board.datasetCoverage) }}</strong>
-        <small>基于训练中心导入的数据集统计</small>
+        <span>回退比例</span>
+        <strong>{{ formatPercent(board.fallbackRatio) }}</strong>
+        <small>模型不可用或置信不足时回退</small>
       </article>
     </section>
 
-    <section class="performance-grid">
+    <section class="dashboard-grid">
       <article class="clinical-card performance-card">
-        <p class="eyebrow">核心指标</p>
-        <div class="performance-list">
+        <p class="eyebrow">模型指标</p>
+        <h2>预测性能</h2>
+        <div class="metric-row-list">
           <div>
             <span>MRR</span>
             <strong>{{ formatPercent(board.mrr) }}</strong>
@@ -112,19 +140,39 @@ onMounted(() => {
       </article>
 
       <article class="clinical-card performance-card">
-        <p class="eyebrow">运行态势</p>
-        <div class="performance-list">
+        <p class="eyebrow">数据支持覆盖率</p>
+        <h2>{{ formatPercent(dataSupportCoverage) }}</h2>
+        <el-progress :percentage="Math.round(dataSupportCoverage * 100)" :stroke-width="10" />
+        <p class="panel-note">覆盖率用于观察患者病程事件、关系证据和模型输入数据是否足以支持解释。</p>
+      </article>
+
+      <article class="clinical-card runtime-card">
+        <p class="eyebrow">运行状态</p>
+        <h2>当前模型快照</h2>
+        <dl class="runtime-list">
           <div>
-            <span>最近 7 天调用量</span>
-            <strong>{{ board.recentInferenceCalls ?? '--' }}</strong>
+            <dt>最近训练时间</dt>
+            <dd>{{ formatDateTime(board.recentTrainingTime) }}</dd>
           </div>
           <div>
-            <span>回退比例</span>
-            <strong>{{ formatPercent(board.fallbackRatio) }}</strong>
+            <dt>最近任务状态</dt>
+            <dd>{{ board.recentTrainingTaskStatus }}</dd>
           </div>
           <div>
-            <span>快照来源</span>
-            <strong>{{ board.source }}</strong>
+            <dt>快照来源</dt>
+            <dd>{{ board.source }}</dd>
+          </div>
+        </dl>
+      </article>
+
+      <article class="clinical-card anomaly-card">
+        <p class="eyebrow">最近异常</p>
+        <h2>异常与提示</h2>
+        <div class="anomaly-list">
+          <div v-for="item in recentAnomalies" :key="`${item.time}-${item.title}`" class="anomaly-item" :class="`tone-${item.level}`">
+            <span>{{ item.time }}</span>
+            <strong>{{ item.title }}</strong>
+            <p>{{ item.detail }}</p>
           </div>
         </div>
       </article>
@@ -135,58 +183,133 @@ onMounted(() => {
 <style scoped>
 .model-dashboard-page {
   display: grid;
-  gap: 24px;
+  gap: 12px;
 }
 
-.metric-grid {
+.dashboard-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.dashboard-header p {
+  margin: 0;
+  color: #526772;
+}
+
+.dashboard-metrics {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 18px;
+  gap: 8px;
 }
 
 .metric-card,
-.performance-card {
+.performance-card,
+.runtime-card,
+.anomaly-card {
   display: grid;
   gap: 12px;
 }
 
 .metric-card span,
 .metric-card small,
-.performance-card span {
-  color: rgba(63, 72, 73, 0.74);
+.metric-row-list span,
+.runtime-list dt,
+.anomaly-item span,
+.panel-note {
+  color: #526772;
 }
 
 .metric-card strong {
+  color: #0f6f99;
   font-size: clamp(24px, 4vw, 34px);
 }
 
-.performance-grid {
+.tone-ok {
+  color: #007f65 !important;
+}
+
+.tone-warning,
+.tone-notice {
+  color: #9a5b00 !important;
+}
+
+.tone-danger {
+  color: #b42318 !important;
+}
+
+.dashboard-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
+  gap: 12px;
 }
 
-.performance-list {
+.metric-row-list {
   display: grid;
-  gap: 14px;
+  gap: 10px;
 }
 
-.performance-list div {
+.metric-row-list div,
+.runtime-list div {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 14px 0;
-  border-bottom: 1px solid rgba(190, 200, 201, 0.45);
+  padding: 10px 0;
+  border-bottom: 1px solid #d5e6ef;
 }
 
-.performance-list strong {
+.metric-row-list strong,
+.runtime-list dd {
+  margin: 0;
+  color: #003c43;
   font-size: 20px;
+  font-weight: 900;
+}
+
+.runtime-list {
+  display: grid;
+  margin: 0;
+}
+
+.anomaly-list {
+  display: grid;
+  gap: 8px;
+}
+
+.anomaly-item {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid #d5e6ef;
+  border-left-width: 3px;
+  border-radius: 4px;
+  background: #fff;
+}
+
+.anomaly-item.tone-ok {
+  border-left-color: #007f65;
+}
+
+.anomaly-item.tone-warning,
+.anomaly-item.tone-notice {
+  border-left-color: #d97706;
+}
+
+.anomaly-item.tone-danger {
+  border-left-color: #b42318;
+}
+
+.anomaly-item p,
+.panel-note {
+  margin: 0;
+  line-height: 1.6;
 }
 
 @media (max-width: 1180px) {
-  .metric-grid,
-  .performance-grid {
+  .dashboard-metrics,
+  .dashboard-grid {
     grid-template-columns: 1fr;
   }
 }

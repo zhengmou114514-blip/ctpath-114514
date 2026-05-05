@@ -1,0 +1,314 @@
+[
+  {
+    "coordinationId": "coord-PID0191",
+    "patientId": "PID0191",
+    "patientName": "王海峰",
+    "primaryDisease": "Diabetes",
+    "currentStage": "Mid",
+    "riskLevel": "中风险",
+    "category": "medication_review",
+    "status": "open",
+    "ownerRole": "pharmacist",
+    "ownerName": "张护士",
+    "nextAction": "复核当前用药并同步药房意见",
+    "dueDate": "2025-03-20",
+    "lastUpdatedAt": "2025-03-20T09:30:00+00:00",
+    "summary": "王海峰 / Diabetes / 患者电话 13800010191 / 紧急联系人 王琳",
+    "participants": [
+      {
+        "role": "doctor",
+        "name": "周医生",
+        "relation": "责任医生",
+        "phone": "13800010191"
+      },
+      {
+        "role": "nurse",
+        "name": "张护士",
+        "relation": "个案管理师",
+        "phone": "13800020191"
+      },
+      {
+        "role": "pharmacist",
+        "name": "药师复核",
+        "relation": "药师复核",
+        "phone": ""
+      },
+      {
+        "role": "archivist",
+        "name": "档案员",
+        "relation": "档案维护",
+        "phone": ""
+      }
+    ],
+    "notes": [
+      {
+        "noteId": "note-PID0191-seed",
+        "createdAt": "2025-03-20T09:00:00+00:00",
+        "createdBy": "张护士",
+        "createdByRole": "pharmacist",
+        "action": "seed",
+        "note": "已根据档案总览、联系方式和当前用药生成协同初始记录。"
+      }
+    ]
+  },
+  {
+    "coordinationId": "coord-PID0025",
+    "patientId": "PID0025",
+    "patientName": "周建华",
+    "primaryDisease": "Parkinson's",
+    "currentStage": "Mid",
+    "riskLevel": "高风险",
+    "category": "followup",
+    "status": "open",
+    "ownerRole": "nurse",
+    "ownerName": "周医生",
+    "nextAction": "联系患者并更新协同备注",
+    "dueDate": "2025-03-18",
+    "lastUpdatedAt": "2025-03-18T09:30:00+00:00",
+    "summary": "周建华 / Parkinson's / 患者电话 13800010025 / 紧急联系人 周敏",
+    "participants": [
+      {
+        "role": "doctor",
+        "name": "周医生",
+        "relation": "责任医生",
+        "phone": "13800010025"
+      },
+      {
+        "role": "nurse",
+        "name": "张护士",
+        "relation": "个案管理师",
+        "phone": "13800020025"
+      },
+      {
+        "role": "pharmacist",
+        "name": "药师复核",
+        "relation": "药师复核",
+        "phone": ""
+      },
+      {
+        "role": "archivist",
+        "name": "档案员",
+        "relation": "档案维护",
+        "phone": ""
+      }
+    ],
+    "notes": [
+      {
+        "noteId": "note-PID0025-seed",
+        "createdAt": "2025-03-18T09:00:00+00:00",
+        "createdBy": "周医生",
+        "createdByRole": "nurse",
+        "action": "seed",
+        "note": "已根据档案总览、联系方式和当前用药生成协同初始记录。"
+      }
+    ]
+  },
+  {
+    "coordinationId": "coord-PID0078",
+    "patientId": "PID0078",
+    "patientName": "刘淑琴",
+    "primaryDisease": "Alzheimer's",
+    "currentStage": "Late",
+    "riskLevel": "高风险",
+    "category": "case_review",
+    "status": "open",
+    "ownerRole": "doctor",
+    "ownerName": "周医生",
+    "nextAction": "补齐病历信息并完成个案复核",
+    "dueDate": "2025-03-16",
+    "lastUpdatedAt": "2025-03-16T09:30:00+00:00",
+    "summary": "刘淑琴 / Alzheimer's / 患者电话 13800010078 / 紧急联系人 陈立",
+    "participants": [
+      {
+        "role": "doctor",
+        "name": "周医生",
+        "relation": "责任医生",
+        "phone": "13800010078"
+      },
+      {
+        "role": "nurse",
+        "name": "张护士",
+        "relation": "个案管理师",
+        "phone": "13800020078"
+      },
+      {
+        "role": "pharmacist",
+        "name": "药师复核",
+        "relation": "药师复核",
+        "phone": ""
+      },
+      {
+        "role": "archivist",
+        "name": "档案员",
+        "relation": "档案维护",
+        "phone": ""
+      }
+    ],
+    "notes": [
+      {
+        "noteId": "note-PID0078-seed",
+        "createdAt": "2025-03-16T09:00:00+00:00",
+        "createdBy": "周医生",
+        "createdByRole": "doctor",
+        "action": "seed",
+        "note": "已根据档案总览、联系方式和当前用药生成协同初始记录。"
+      }
+    ]
+  },
+  {
+    "coordinationId": "coord-PID0217",
+    "patientId": "PID0217",
+    "patientName": "张美兰",
+    "primaryDisease": "Alzheimer's",
+    "currentStage": "Mid",
+    "riskLevel": "中风险",
+    "category": "followup",
+    "status": "open",
+    "ownerRole": "nurse",
+    "ownerName": "周医生",
+    "nextAction": "联系患者并更新协同备注",
+    "dueDate": "2025-03-12",
+    "lastUpdatedAt": "2025-03-12T09:30:00+00:00",
+    "summary": "张美兰 / Alzheimer's / 患者电话 13800010217 / 紧急联系人 李芳",
+    "participants": [
+      {
+        "role": "doctor",
+        "name": "周医生",
+        "relation": "责任医生",
+        "phone": "13800010217"
+      },
+      {
+        "role": "nurse",
+        "name": "张护士",
+        "relation": "个案管理师",
+        "phone": "13800020217"
+      },
+      {
+        "role": "pharmacist",
+        "name": "药师复核",
+        "relation": "药师复核",
+        "phone": ""
+      },
+      {
+        "role": "archivist",
+        "name": "档案员",
+        "relation": "档案维护",
+        "phone": ""
+      }
+    ],
+    "notes": [
+      {
+        "noteId": "note-PID0217-seed",
+        "createdAt": "2025-03-12T09:00:00+00:00",
+        "createdBy": "周医生",
+        "createdByRole": "nurse",
+        "action": "seed",
+        "note": "已根据档案总览、联系方式和当前用药生成协同初始记录。"
+      }
+    ]
+  },
+  {
+    "coordinationId": "coord-PID0313",
+    "patientId": "PID0313",
+    "patientName": "陈素梅",
+    "primaryDisease": "Diabetes",
+    "currentStage": "Mid",
+    "riskLevel": "中风险",
+    "category": "medication_review",
+    "status": "open",
+    "ownerRole": "pharmacist",
+    "ownerName": "张护士",
+    "nextAction": "复核当前用药并同步药房意见",
+    "dueDate": "2025-03-08",
+    "lastUpdatedAt": "2025-03-08T09:30:00+00:00",
+    "summary": "陈素梅 / Diabetes / 患者电话 13800010313 / 紧急联系人 赵辉",
+    "participants": [
+      {
+        "role": "doctor",
+        "name": "周医生",
+        "relation": "责任医生",
+        "phone": "13800010313"
+      },
+      {
+        "role": "nurse",
+        "name": "张护士",
+        "relation": "个案管理师",
+        "phone": "13800020313"
+      },
+      {
+        "role": "pharmacist",
+        "name": "药师复核",
+        "relation": "药师复核",
+        "phone": ""
+      },
+      {
+        "role": "archivist",
+        "name": "档案员",
+        "relation": "档案维护",
+        "phone": ""
+      }
+    ],
+    "notes": [
+      {
+        "noteId": "note-PID0313-seed",
+        "createdAt": "2025-03-08T09:00:00+00:00",
+        "createdBy": "张护士",
+        "createdByRole": "pharmacist",
+        "action": "seed",
+        "note": "已根据档案总览、联系方式和当前用药生成协同初始记录。"
+      }
+    ]
+  },
+  {
+    "coordinationId": "coord-PID0144",
+    "patientId": "PID0144",
+    "patientName": "马惠春",
+    "primaryDisease": "Parkinson's",
+    "currentStage": "Late",
+    "riskLevel": "高风险",
+    "category": "case_review",
+    "status": "open",
+    "ownerRole": "doctor",
+    "ownerName": "周医生",
+    "nextAction": "补齐病历信息并完成个案复核",
+    "dueDate": "2025-03-06",
+    "lastUpdatedAt": "2025-03-06T09:30:00+00:00",
+    "summary": "马惠春 / Parkinson's / 患者电话 13800010144 / 紧急联系人 马强",
+    "participants": [
+      {
+        "role": "doctor",
+        "name": "周医生",
+        "relation": "责任医生",
+        "phone": "13800010144"
+      },
+      {
+        "role": "nurse",
+        "name": "张护士",
+        "relation": "个案管理师",
+        "phone": "13800020144"
+      },
+      {
+        "role": "pharmacist",
+        "name": "药师复核",
+        "relation": "药师复核",
+        "phone": ""
+      },
+      {
+        "role": "archivist",
+        "name": "档案员",
+        "relation": "档案维护",
+        "phone": ""
+      }
+    ],
+    "notes": [
+      {
+        "noteId": "note-PID0144-seed",
+        "createdAt": "2025-03-06T09:00:00+00:00",
+        "createdBy": "周医生",
+        "createdByRole": "doctor",
+        "action": "seed",
+        "note": "已根据档案总览、联系方式和当前用药生成协同初始记录。"
+      }
+    ]
+  }
+]

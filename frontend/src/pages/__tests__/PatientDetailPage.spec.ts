@@ -119,7 +119,10 @@ function mountPage() {
     global: {
       stubs: {
         PatientMedicationClosurePanel: { template: '<div class="medication-panel-stub" />' },
-        PatientAttachmentPanel: { template: '<div class="attachment-panel-stub" />' },
+        PatientAttachmentPanel: {
+          props: ['title'],
+          template: '<div class="attachment-panel-stub">{{ title }}</div>',
+        },
         ElButton: {
           props: ['disabled'],
           emits: ['click'],
@@ -201,5 +204,15 @@ describe('PatientDetailPage', () => {
     await flushPromises()
 
     expect(workspaceMock.openArchiveInNewTab).toHaveBeenCalledWith('PID0001', 'overview')
+  })
+
+  it('renders a chronic outpatient workstation layout', () => {
+    const wrapper = mountPage()
+
+    expect(wrapper.text()).toContain('患者主索引')
+    expect(wrapper.text()).toContain('慢病门诊病程')
+    expect(wrapper.text()).toContain('处置闭环')
+    expect(wrapper.text()).toContain('电子档案附件')
+    expect(wrapper.find('.outpatient-workstation-layout').exists()).toBe(true)
   })
 })

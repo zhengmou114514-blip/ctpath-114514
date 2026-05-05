@@ -1,7 +1,7 @@
 import { getCurrentModelVersionFromTasks, listModelDatasets, listTrainingTasks } from './modelTrainingAdapter'
 import type { ModelBoardSnapshot, ModelMetricsResponse } from './types'
 
-const CHRONIC_BASELINE = {
+const MODEL_BASELINE = {
   mrr: 0.345,
   hits1: 0.232,
   hits10: 0.515,
@@ -31,9 +31,9 @@ export function buildModelBoardSnapshot(params: {
   const latestTask = tasks[0]
 
   const fallbackModel = params.modelMetrics?.currentModel
-  const mrr = normalizePercent(fallbackModel?.mrr ?? CHRONIC_BASELINE.mrr)
-  const hits1 = normalizePercent(fallbackModel?.hits1 ?? CHRONIC_BASELINE.hits1)
-  const hits10 = normalizePercent(fallbackModel?.hits10 ?? CHRONIC_BASELINE.hits10)
+  const mrr = normalizePercent(fallbackModel?.mrr ?? MODEL_BASELINE.mrr)
+  const hits1 = normalizePercent(fallbackModel?.hits1 ?? MODEL_BASELINE.hits1)
+  const hits10 = normalizePercent(fallbackModel?.hits10 ?? MODEL_BASELINE.hits10)
 
   const totalRows = datasets.reduce((sum, item) => sum + item.rowCount, 0)
   const expectedRows = Math.max(1, datasets.length * 160)
@@ -52,6 +52,6 @@ export function buildModelBoardSnapshot(params: {
     recentInferenceCalls,
     fallbackRatio,
     recentTrainingTaskStatus: toTaskStatusLabel(latestTask?.status),
-    source: 'mock-local',
+    source: 'api',
   }
 }

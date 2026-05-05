@@ -118,6 +118,29 @@ export interface DoctorUser {
   password?: string
 }
 
+export interface HospitalSubsystem {
+  key: string
+  name: string
+  openhisPort: string
+  description: string
+  sections: string[]
+  roles: DoctorUser['role'][]
+  status: 'ready' | 'limited' | 'planned'
+}
+
+export interface ExcludedOpenHisSystem {
+  name: string
+  openhisPort: string
+  reason: string
+}
+
+export interface SystemMapResponse {
+  productName: string
+  reference: string
+  systems: HospitalSubsystem[]
+  excludedSystems: ExcludedOpenHisSystem[]
+}
+
 export interface MeResponse {
   username: string
   name: string
@@ -320,7 +343,7 @@ export interface CurrentMedicationItem {
   startedAt: string
   expectedEndAt: string
   indication: string
-  source: 'mock-local'
+  source: 'api'
 }
 
 export interface CurrentMedicationInput {
@@ -344,7 +367,7 @@ export interface MedicationAdequacyAssessment {
   notes: string[]
   evaluatedAt: string
   evaluator: string
-  source: 'backend-rule-engine' | 'frontend-fallback' | 'mock-local'
+  source: 'backend-rule-engine' | 'api'
 }
 
 export interface MedicationAssessmentRequest {
@@ -410,6 +433,34 @@ export interface SystemAuditLog {
 
 export interface SystemAuditResponse {
   items: SystemAuditLog[]
+}
+
+export interface DatabaseBrowserTableSummary {
+  tableName: string
+  description: string
+  rowCount: number
+  columnCount: number
+}
+
+export interface DatabaseBrowserTablesResponse {
+  connected: boolean
+  mode: 'mysql' | 'demo'
+  message: string
+  tables: DatabaseBrowserTableSummary[]
+}
+
+export interface DatabaseBrowserColumn {
+  name: string
+  dataType: string
+  columnKey: string
+  nullable: 'YES' | 'NO'
+}
+
+export interface DatabaseBrowserPreviewResponse {
+  tableName: string
+  description: string
+  columns: DatabaseBrowserColumn[]
+  rows: Record<string, unknown>[]
 }
 
 export interface PatientUpsertPayload {
@@ -739,7 +790,7 @@ export interface PatientAttachmentRecord {
   previewUrl: string
   uploadedAt: string
   uploadedBy: string
-  source: 'local-file' | 'mock-local'
+  source: 'local-file' | 'api'
 }
 
 export type PharmacyInventoryStatus = 'active' | 'low' | 'out_of_stock' | 'expired' | 'inactive'
@@ -973,7 +1024,7 @@ export interface ModelDatasetImportRecord {
   uploadedAt: string
   uploadedBy: string
   status: 'ready' | 'processing' | 'failed'
-  source: 'mock-local' | 'api'
+  source: 'api'
 }
 
 export interface ModelTrainingParams {
@@ -1001,7 +1052,7 @@ export interface ModelTrainingTaskRecord {
     hits10: number
   }
   logs: string[]
-  source: 'mock-local' | 'api'
+  source: 'api'
 }
 
 export interface ModelBoardSnapshot {
@@ -1015,7 +1066,7 @@ export interface ModelBoardSnapshot {
   recentInferenceCalls: number | null
   fallbackRatio: number | null
   recentTrainingTaskStatus: string
-  source: 'mixed' | 'mock-local' | 'api'
+  source: 'api'
 }
 
 export type ModelCenterPanelKey = 'online' | 'offline'

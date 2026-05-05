@@ -33,7 +33,7 @@ const bannerConfig = computed(() => {
     return {
       eyebrow: '随访工作台',
       title: '护士随访工作台',
-      description: '聚焦待随访患者、联系记录、病程流转和协同事项，不混入训练中心或治理看板。',
+      description: '待随访患者、联系记录、病程流转和协同事项。',
       role: '护士',
     }
   }
@@ -51,7 +51,7 @@ const bannerConfig = computed(() => {
     return {
       eyebrow: '药事工作台',
       title: '药房与药品管理工作台',
-      description: '聚焦药房库存、药品目录和权限控制，不混入患者临床首页的长流程内容。',
+      description: '药房库存、药品目录、处方审核和药品权限。',
       role: '药师',
     }
   }
@@ -68,7 +68,7 @@ const bannerConfig = computed(() => {
   return {
     eyebrow: '临床工作台',
     title: '医生慢病辅助诊疗工作台',
-    description: '聚焦待处理患者、风险提示、真实预测入口和随访闭环，不把模型治理和训练堆进首页。',
+    description: '待处理患者、风险提示、预测入口和随访闭环。',
     role: '医生',
   }
 })

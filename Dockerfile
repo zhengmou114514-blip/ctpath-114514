@@ -12,7 +12,7 @@ COPY . /workspace
 
 # 安装依赖
 # 注意：通常需要安装 torch-geometric 等图神经网络库，这里预留命令
-RUN pip install -r requirements.txt || echo "No requirements.txt found, skipping..."
+RUN pip install -r backend/requirements.txt || echo "No backend/requirements.txt found, skipping..."
 
 # 补充安装论文可能需要的常用库
 RUN pip install scikit-learn pandas numpy matplotlib

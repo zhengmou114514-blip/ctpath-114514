@@ -80,8 +80,8 @@ const APP_SECTIONS: AppSection[] = [
 
 export function useWorkspaceController() {
   const auditTrail = useAuditTrailStore()
-  const username = ref('demo_clinic')
-  const password = ref('demo123456')
+  const username = ref('')
+  const password = ref('')
   const loginError = ref('')
   const loadingLogin = ref(false)
   const currentDoctor = ref<DoctorUser | null>(null)

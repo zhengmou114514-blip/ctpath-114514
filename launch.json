@@ -5,8 +5,8 @@
       "name": "CTpath Train (CPU)",
       "type": "python",
       "request": "launch",
-      "program": "${workspaceFolder}/models/learner.py",
-      "cwd": "${workspaceFolder}/models",
+      "program": "${workspaceFolder}/backend/models/learner.py",
+      "cwd": "${workspaceFolder}/backend/models",
       "console": "integratedTerminal",
       "args": [
         "--dataset", "ICEWS14",

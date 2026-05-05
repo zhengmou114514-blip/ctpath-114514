@@ -314,7 +314,6 @@ onMounted(() => {
       <div>
         <p class="eyebrow">医护协调</p>
         <h1>医护协同工作台</h1>
-        <p>参考 openhis 的协同交接方式，把患者联系人、责任人、下一步动作和流转备注放到同一页里。</p>
       </div>
       <div class="header-actions">
         <button class="secondary-button" type="button" @click="clearFilters">清空筛选</button>
@@ -338,7 +337,7 @@ onMounted(() => {
         <div class="section-header">
           <div>
             <h2>协同列表</h2>
-            <p>左侧显示待处理、处理中、已完成的协同流转，点击后在右侧查看详情。</p>
+            <p>待处理、处理中、已完成的协同流转。</p>
           </div>
           <button class="secondary-button" type="button" :disabled="loading" @click="loadBoard()">刷新</button>
         </div>
@@ -417,9 +416,9 @@ onMounted(() => {
       <aside class="coordination-side">
         <article class="clinical-card coordination-detail-card">
           <div class="section-header">
-            <div>
-              <h2>协同详情</h2>
-              <p>患者联系人、责任医生、药师和档案员的协同关系都集中在这里。</p>
+          <div>
+            <h2>协同详情</h2>
+              <p>{{ selectedItem ? `${selectedItem.patientName} / ${selectedItem.coordinationId}` : '请选择协同记录' }}</p>
             </div>
           </div>
 
@@ -519,7 +518,7 @@ onMounted(() => {
           <div class="participant-grid">
             <div class="section-header compact">
               <h3>协同参与人</h3>
-              <p>与 openhis 类似，直接展示责任医生、护士、药师和档案员的关系。</p>
+              <p>责任医生、护士、药师和档案员。</p>
             </div>
             <div class="participant-card" v-for="participant in itemForm.participants" :key="participant.role">
               <strong>{{ roleLabel(participant.role) }}</strong>
@@ -614,13 +613,13 @@ onMounted(() => {
 }
 
 .coordination-layout {
-  grid-template-columns: minmax(0, 1.4fr) minmax(360px, 0.92fr);
+  grid-template-columns: minmax(0, 1.08fr) minmax(460px, 0.92fr);
   align-items: start;
 }
 
 .coordination-side {
-  position: sticky;
-  top: 24px;
+  position: static;
+  gap: 14px;
 }
 
 .coordination-list-card,
@@ -628,7 +627,28 @@ onMounted(() => {
 .coordination-status-card,
 .coordination-note-card {
   display: grid;
-  gap: 16px;
+  gap: 12px;
+}
+
+.filter-grid,
+.editor-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.filter-grid {
+  gap: 10px;
+}
+
+.editor-grid {
+  gap: 10px 12px;
+}
+
+.editor-grid.compact {
+  grid-template-columns: 180px minmax(0, 1fr);
+}
+
+.full-span {
+  grid-column: 1 / -1;
 }
 
 .coordination-head,
@@ -683,15 +703,23 @@ onMounted(() => {
 
 .participant-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .participant-card {
-  padding: 14px 16px;
-  border-radius: 16px;
+  padding: 10px;
+  border-radius: 8px;
   background: rgba(255, 255, 255, 0.84);
   border: 1px solid rgba(148, 163, 184, 0.14);
   display: grid;
-  gap: 8px;
+  gap: 6px;
+}
+
+.participant-card input,
+.field input,
+.field select,
+.field textarea {
+  min-height: 34px;
 }
 
 .note-list {

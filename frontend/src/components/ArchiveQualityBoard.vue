@@ -74,7 +74,7 @@ const qualityIssues = computed<QualityIssueRow[]>(() =>
         <p class="eyebrow">MRMS Inspired</p>
         <h3>档案质控治理台</h3>
       </div>
-      <span class="panel-meta">参考医院病案管理模块的思路，把“建档”进一步推进到“建档后质控”。</span>
+      <span class="panel-meta">档案建成后持续进行主索引、附件和质量核对。</span>
     </div>
 
     <div class="archive-quality-metrics">
@@ -134,7 +134,7 @@ const qualityIssues = computed<QualityIssueRow[]>(() =>
             <strong>{{ item.value }}</strong>
           </div>
         </div>
-        <p class="role-focus-note">这部分用于说明当前系统已经不只是在录患者信息，而是开始向医院主索引、导入来源和资料治理方向靠拢。</p>
+        <p class="role-focus-note">当前重点核对主索引、导入来源、附件完整性和资料治理记录。</p>
       </article>
     </div>
   </section>

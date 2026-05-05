@@ -47,6 +47,18 @@ const showPatientContext = computed(() => {
   return patientContextSections.has(props.activeSection)
 })
 
+const safeErrorMessage = computed(() => {
+  const text = props.errorMessage || ''
+  if (!text) return ''
+  if (/Network Error|Failed to fetch|ERR_CONNECTION_REFUSED|Cannot connect/i.test(text)) {
+    return '业务服务连接失败，请检查后端服务或重新登录。'
+  }
+  if (/Internal server error|\[500\]/i.test(text)) {
+    return '业务服务处理失败，请稍后重试或联系管理员。'
+  }
+  return text
+})
+
 watch(
   () => props.errorMessage,
   (next) => {
@@ -86,9 +98,9 @@ watch(
       <WorkspaceTopbar :doctor="doctor" :section="activeSection" :health="health" :loading="loading" />
 
       <transition name="slide-fade">
-        <div v-if="showError && errorMessage" class="status-banner status-banner-error" role="alert">
+        <div v-if="showError && safeErrorMessage" class="status-banner status-banner-error" role="alert">
           <strong>系统提示</strong>
-          <span>{{ errorMessage }}</span>
+          <span>{{ safeErrorMessage }}</span>
           <button type="button" @click="showError = false">关闭</button>
         </div>
       </transition>

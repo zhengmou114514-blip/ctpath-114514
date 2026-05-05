@@ -13,7 +13,7 @@
 ### Task 1: Make the business middleware chain explicit
 
 **Files:**
-- Modify: `app/main.py`
+- Modify: `backend/app/main.py`
 - Modify: `app/middleware/__init__.py`
 - Create: `app/middleware/timing.py`
 
@@ -91,7 +91,7 @@ Expected: pass and return both `X-Trace-Id` and `X-Process-Time-Ms`.
 - Modify: `app/auth/dependencies.py`
 - Modify: `app/auth/rbac_middleware.py`
 - Modify: `app/auth/permission_registry.py`
-- Modify: `app/main.py`
+- Modify: `backend/app/main.py`
 
 - [ ] **Step 1: Update the failing permission expectation**
 
@@ -178,6 +178,7 @@ Expected: `backend-contracts-ok`
 - [ ] **Step 3: Commit**
 
 ```bash
-git add app/main.py app/middleware/timing.py app/middleware/__init__.py app/api/analytics.py app/auth/dependencies.py app/auth/rbac_middleware.py app/auth/permission_registry.py test_closure_contract.py test_backend_contracts.py test_model_api_contract.py
+git add backend/app/main.py app/middleware/timing.py app/middleware/__init__.py app/api/analytics.py app/auth/dependencies.py app/auth/rbac_middleware.py app/auth/permission_registry.py test_closure_contract.py test_backend_contracts.py test_model_api_contract.py
 git commit -m "feat: unify middleware contract"
 ```
+

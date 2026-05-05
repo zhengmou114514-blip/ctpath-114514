@@ -1,7 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap');
-
 :root {
-  font-family: 'Inter', 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
   line-height: 1.5;
   font-weight: 400;
   color: var(--ws-on-surface);
@@ -31,10 +29,7 @@ html {
 body {
   margin: 0;
   min-width: 320px;
-  background:
-    radial-gradient(circle at top left, rgba(25, 104, 109, 0.08), transparent 28%),
-    radial-gradient(circle at right center, rgba(122, 69, 35, 0.06), transparent 24%),
-    var(--ws-background);
+  background: var(--ws-background);
   color: var(--ws-on-surface);
 }
 

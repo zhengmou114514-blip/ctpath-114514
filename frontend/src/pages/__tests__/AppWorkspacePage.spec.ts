@@ -46,7 +46,7 @@ const routerResolve = (target: unknown) => {
   }
 }
 
-let workspaceMock: Record<string, unknown>
+let workspaceMock: any
 
 vi.mock('vue-router', () => ({
   useRoute: () => route,

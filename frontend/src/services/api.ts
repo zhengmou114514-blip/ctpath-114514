@@ -30,11 +30,10 @@ import type {
   CoordinationItem,
   CoordinationItemUpsertRequest,
   CoordinationNoteCreateRequest,
-  CoordinationNote,
-  CoordinationParticipant,
-  CoordinationParticipantRole,
   CoordinationStatus,
   CoordinationStatusUpdateRequest,
+  DatabaseBrowserPreviewResponse,
+  DatabaseBrowserTablesResponse,
   OutpatientTaskCreatePayload,
   OutpatientTaskStatusUpdatePayload,
   PatientAttachmentRecord,
@@ -57,15 +56,17 @@ import type {
   PredictResponse,
   RegisterPayload,
   RoleWorkspaceDefinition,
+  SystemMapResponse,
   SystemAuditResponse,
   TimelineEvent,
 } from './types'
 
 const API_BASE = '/api'
-const ENABLE_DEMO_FALLBACK = String(import.meta.env.VITE_ENABLE_DEMO_FALLBACK ?? '').toLowerCase() === 'true'
 const AUTH_STORAGE_KEY = 'ctpath.auth.session'
 const SAVED_ACCOUNTS_KEY = 'ctpath.saved.accounts'
 const MAX_SAVED_ACCOUNTS = 10
+
+const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T
 
 function isValidStoredDoctor(value: unknown): value is AuthSession['doctor'] {
   if (!value || typeof value !== 'object') return false
@@ -75,7 +76,7 @@ function isValidStoredDoctor(value: unknown): value is AuthSession['doctor'] {
     doctor.username.length > 0 &&
     typeof doctor.name === 'string' &&
     doctor.name.length > 0 &&
-    (doctor.role === 'doctor' || doctor.role === 'nurse' || doctor.role === 'pharmacist' || doctor.role === 'archivist')
+    (doctor.role === 'doctor' || doctor.role === 'nurse' || doctor.role === 'pharmacist' || doctor.role === 'archivist' || doctor.role === 'admin')
   )
 }
 
@@ -125,457 +126,167 @@ export interface PatientStats { total: number; by_risk: Record<string, number>; 
 const ROLE_WORKSPACES: RoleWorkspaceDefinition[] = [
   {
     role: 'doctor',
-    title: 'Doctor workstation',
-    description: 'Owns chronic-care assessment, current-patient review and model insight. Training and model governance stay outside the bedside flow.',
+    title: '医生工作站',
+    description: '负责慢病评估、当前患者复核、诊疗建议和患者级模型洞察；训练中心和模型治理不进入临床主流程。',
     primaryModules: [
       {
         key: 'patient-detail',
-        label: 'Patient detail',
+        label: '患者详情',
         routeHint: '/patient-detail/:patientId',
-        responsibility: 'Review patient profile, timeline, risk summary, attachments and next actions.',
+        responsibility: '查看患者基本信息、病程时间线、风险摘要、电子档案和下一步处理。',
         status: 'ready',
       },
       {
         key: 'patient-archive',
-        label: 'Patient archive',
+        label: '患者档案',
         routeHint: '/archive',
-        responsibility: 'Inspect patient identity, attachments and timeline context.',
+        responsibility: '查看患者身份、联系方式、附件和建档信息。',
         status: 'ready',
       },
       {
         key: 'model-insight',
-        label: 'Patient model insight',
+        label: '模型洞察',
         routeHint: '/model-insight',
-        responsibility: 'Use current-patient predictions and evidence summaries only.',
+        responsibility: '仅查看当前患者预测结果、证据摘要和建议来源。',
         status: 'limited',
       },
     ],
-    forbiddenModules: ['inventory', 'inpatient workflow', 'full prescription flow', 'training center', 'model debug console'],
-    auditFocus: ['patient_attachment_upload', 'patient_medication_create', 'patient_medication_update', 'drug_catalog_create', 'drug_catalog_update'],
+    forbiddenModules: ['药房库存操作', '住院全流程', '药品权限配置', '训练中心', '模型调试台'],
+    auditFocus: ['患者档案查看', '诊疗建议提交', '模型预测运行', '随访结果复核'],
   },
   {
     role: 'nurse',
-    title: 'Nurse workstation',
-    description: 'Owns follow-up execution, contact closure and care flow coordination.',
+    title: '护士工作站',
+    description: '负责随访执行、联系闭环、病情流转登记和护理协同。',
     primaryModules: [
       {
         key: 'followup-worklist',
-        label: 'Follow-up worklist',
+        label: '随访任务',
         routeHint: '/nurse-followups',
-        responsibility: 'Track due follow-ups and outpatient tasks without entering model governance pages.',
+        responsibility: '处理到期随访和门诊复查任务，不进入模型治理页面。',
         status: 'ready',
       },
       {
         key: 'flow-board',
-        label: 'Care flow board',
+        label: '病情流转',
         routeHint: '/nurse-followups',
-        responsibility: 'Coordinate waiting, in-clinic and pending-review patient flows.',
+        responsibility: '登记候诊、接诊中和待复核患者流转状态。',
         status: 'ready',
       },
       {
         key: 'collaboration-handoff',
-        label: 'Collaboration handoff',
+        label: '协同交接',
         routeHint: '/coordination',
-        responsibility: 'Share contact logs and next-step notes with doctors, pharmacists and archivists.',
+        responsibility: '向医生、药师和档案员同步联系记录与下一步说明。',
         status: 'ready',
       },
     ],
-    forbiddenModules: ['controlled drug grant', 'drug catalog administration', 'clinical prescribing decision', 'model dashboard', 'training center'],
-    auditFocus: ['followup contact log', 'outpatient task status', 'patient attachment view'],
+    forbiddenModules: ['管制药授权', '药品目录维护', '临床诊疗决策', '模型看板', '训练中心'],
+    auditFocus: ['随访联系记录', '随访任务状态', '患者附件查看'],
   },
   {
     role: 'pharmacist',
-    title: 'Pharmacy workstation',
-    description: 'Owns pharmacy inventory, dispensing review and medication coordination support.',
+    title: '药师工作站',
+    description: '负责药房库存、处方/用药复核和药事协同支持。',
     primaryModules: [
       {
         key: 'pharmacy-warehouse',
-        label: 'Pharmacy / warehouse',
+        label: '药房药库',
         routeHint: '/pharmacy',
-        responsibility: 'Review stock, inbound/outbound records and dispense queue.',
+        responsibility: '查看库存、出入库记录和发药复核队列。',
         status: 'ready',
       },
       {
         key: 'coordination-support',
-        label: 'Care coordination',
+        label: '医护协同',
         routeHint: '/coordination',
-        responsibility: 'Support medication review and cross-discipline handoff notes.',
+        responsibility: '支持用药复核和跨角色交接备注。',
         status: 'ready',
       },
       {
         key: 'drug-catalog-reference',
-        label: 'Drug catalog reference',
+        label: '药品目录',
         routeHint: '/drug-management',
-        responsibility: 'Review catalog metadata used by dispensing and review work.',
+        responsibility: '查看药品通用名、剂型规格和状态。',
         status: 'ready',
       },
     ],
-    forbiddenModules: ['patient diagnosis edit', 'training center', 'model dashboard'],
-    auditFocus: ['pharmacy inventory adjust', 'pharmacy review queue', 'coordination note add'],
+    forbiddenModules: ['患者诊断编辑', '训练中心', '模型看板'],
+    auditFocus: ['药房库存调整', '药房复核队列', '协同备注新增'],
   },
   {
     role: 'archivist',
-    title: 'Archivist workstation',
-    description: 'Owns patient identity, attachments, archive completeness and data quality.',
+    title: '档案员工作站',
+    description: '负责患者身份、附件、建档完整性和数据质量。',
     primaryModules: [
       {
         key: 'patient-archive',
-        label: 'Patient archive',
+        label: '患者档案',
         routeHint: '/archive',
-        responsibility: 'Maintain patient identity, contacts and archive status.',
+        responsibility: '维护患者身份、联系方式和建档状态。',
         status: 'ready',
       },
       {
         key: 'attachment-review',
-        label: 'Attachment review',
+        label: '附件审核',
         routeHint: '/archive?module=attachments',
-        responsibility: 'Review patient photos, ID cards, referral forms and consent files.',
+        responsibility: '审核患者照片、证件、转诊单和知情同意书。',
         status: 'ready',
       },
       {
         key: 'data-quality',
-        label: 'Data quality',
+        label: '数据质量',
         routeHint: '/governance',
-        responsibility: 'Track missing fields, conflicts and pending archive fixes.',
+        responsibility: '处理字段缺失、冲突记录和档案补全待办。',
         status: 'ready',
       },
     ],
-    forbiddenModules: ['clinical diagnosis decision', 'training center', 'model dashboard'],
-    auditFocus: ['patient_attachment_upload', 'archive_import', 'archive_update', 'quality_fix'],
+    forbiddenModules: ['临床诊疗决策', '训练中心', '模型看板'],
+    auditFocus: ['患者附件上传', '档案导入', '档案更新', '质量问题处理'],
   },
   {
     role: 'admin',
-    title: 'Admin workstation',
-    description: 'Owns business configuration boundaries, audit review, permission governance and model-center access.',
+    title: '管理员工作站',
+    description: '负责业务边界配置、审计复核、权限治理和模型中心访问。',
     primaryModules: [
       {
         key: 'role-boundary',
-        label: 'Role boundary matrix',
+        label: '角色边界矩阵',
         routeHint: '/role-workspaces',
-        responsibility: 'Review role access boundaries, collaboration surfaces and permission scope.',
+        responsibility: '查看角色访问边界、协同范围和权限授权。',
         status: 'ready',
       },
       {
         key: 'drug-permissions',
-        label: 'Drug permission management',
+        label: '药品权限管理',
         routeHint: '/drug-permission-management',
-        responsibility: 'Configure role-level medication permissions with controlled-drug grant audit.',
+        responsibility: '配置角色级用药权限和管制药授权审计。',
         status: 'ready',
       },
       {
         key: 'model-center',
-        label: 'Model center',
+        label: '模型中心',
         routeHint: '/model-dashboard',
-        responsibility: 'Monitor model versions, training status and deployment health.',
+        responsibility: '监控模型版本、训练状态和部署健康。',
         status: 'ready',
       },
     ],
-    forbiddenModules: ['clinical diagnosis decision', 'nursing execution', 'inventory', 'inpatient workflow'],
-    auditFocus: ['drug_permission_create', 'drug_permission_update', 'drug_catalog_create', 'drug_catalog_update', 'patient_attachment_upload'],
+    forbiddenModules: ['临床诊疗决策', '护理执行', '药房出入库', '住院全流程'],
+    auditFocus: ['药品权限新增', '药品权限更新', '药品目录新增', '药品目录更新', '患者附件上传'],
   },
 ]
-
-const doctors = [
-  { username: 'demo_clinic', password: 'demo123456', name: 'Dr. Lin', title: 'Attending Physician', department: 'Chronic Care Clinic', role: 'doctor' as Role },
-  { username: 'demo_specialist', password: 'demo123456', name: 'Dr. Zhao', title: 'Specialist', department: 'Neurology', role: 'doctor' as Role },
-  { username: 'demo_nurse', password: 'demo123456', name: 'Nurse Chen', title: 'Senior Nurse', department: 'Follow-up Center', role: 'nurse' as Role },
-  { username: 'demo_pharmacist', password: 'demo123456', name: 'Pharmacist Zhou', title: 'Pharmacist', department: 'Pharmacy', role: 'pharmacist' as Role },
-  { username: 'demo_archivist', password: 'demo123456', name: 'Wang Min', title: 'Archivist', department: 'Medical Records', role: 'archivist' as Role },
-]
-
-const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T
-const token = (u: string) => `demo-${u}-${Date.now()}`
-const sum = (p: PatientCase): PatientSummary => ({ patientId: p.patientId, name: p.name, age: p.age, gender: p.gender, avatarUrl: p.avatarUrl, phone: p.phone, emergencyContactName: p.emergencyContactName, emergencyContactRelation: p.emergencyContactRelation, emergencyContactPhone: p.emergencyContactPhone, identityMasked: p.identityMasked, insuranceType: p.insuranceType, department: p.department, primaryDoctor: p.primaryDoctor, caseManager: p.caseManager, medicalRecordNumber: p.medicalRecordNumber, archiveSource: p.archiveSource, archiveStatus: p.archiveStatus, consentStatus: p.consentStatus, allergyHistory: p.allergyHistory, familyHistory: p.familyHistory, primaryDisease: p.primaryDisease, currentStage: p.currentStage, riskLevel: p.riskLevel, lastVisit: p.lastVisit, summary: p.summary, dataSupport: p.dataSupport })
-const findPatient = (id: string) => demoPatients.find((p) => p.patientId === id)
-const findDrug = (drugId: string) => demoDrugs.find((drug) => drug.drug_id === drugId)
-const findDrugPermission = (role: string) => demoDrugPermissions.find((item) => item.role === role)
-const normalizeDrugStatus = (status: string | undefined | null): DrugCatalogStatus => (status === 'inactive' ? 'inactive' : 'active')
-
-function mk(id: string, name: string, age: number, disease: string, stage: string, risk: string, lastVisit: string, summary: string, dataSupport: 'high' | 'medium' | 'low', encounterStatus: 'waiting' | 'in_progress' | 'pending_review' | 'completed' = 'waiting'): PatientCase {
-  return { patientId: id, name, age, gender: 'Unknown', avatarUrl: `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(name)}`, phone: '', emergencyContactName: '', emergencyContactRelation: '', emergencyContactPhone: '', identityMasked: '3203********1234', insuranceType: 'Urban Employee', department: 'Chronic Care Clinic', primaryDoctor: 'Dr. Lin', caseManager: 'Nurse Chen', medicalRecordNumber: id, archiveSource: 'outpatient', archiveStatus: 'active', consentStatus: 'signed', allergyHistory: 'None', familyHistory: 'No special family history', primaryDisease: disease, currentStage: stage, riskLevel: risk, lastVisit, summary, encounterStatus, stats: [{ label: 'Stage', value: stage, trend: 'Stable' }, { label: 'Risk', value: risk, trend: 'Needs review' }, { label: 'Support', value: dataSupport, trend: 'Demo data' }], timeline: [{ date: lastVisit, type: 'visit', title: 'Latest visit', detail: summary }, { date: lastVisit, type: 'risk', title: 'Risk review', detail: risk }], predictions: [{ label: `${disease} risk watch`, score: risk.toLowerCase().includes('high') ? 0.78 : risk.toLowerCase().includes('medium') ? 0.57 : 0.31, reason: 'Generated by local demo fallback.' }], pathExplanation: [`patient -> has_disease -> ${disease}`, `${disease} -> stage -> ${stage}`, `${stage} -> risk -> ${risk}`], followUps: [{ title: `Review ${disease} plan`, owner: 'Nurse Chen', dueDate: lastVisit, priority: risk.toLowerCase().includes('high') ? 'high' : 'medium' }], outpatientTasks: [], contactLogs: [], auditLogs: [{ logId: `alog-${id}`, action: 'archive_created', operatorUsername: 'demo_archivist', operatorName: 'Wang Min', detail: 'Created by frontend demo fallback.', createdAt: `${lastVisit}T08:00:00` }], recommendationMode: dataSupport === 'low' ? 'similar-case' : 'model', dataSupport, careAdvice: ['Review the latest structured event set.', 'Prioritize the next follow-up action.', 'Collect more data if support is low.'], similarCases: [{ caseId: `SC-${id}`, disease, matchScore: 0.86, summary: 'Similar cases improved with short follow-up intervals.', suggestion: 'Use a short-cycle follow-up plan for the next visit.' }] }
-}
-
-let demoPatients: PatientCase[] = [
-  mk('PID1001', 'Liu Mei', 68, 'Diabetes', 'Mid', 'High Risk', '2026-04-03', 'Glucose and blood pressure both need follow-up this week.', 'high'),
-  mk('PID1002', 'Zhou Jianhua', 72, "Parkinson's", 'Mid', 'High Risk', '2026-04-01', 'Gait fluctuation requires coordinated outpatient follow-up.', 'medium', 'in_progress'),
-  mk('PID1003', 'Li Shufen', 79, "Alzheimer's", 'Late', 'High Risk', '2026-03-28', 'Medication review and sleep monitoring are both pending.', 'high', 'pending_review'),
-  mk('PID1004', 'Ma Hui', 61, 'Diabetes', 'Early', 'Medium Risk', '2026-03-25', 'Low structured data support limits confidence in prediction.', 'low'),
-]
-
-let demoDrugs: DrugCatalogRecord[] = [
-  {
-    drug_id: 'drug-metformin',
-    generic_name: 'Metformin Hydrochloride',
-    brand_name: 'Glucophage',
-    dosage_form: 'tablet',
-    specification: '0.5 g',
-    unit: 'box',
-    is_prescription: true,
-    is_controlled: false,
-    status: 'active',
-    indication: 'Type 2 diabetes mellitus',
-    created_at: '2026-04-18T00:00:00+00:00',
-    updated_at: '2026-04-18T00:00:00+00:00',
-    updated_by: 'system',
-  },
-  {
-    drug_id: 'drug-amlodipine',
-    generic_name: 'Amlodipine Besylate',
-    brand_name: 'Norvasc',
-    dosage_form: 'tablet',
-    specification: '5 mg',
-    unit: 'box',
-    is_prescription: true,
-    is_controlled: false,
-    status: 'active',
-    indication: 'Hypertension',
-    created_at: '2026-04-18T00:00:00+00:00',
-    updated_at: '2026-04-18T00:00:00+00:00',
-    updated_by: 'system',
-  },
-  {
-    drug_id: 'drug-atorvastatin',
-    generic_name: 'Atorvastatin Calcium',
-    brand_name: 'Lipitor',
-    dosage_form: 'tablet',
-    specification: '10 mg',
-    unit: 'box',
-    is_prescription: true,
-    is_controlled: false,
-    status: 'active',
-    indication: 'Hyperlipidemia',
-    created_at: '2026-04-18T00:00:00+00:00',
-    updated_at: '2026-04-18T00:00:00+00:00',
-    updated_by: 'system',
-  },
-]
-
-let demoDrugPermissions: DrugPermissionRecord[] = [
-  {
-    role: 'doctor',
-    allow_view: true,
-    allow_prescribe: true,
-    allow_review: false,
-    allow_execute: false,
-    allow_controlled_drug: true,
-  },
-  {
-    role: 'nurse',
-    allow_view: true,
-    allow_prescribe: false,
-    allow_review: false,
-    allow_execute: true,
-    allow_controlled_drug: false,
-  },
-  {
-    role: 'pharmacist',
-    allow_view: true,
-    allow_prescribe: false,
-    allow_review: true,
-    allow_execute: true,
-    allow_controlled_drug: true,
-  },
-  {
-    role: 'archivist',
-    allow_view: true,
-    allow_prescribe: false,
-    allow_review: false,
-    allow_execute: false,
-    allow_controlled_drug: false,
-  },
-  {
-    role: 'admin',
-    allow_view: true,
-    allow_prescribe: true,
-    allow_review: true,
-    allow_execute: true,
-    allow_controlled_drug: true,
-  },
-]
-
-let demoPatientMedications: PatientMedicationRecord[] = []
-let demoPharmacyInventory: PharmacyInventoryRecord[] = []
-let demoCoordinationItems: CoordinationItem[] = []
-
-const medicationLabel = (drug: DrugCatalogRecord) =>
-  [drug.generic_name, drug.brand_name ? `(${drug.brand_name})` : ''].filter(Boolean).join(' ').trim() || drug.drug_id
-
-function seedDemoPharmacyInventory(): PharmacyInventoryRecord[] {
-  return demoDrugs.map((drug, index) => {
-    const baseStock = Math.max(24, 120 - index * 18)
-    const isControlled = drug.is_controlled
-    return {
-      itemId: `stock-${drug.drug_id}`,
-      drugId: drug.drug_id,
-      drugName: medicationLabel(drug),
-      warehouse: '主药房',
-      batchNo: `BATCH-${index + 1}`,
-      lotNo: `LOT-${202604 + index}`,
-      unit: drug.unit,
-      currentStock: baseStock + (isControlled ? 18 : 0),
-      reservedStock: isControlled ? 4 : 2,
-      minStock: isControlled ? 28 : 18,
-      expiryDate: index % 2 === 0 ? '2027-12-31' : '2027-06-30',
-      status: 'active',
-      supplier: '慢病药品配送中心',
-      lastInboundAt: '2026-04-18T00:00:00+00:00',
-      lastOutboundAt: '2026-04-18T00:00:00+00:00',
-      updatedBy: 'system',
-      updatedAt: '2026-04-18T00:00:00+00:00',
-    }
-  })
-}
-
-function ensureDemoPharmacyInventory(): PharmacyInventoryRecord[] {
-  if (!demoPharmacyInventory.length) {
-    demoPharmacyInventory = seedDemoPharmacyInventory()
-  }
-  return demoPharmacyInventory
-}
-
-function seedDemoCoordinationItems(): CoordinationItem[] {
-  return demoPatients.map((patient) => {
-    const category: CoordinationCategory =
-      patient.primaryDisease === 'Diabetes' || patient.primaryDisease === 'Hypertension' ? 'medication_review' : patient.riskLevel.toLowerCase().includes('high') ? 'case_review' : 'followup'
-    const status: CoordinationStatus = patient.riskLevel.toLowerCase().includes('high') ? 'in_progress' : 'open'
-    const ownerRole: CoordinationParticipantRole = category === 'medication_review' ? 'pharmacist' : 'nurse'
-    const ownerName = category === 'medication_review' ? patient.caseManager || '药师复核' : patient.primaryDoctor || patient.caseManager || '责任人'
-    const participants: CoordinationParticipant[] = [
-      { role: 'doctor', name: patient.primaryDoctor || '责任医生', relation: '责任医生', phone: patient.phone || '' },
-      { role: 'nurse', name: patient.caseManager || '个案管理师', relation: '个案管理师', phone: patient.emergencyContactPhone || '' },
-      { role: 'pharmacist', name: '药师复核', relation: '药师复核', phone: '' },
-    ]
-    return {
-      coordinationId: `coord-${patient.patientId}`,
-      patientId: patient.patientId,
-      patientName: patient.name,
-      primaryDisease: patient.primaryDisease,
-      currentStage: patient.currentStage,
-      riskLevel: patient.riskLevel,
-      category,
-      status,
-      ownerRole,
-      ownerName,
-      nextAction:
-        category === 'medication_review'
-          ? '复核当前用药并同步药房意见'
-          : category === 'case_review'
-            ? '补齐病历信息并完成个案复核'
-            : '联系患者并更新协同备注',
-      dueDate: patient.followUps[0]?.dueDate ?? patient.lastVisit,
-      lastUpdatedAt: `${patient.lastVisit}T09:30:00+00:00`,
-      summary: `${patient.name} / ${patient.primaryDisease} / 患者电话 ${patient.phone || '待补齐'} / 紧急联系人 ${patient.emergencyContactName || '待补齐'}`,
-      participants,
-      notes: [
-        {
-          noteId: `note-${patient.patientId}-seed`,
-          createdAt: `${patient.lastVisit}T09:00:00+00:00`,
-          createdBy: ownerName,
-          createdByRole: ownerRole,
-          action: 'seed',
-          note: '已根据档案总览、联系方式和当前用药生成协同初始记录。',
-        },
-      ],
-    }
-  })
-}
-
-function ensureDemoCoordinationItems(): CoordinationItem[] {
-  if (!demoCoordinationItems.length) {
-    demoCoordinationItems = seedDemoCoordinationItems()
-  }
-  return demoCoordinationItems
-}
-
-function resolveSessionRole(): Role {
-  try {
-    const raw = window?.localStorage?.getItem(AUTH_STORAGE_KEY)
-    if (!raw) return 'doctor'
-    const session = JSON.parse(raw) as AuthSession
-    const role = session?.doctor?.role
-    return role === 'doctor' || role === 'nurse' || role === 'pharmacist' || role === 'archivist' ? role : 'doctor'
-  } catch {
-    return 'doctor'
-  }
-}
-
-function resolveSessionDoctorName(): string {
-  try {
-    const raw = window?.localStorage?.getItem(AUTH_STORAGE_KEY)
-    if (!raw) return 'current-user'
-    const session = JSON.parse(raw) as AuthSession
-    return session?.doctor?.name || session?.doctor?.username || 'current-user'
-  } catch {
-    return 'current-user'
-  }
-}
-
-function medicationSeedSpec(patient: PatientCase): Array<{ drugId: string; dosage: string; frequency: string; route: string }> {
-  const disease = patient.primaryDisease.toLowerCase()
-  if (disease.includes('diabetes')) return [{ drugId: 'drug-metformin', dosage: '500 mg', frequency: 'bid', route: 'po' }]
-  if (disease.includes('hypertension') || disease.includes('blood pressure') || disease.includes('bp')) {
-    return [{ drugId: 'drug-amlodipine', dosage: '5 mg', frequency: 'qd', route: 'po' }]
-  }
-  if (disease.includes('lipid') || disease.includes('hyperlip')) {
-    return [{ drugId: 'drug-atorvastatin', dosage: '10 mg', frequency: 'qd', route: 'po' }]
-  }
-  return []
-}
-
-function ensureDemoPatientMedications(patientId: string): PatientMedicationRecord[] {
-  const existing = demoPatientMedications.filter((item) => item.patient_id === patientId)
-  if (existing.length) return existing
-
-  const patient = findPatient(patientId)
-  if (!patient) return []
-
-  const now = new Date().toISOString()
-  const seeds = medicationSeedSpec(patient)
-  if (!seeds.length) return []
-
-  const records = seeds
-    .map<PatientMedicationRecord | null>((seed, index) => {
-      const drug = findDrug(seed.drugId)
-      if (!drug) return null
-      return {
-        medication_id: `med-${patientId}-${index + 1}`,
-        patient_id: patientId,
-        drug_id: drug.drug_id,
-        drug_name_snapshot: medicationLabel(drug),
-        dosage: seed.dosage,
-        frequency: seed.frequency,
-        route: seed.route,
-        start_date: patient.lastVisit,
-        end_date: '2026-12-31',
-        status: 'active' as const,
-        prescribed_by: patient.primaryDoctor || patient.caseManager || 'current-user',
-        review_status: 'approved' as const,
-        note: `Seeded current medication for ${patient.primaryDisease}.`,
-        created_at: now,
-        updated_at: now,
-      }
-    })
-    .filter((item): item is PatientMedicationRecord => item !== null)
-
-  demoPatientMedications = [...demoPatientMedications, ...records]
-  return records
-}
-
-function resolveMedicationPermission(role: string): DrugPermissionRecord | null {
-  const record = findDrugPermission(role)
-  if (record) return record
-  return findDrugPermission('doctor') ?? null
-}
-
-function assertControlledDrugPermission(): void {
-  const permission = resolveMedicationPermission(resolveSessionRole())
-  if (!permission?.allow_controlled_drug) {
-    throw new Error('Controlled drug permission is required for this action')
-  }
-}
 
 function persistAuthSession(session: AuthSession | null) {
-  try { if (!window?.localStorage) return; if (session) window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session)); else window.localStorage.removeItem(AUTH_STORAGE_KEY) } catch {}
+  try {
+    if (!window?.localStorage) return
+    if (session) {
+      window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session))
+    } else {
+      window.localStorage.removeItem(AUTH_STORAGE_KEY)
+    }
+  } catch {
+    // ignore local storage errors
+  }
 }
 
 function buildHeaders(contentType = true): HeadersInit {
@@ -583,8 +294,6 @@ function buildHeaders(contentType = true): HeadersInit {
   if (contentType) headers['Content-Type'] = 'application/json'
   return headers
 }
-
-const body = <T>(b?: BodyInit | null) => (b ? JSON.parse(String(b)) as T : {} as T)
 
 function mergeRequestHeaders(contentType: boolean, headers?: HeadersInit): Record<string, string> {
   const merged: Record<string, string> = buildHeaders(contentType) as Record<string, string>
@@ -627,758 +336,6 @@ function extractErrorDetail(data: unknown, fallback: string): string {
   return fallback
 }
 
-async function demoRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const m = (options.method ?? 'GET').toUpperCase()
-  const u = new URL(path, 'https://demo.local')
-  const s = u.pathname.split('/').filter(Boolean)
-  if (u.pathname === '/login' && m === 'POST') {
-    const p = body<{ username: string; password: string }>(options.body)
-    const d = doctors.find((x) => x.username === p.username && x.password === p.password)
-    if (!d) throw new Error('Invalid username or password')
-    return { token: token(d.username), doctor: { username: d.username, name: d.name, title: d.title, department: d.department, role: d.role } } as T
-  }
-  if (u.pathname === '/register' && m === 'POST') {
-    const p = body<RegisterPayload>(options.body)
-    if (doctors.some((x) => x.username === p.username)) throw new Error('Username already exists')
-    doctors.push({ ...p })
-    return demoRequest<T>('/login', { method: 'POST', body: JSON.stringify({ username: p.username, password: p.password }) })
-  }
-  if (u.pathname === '/drugs' && m === 'GET') {
-    const keyword = (u.searchParams.get('keyword') ?? '').trim().toLowerCase()
-    const statusParam = u.searchParams.get('status')
-    const status = statusParam === 'active' || statusParam === 'inactive' ? statusParam : null
-    const dosageForm = (u.searchParams.get('dosage_form') ?? '').trim().toLowerCase()
-    const isPrescriptionParam = u.searchParams.get('is_prescription')
-    const isControlledParam = u.searchParams.get('is_controlled')
-    const isPrescription = isPrescriptionParam === null ? null : isPrescriptionParam === 'true'
-    const isControlled = isControlledParam === null ? null : isControlledParam === 'true'
-
-    const items = demoDrugs.filter((drug) => {
-      if (status && drug.status !== status) return false
-      if (dosageForm && drug.dosage_form.toLowerCase() !== dosageForm) return false
-      if (isPrescription !== null && drug.is_prescription !== isPrescription) return false
-      if (isControlled !== null && drug.is_controlled !== isControlled) return false
-      if (keyword) {
-        const haystack = [
-          drug.drug_id,
-          drug.generic_name,
-          drug.brand_name,
-          drug.dosage_form,
-          drug.specification,
-          drug.unit,
-          drug.indication,
-        ].join(' ').toLowerCase()
-        return haystack.includes(keyword)
-      }
-      return true
-    })
-
-    return items.sort((left, right) => {
-      if (left.status !== right.status) return left.status === 'active' ? -1 : 1
-      return `${left.generic_name} ${left.drug_id}`.localeCompare(`${right.generic_name} ${right.drug_id}`)
-    }) as T
-  }
-  if (u.pathname.startsWith('/drugs/') && s[1] && s.length === 2 && m === 'GET') {
-    const item = findDrug(s[1])
-    if (!item) throw new Error('Drug not found')
-    return clone(item) as T
-  }
-  if (u.pathname === '/drugs' && m === 'POST') {
-    const payload = body<DrugCatalogUpsertRequest>(options.body)
-    if (!payload.drug_id.trim()) throw new Error('drug_id is required')
-    if (findDrug(payload.drug_id.trim())) throw new Error('Drug already exists')
-    if (payload.is_controlled) assertControlledDrugPermission()
-    const now = new Date().toISOString()
-    const record: DrugCatalogRecord = {
-      drug_id: payload.drug_id.trim(),
-      generic_name: payload.generic_name.trim(),
-      brand_name: payload.brand_name.trim(),
-      dosage_form: payload.dosage_form.trim(),
-      specification: payload.specification.trim(),
-      unit: payload.unit.trim(),
-      is_prescription: payload.is_prescription,
-      is_controlled: payload.is_controlled,
-      status: normalizeDrugStatus(payload.status),
-      indication: payload.indication.trim(),
-      created_at: now,
-      updated_at: now,
-      updated_by: 'frontend-demo',
-    }
-    demoDrugs = [record, ...demoDrugs]
-    return clone(record) as T
-  }
-  if (u.pathname.startsWith('/drugs/') && s[1] && s.length === 2 && m === 'PUT') {
-    const payload = body<DrugCatalogUpsertRequest>(options.body)
-    const targetId = s[1]
-    if (payload.drug_id.trim() !== targetId) throw new Error('drug_id does not match path parameter')
-    const index = demoDrugs.findIndex((drug) => drug.drug_id === targetId)
-    if (index < 0) throw new Error('Drug not found')
-    const current = demoDrugs[index]
-    if (!current) throw new Error('Drug not found')
-    if (payload.is_controlled || current.is_controlled) assertControlledDrugPermission()
-    const updated: DrugCatalogRecord = {
-      ...current,
-      drug_id: targetId,
-      generic_name: payload.generic_name.trim(),
-      brand_name: payload.brand_name.trim(),
-      dosage_form: payload.dosage_form.trim(),
-      specification: payload.specification.trim(),
-      unit: payload.unit.trim(),
-      is_prescription: payload.is_prescription,
-      is_controlled: payload.is_controlled,
-      status: normalizeDrugStatus(payload.status),
-      indication: payload.indication.trim(),
-      updated_at: new Date().toISOString(),
-      updated_by: 'frontend-demo',
-    }
-    demoDrugs = demoDrugs.map((drug, i) => (i === index ? updated : drug))
-    return clone(updated) as T
-  }
-  if (u.pathname === '/drug-permissions' && m === 'GET') {
-    const roleFilter = (u.searchParams.get('role') ?? '').trim()
-    const items = roleFilter ? demoDrugPermissions.filter((item) => item.role === roleFilter) : demoDrugPermissions
-    return clone(items.slice().sort((left, right) => left.role.localeCompare(right.role))) as T
-  }
-  if (u.pathname.startsWith('/drug-permissions/') && s[1] && s.length === 2 && m === 'GET') {
-    const item = findDrugPermission(s[1])
-    if (!item) throw new Error('Drug permission not found')
-    return clone(item) as T
-  }
-  if (u.pathname === '/drug-permissions' && m === 'POST') {
-    const payload = body<DrugPermissionUpsertRequest>(options.body)
-    const role = payload.role.trim()
-    if (!role) throw new Error('role is required')
-    if (findDrugPermission(role)) throw new Error('Drug permission already exists')
-    if (payload.allow_controlled_drug) assertControlledDrugPermission()
-    const record: DrugPermissionRecord = {
-      role: role as DrugPermissionRole,
-      allow_view: payload.allow_view,
-      allow_prescribe: payload.allow_prescribe,
-      allow_review: payload.allow_review,
-      allow_execute: payload.allow_execute,
-      allow_controlled_drug: payload.allow_controlled_drug,
-    }
-    demoDrugPermissions = [...demoDrugPermissions, record]
-    return clone(record) as T
-  }
-  if (u.pathname.startsWith('/drug-permissions/') && s[1] && s.length === 2 && m === 'PUT') {
-    const payload = body<DrugPermissionUpsertRequest>(options.body)
-    const targetRole = s[1]
-    if (payload.role.trim() !== targetRole) throw new Error('role does not match path parameter')
-    const index = demoDrugPermissions.findIndex((item) => item.role === targetRole)
-    if (index < 0) throw new Error('Drug permission not found')
-    if (payload.allow_controlled_drug) assertControlledDrugPermission()
-    const updated: DrugPermissionRecord = {
-      role: targetRole as DrugPermissionRole,
-      allow_view: payload.allow_view,
-      allow_prescribe: payload.allow_prescribe,
-      allow_review: payload.allow_review,
-      allow_execute: payload.allow_execute,
-      allow_controlled_drug: payload.allow_controlled_drug,
-    }
-    demoDrugPermissions = demoDrugPermissions.map((item, itemIndex) => (itemIndex === index ? updated : item))
-    return clone(updated) as T
-  }
-  if (s[0] === 'patient' && s[1] && s[2] === 'medications' && !s[3] && m === 'GET') {
-    const role = resolveSessionRole()
-    const permission = resolveMedicationPermission(role)
-    if (!permission?.allow_view) throw new Error('Role not allowed to view patient medications')
-    const patient = findPatient(s[1])
-    if (!patient) throw new Error('Patient not found')
-    const seeded = ensureDemoPatientMedications(s[1])
-    return clone(
-      seeded
-        .filter((item) => item.patient_id === s[1])
-        .sort((left, right) => {
-          if (left.status !== right.status) return left.status === 'active' ? -1 : 1
-          return `${left.start_date} ${left.medication_id}`.localeCompare(`${right.start_date} ${right.medication_id}`)
-        })
-    ) as T
-  }
-  if (s[0] === 'patient' && s[1] && s[2] === 'medications' && !s[3] && m === 'POST') {
-    const role = resolveSessionRole()
-    const permission = resolveMedicationPermission(role)
-    if (!permission || (!permission.allow_prescribe && !permission.allow_review)) {
-      throw new Error('Role not allowed to modify patient medications')
-    }
-    const payload = body<PatientMedicationUpsertRequest>(options.body)
-    const patient = findPatient(s[1])
-    if (!patient) throw new Error('Patient not found')
-    const drug = findDrug(payload.drug_id)
-    if (!drug) throw new Error('Drug not found')
-    if (drug.is_controlled && !permission.allow_controlled_drug) throw new Error('Controlled drug not allowed for this role')
-    if (payload.patient_id.trim() !== s[1]) throw new Error('patient_id does not match path parameter')
-    if (demoPatientMedications.some((item) => item.patient_id === s[1] && item.medication_id === payload.medication_id.trim())) {
-      throw new Error('Patient medication already exists')
-    }
-    const now = new Date().toISOString()
-    const record: PatientMedicationRecord = {
-      medication_id: payload.medication_id.trim(),
-      patient_id: s[1],
-      drug_id: payload.drug_id.trim(),
-      drug_name_snapshot: medicationLabel(drug),
-      dosage: payload.dosage.trim(),
-      frequency: payload.frequency.trim(),
-      route: payload.route.trim(),
-      start_date: payload.start_date.trim(),
-      end_date: payload.end_date.trim(),
-      status: payload.status,
-      prescribed_by: resolveSessionDoctorName(),
-      review_status: payload.review_status,
-      note: payload.note.trim(),
-      created_at: now,
-      updated_at: now,
-    }
-    demoPatientMedications = [...demoPatientMedications, record]
-    return clone(record) as T
-  }
-  if (s[0] === 'patient' && s[1] && s[2] === 'medications' && s[3] && m === 'PUT') {
-    const role = resolveSessionRole()
-    const permission = resolveMedicationPermission(role)
-    if (!permission || (!permission.allow_prescribe && !permission.allow_review)) {
-      throw new Error('Role not allowed to modify patient medications')
-    }
-    const payload = body<PatientMedicationUpsertRequest>(options.body)
-    const patient = findPatient(s[1])
-    if (!patient) throw new Error('Patient not found')
-    const drug = findDrug(payload.drug_id)
-    if (!drug) throw new Error('Drug not found')
-    if (drug.is_controlled && !permission.allow_controlled_drug) throw new Error('Controlled drug not allowed for this role')
-    if (payload.patient_id.trim() !== s[1]) throw new Error('patient_id does not match path parameter')
-    if (payload.medication_id.trim() !== s[3]) throw new Error('medication_id does not match path parameter')
-    const index = demoPatientMedications.findIndex((item) => item.patient_id === s[1] && item.medication_id === s[3])
-    if (index < 0) throw new Error('Patient medication not found')
-    const current = demoPatientMedications[index]
-    if (!current) throw new Error('Patient medication not found')
-    const updated: PatientMedicationRecord = {
-      medication_id: s[3],
-      patient_id: s[1],
-      drug_id: payload.drug_id.trim(),
-      drug_name_snapshot: medicationLabel(drug),
-      dosage: payload.dosage.trim(),
-      frequency: payload.frequency.trim(),
-      route: payload.route.trim(),
-      start_date: payload.start_date.trim(),
-      end_date: payload.end_date.trim(),
-      status: payload.status,
-      prescribed_by: resolveSessionDoctorName(),
-      review_status: payload.review_status,
-      note: payload.note.trim(),
-      created_at: current.created_at,
-      updated_at: new Date().toISOString(),
-    }
-    demoPatientMedications = demoPatientMedications.map((item, itemIndex) => (itemIndex === index ? updated : item))
-    return clone(updated) as T
-  }
-  if (s[0] === 'patient' && s[1] && s[2] === 'medication-assessment' && !s[3] && m === 'POST') {
-    const now = new Date().toISOString()
-    return {
-      coversBaselineTherapy: false,
-      hasDuplicateMedication: false,
-      hasContraindicationConflictPlaceholder: false,
-      alignsWithModelAdvice: true,
-      needsPharmacistReview: true,
-      suggestSupplementClasses: [],
-      notes: ['Backend medication assessment is unavailable; this demo fallback only preserves the display contract.'],
-      evaluatedAt: now,
-      evaluator: 'frontend-demo-fallback',
-      source: 'frontend-fallback',
-    } as T
-  }
-  if (u.pathname === '/health') return { status: 'ok', service: 'ctpath-demo-fallback', mode: 'demo', model_available: false, model_error: 'Backend unavailable, using local demo data.' } as T
-  if (u.pathname === '/patients') return demoPatients.slice().sort((a, b) => b.lastVisit.localeCompare(a.lastVisit)).map(sum) as T
-  if (u.pathname === '/patients/paginated') {
-    const page = Number(u.searchParams.get('page') ?? '1'), size = Number(u.searchParams.get('page_size') ?? '20')
-    const search = (u.searchParams.get('search') ?? '').toLowerCase(), risk = (u.searchParams.get('risk_level') ?? '').toLowerCase(), disease = (u.searchParams.get('disease') ?? '').toLowerCase()
-    let ps = demoPatients.slice().sort((a, b) => b.lastVisit.localeCompare(a.lastVisit)).map(sum)
-    if (search) ps = ps.filter((p) => `${p.patientId} ${p.name} ${p.primaryDisease}`.toLowerCase().includes(search))
-    if (risk) ps = ps.filter((p) => p.riskLevel.toLowerCase().includes(risk))
-    if (disease) ps = ps.filter((p) => p.primaryDisease.toLowerCase().includes(disease))
-    const total = ps.length, total_pages = Math.max(1, Math.ceil(total / size)), start = (page - 1) * size
-    return { patients: ps.slice(start, start + size), total, page, page_size: size, total_pages } as T
-  }
-  if (u.pathname === '/v2/patients') {
-    const q = `/patients/paginated?page=${u.searchParams.get('page') ?? 1}&page_size=${u.searchParams.get('page_size') ?? 20}&search=${u.searchParams.get('search') ?? ''}&risk_level=${u.searchParams.get('risk_level') ?? ''}`
-    const r = await demoRequest<Paged>(q, { method: 'GET' })
-    return { items: r.patients, total: r.total, page: r.page, page_size: r.page_size, total_pages: r.total_pages } as T
-  }
-  if (u.pathname === '/v2/patients/stats/overview') {
-    const ps = demoPatients.map(sum)
-    const by_risk = ps.reduce<Record<string, number>>((a, p) => ({ ...a, [p.riskLevel]: (a[p.riskLevel] ?? 0) + 1 }), {})
-    const by_age = ps.reduce<Record<string, number>>((a, p) => ({ ...a, [p.age < 50 ? '<50' : p.age < 60 ? '50-59' : p.age < 70 ? '60-69' : p.age < 80 ? '70-79' : '80+']: (a[p.age < 50 ? '<50' : p.age < 60 ? '50-59' : p.age < 70 ? '60-69' : p.age < 80 ? '70-79' : '80+'] ?? 0) + 1 }), {})
-    return { total: ps.length, by_risk, by_age } as T
-  }
-  if (s[0] === 'patient' && s[1] && s.length === 2 && m === 'GET') return clone(findPatient(s[1]) ?? (() => { throw new Error('Patient not found') })()) as T
-  if (s[0] === 'timeline' && s[1]) return { patientId: s[1], items: clone((findPatient(s[1])?.timeline ?? [])) } as T
-  if (s[0] === 'patient' && s[1] && s[2] === 'quadruples') {
-    const p = findPatient(s[1]); if (!p) throw new Error('Patient not found')
-    return { patientId: p.patientId, items: [{ subject: p.patientId, relation: 'has_disease', relationLabel: 'Disease', objectValue: p.primaryDisease, timestamp: `${p.lastVisit}T09:00:00`, source: 'demo' }, { subject: p.patientId, relation: 'stage', relationLabel: 'Stage', objectValue: p.currentStage, timestamp: `${p.lastVisit}T09:15:00`, source: 'demo' }] } as T
-  }
-  if (u.pathname === '/predict' && m === 'POST') {
-    const p = findPatient(body<{ patientId: string }>(options.body).patientId); if (!p) throw new Error('Patient not found')
-    return { patientId: p.patientId, mode: p.recommendationMode, strategy: p.recommendationMode === 'model' ? 'direct-model' : 'similar-case', generatedAt: new Date().toISOString(), supportSummary: `Demo fallback support level: ${p.dataSupport}.`, evidence: { eventCount: p.timeline.length, timepointCount: p.timeline.length, relationCount: 2, supportLevel: p.dataSupport === 'high' ? 'strong' : p.dataSupport === 'medium' ? 'limited' : 'minimal' }, topk: clone(p.predictions), advice: clone(p.careAdvice), adviceMeta: { provider: 'demo-fallback', model: null, source: 'placeholder', configured: false, connected: false, note: 'Prediction is coming from the frontend fallback.' }, pathExplanation: clone(p.pathExplanation), similarCases: clone(p.similarCases) } as T
-  }
-  if (u.pathname === '/advice/generate' && m === 'POST') {
-    const p = body<AdviceGeneratePayload>(options.body)
-    return { advice: [`Review ${p.patient.name || p.patient.patientId} in the next follow-up cycle.`, 'Confirm the latest structured event before final decisions.', 'Use short-interval follow-up if risk remains elevated.'], adviceMeta: { provider: 'demo-fallback', model: null, source: 'placeholder', configured: false, connected: false, note: 'Advice generated locally.' } } as T
-  }
-  if (s[0] === 'patient' && s[1] && s[2] === 'medication-plan' && s[3] === 'generate' && m === 'POST') {
-    const p = findPatient(s[1]); if (!p) throw new Error('Patient not found')
-    const payload = body<MedicationPlanGeneratePayload>(options.body)
-    const meds = (payload.currentMedications ?? []).filter((item) => String(item).trim())
-    const plan = meds.length
-      ? meds.slice(0, 4).map((item) => ({
-        name: item,
-        purpose: 'Continue and re-check efficacy in clinic follow-up.',
-        dosage: 'Follow latest prescription',
-        frequency: 'Follow latest prescription',
-        route: 'Oral',
-        duration: 'Reassess in 1-2 weeks',
-        cautions: ['Check contraindications and adherence before refill.'],
-      }))
-      : [{
-        name: `${p.primaryDisease} medication review`,
-        purpose: 'No current medication provided; start from medication reconciliation.',
-        dosage: 'To be confirmed by clinician',
-        frequency: 'To be confirmed by clinician',
-        route: 'To be confirmed by clinician',
-        duration: 'Review at next visit',
-        cautions: ['AI fallback output for demo only.'],
-      }]
-    return {
-      patientId: p.patientId,
-      generatedAt: new Date().toISOString(),
-      medications: plan,
-      monitoring: ['Review symptom response and adverse effects within 1-2 weeks.'],
-      education: ['Do not self-adjust medication without clinician guidance.'],
-      disclaimer: 'Demo fallback output only; not a real prescription.',
-      adviceMeta: { provider: 'demo-fallback', model: null, source: 'placeholder', configured: false, connected: false, note: 'Medication plan generated locally.' },
-    } as T
-  }
-  if (u.pathname === '/model/metrics') return { dataset: 'DEMO', currentModel: { model: 'CTpath Demo Rules', status: 'done', mrr: 0.61, hits1: 0.42, hits3: 0.58, hits10: 0.74, note: 'Fallback metrics for presentation.' }, comparisons: [{ model: 'TransE', status: 'done', mrr: 0.49, hits1: 0.31, hits3: 0.47, hits10: 0.69, note: 'Demo baseline.' }] } as T
-  if (u.pathname === '/governance/modules') return { mode: 'demo', items: [{ moduleKey: 'cis', title: 'Clinical Intake', domain: 'CIS', ownerRole: 'doctor', status: 'healthy', tone: 'healthy', description: 'Patient triage and review are available in demo mode.', capabilities: ['patient triage', 'prediction entry', 'clinical review'] }, { moduleKey: 'archive', title: 'Archive Management', domain: 'MRMS', ownerRole: 'archivist', status: 'warning', tone: 'warning', description: 'Some records still need more structured data.', capabilities: ['archive update', 'event supplement', 'master index'] }] } as T
-  if (u.pathname === '/maintenance/overview') {
-    const ps = demoPatients.map(sum)
-    return { mode: 'demo', modelAvailable: false, modelError: 'Using frontend fallback data.', patientCount: ps.length, eventCount: demoPatients.reduce((n, p) => n + p.timeline.length, 0), highRiskCount: ps.filter((p) => p.riskLevel.toLowerCase().includes('high')).length, lowSupportCount: ps.filter((p) => p.dataSupport === 'low').length, overdueFollowupCount: demoPatients.reduce((n, p) => n + p.followUps.length, 0), missingMrnCount: 0, pendingConsentCount: 0, duplicateRiskCount: 0, topDiseases: [{ label: 'Diabetes', value: ps.filter((p) => p.primaryDisease === 'Diabetes').length }], sourceStats: [{ label: 'Outpatient', value: ps.length }], relationStats: [{ relation: 'has_disease', label: 'Disease', count: ps.length }, { relation: 'stage', label: 'Stage', count: ps.length }], recentPatients: ps.slice(0, 4).map((p) => ({ patientId: p.patientId, name: p.name, primaryDisease: p.primaryDisease, riskLevel: p.riskLevel, dataSupport: p.dataSupport, lastVisit: p.lastVisit })), masterIndexAlerts: ps.filter((p) => p.dataSupport === 'low').map((p) => ({ patientId: p.patientId, name: p.name, issueType: 'data_support', issueLabel: 'Low support', detail: 'More structured data is needed.', archiveSource: p.archiveSource })), recentEvents: demoPatients.flatMap((p) => p.timeline.map((e) => ({ patientId: p.patientId, patientName: p.name, eventTime: `${e.date}T09:00:00`, relation: e.type, relationLabel: e.title, objectValue: e.detail, source: 'demo' }))).slice(0, 8) } as T
-  }
-  if (u.pathname === '/worklists/followups') {
-    return {
-      mode: 'demo',
-      items: demoPatients.flatMap((p) => {
-        const followupRows = p.followUps.map((t, i) => ({
-          taskId: `followup-${p.patientId}-${i + 1}`,
-          patientId: p.patientId,
-          patientName: p.name,
-          primaryDisease: p.primaryDisease,
-          riskLevel: p.riskLevel,
-          dataSupport: p.dataSupport,
-          dueDate: t.dueDate,
-          owner: t.owner,
-          priority: t.priority,
-          taskType: t.title,
-          status: 'Pending',
-          source: 'followup' as const,
-          lastActionBy: p.caseManager,
-          lastActionAt: `${p.lastVisit}T09:00:00`,
-        }))
-
-        const outpatientRows = p.outpatientTasks.map((task) => ({
-          taskId: task.taskId,
-          patientId: p.patientId,
-          patientName: p.name,
-          primaryDisease: p.primaryDisease,
-          riskLevel: p.riskLevel,
-          dataSupport: p.dataSupport,
-          dueDate: task.dueDate,
-          owner: task.owner,
-          priority: task.priority,
-          taskType: task.title,
-          status: task.status,
-          source: 'outpatient-task' as const,
-          lastActionBy: task.updatedBy ?? p.caseManager,
-          lastActionAt: task.updatedAt ?? `${p.lastVisit}T09:00:00`,
-        }))
-
-        return [...followupRows, ...outpatientRows]
-      }),
-    } as T
-  }
-  if (u.pathname === '/worklists/flow-board') return { mode: 'demo', items: demoPatients.map((p) => ({ patientId: p.patientId, patientName: p.name, primaryDisease: p.primaryDisease, currentStage: p.currentStage, riskLevel: p.riskLevel, dataSupport: p.dataSupport, lastVisit: p.lastVisit, flowStatus: p.encounterStatus === 'pending_review' ? 'Pending review' : p.encounterStatus === 'in_progress' ? 'In clinic' : p.dataSupport === 'low' ? 'Need structured data' : 'Waiting', nextAction: p.followUps[0]?.title ?? 'Open patient workspace' })) } as T
-  if (u.pathname === '/pharmacy/dashboard') {
-    const inventory = ensureDemoPharmacyInventory()
-    const reviewQueue = demoPatients.flatMap((patient) =>
-      ensureDemoPatientMedications(patient.patientId).map((medication) => ({
-        patientId: patient.patientId,
-        patientName: patient.name,
-        medicationId: medication.medication_id,
-        drugId: medication.drug_id,
-        drugNameSnapshot: medication.drug_name_snapshot,
-        dosage: medication.dosage,
-        frequency: medication.frequency,
-        route: medication.route,
-        reviewStatus: medication.review_status,
-        status: medication.status,
-        prescribedBy: medication.prescribed_by,
-        note: medication.note,
-        createdAt: medication.created_at,
-        updatedAt: medication.updated_at,
-      })),
-    )
-    const transactions = inventory.slice(0, 3).map((item, index) => ({
-      transactionId: `tx-${item.itemId}-${index + 1}`,
-      itemId: item.itemId,
-      drugId: item.drugId,
-      change: index === 0 ? 12 : index === 1 ? -4 : 6,
-      direction: index === 0 ? 'inbound' : index === 1 ? 'outbound' : 'adjust',
-      note: index === 0 ? '补货入库' : index === 1 ? '门诊出库' : '库存盘点调整',
-      operatorUsername: 'demo_pharmacist',
-      operatorName: 'Pharmacist Zhou',
-      createdAt: item.updatedAt,
-    }))
-    return {
-      summary: [
-        { label: '库存条目', value: String(inventory.length), trend: '稳定' },
-        { label: '低库存', value: String(inventory.filter((item) => item.currentStock <= item.minStock).length), trend: '关注' },
-        { label: '待复核处方', value: String(reviewQueue.filter((item) => item.reviewStatus === 'pending').length), trend: '待处理' },
-        { label: '管制药库存', value: String(inventory.filter((item) => item.drugName.includes('Morphine') || item.drugName.includes('controlled')).length), trend: '受控' },
-      ],
-      inventory,
-      reviewQueue,
-      transactions,
-    } as T
-  }
-  if (u.pathname === '/pharmacy/inventory' && m === 'GET') {
-    const keyword = (u.searchParams.get('keyword') ?? '').trim().toLowerCase()
-    const warehouse = (u.searchParams.get('warehouse') ?? '').trim().toLowerCase()
-    const status = (u.searchParams.get('status') ?? '').trim().toLowerCase()
-    const lowOnly = (u.searchParams.get('low_stock_only') ?? '').toLowerCase() === 'true'
-    const inventory = ensureDemoPharmacyInventory().filter((item) => {
-      if (status && item.status !== status) return false
-      if (lowOnly && item.currentStock > item.minStock) return false
-      if (warehouse && item.warehouse.toLowerCase() !== warehouse) return false
-      if (keyword) {
-        const haystack = [item.itemId, item.drugId, item.drugName, item.warehouse, item.batchNo, item.lotNo, item.supplier].join(' ').toLowerCase()
-        return haystack.includes(keyword)
-      }
-      return true
-    })
-    return clone(inventory) as T
-  }
-  if (u.pathname === '/pharmacy/inventory' && m === 'POST') {
-    const payload = body<PharmacyInventoryUpsertRequest>(options.body)
-    const inventory = ensureDemoPharmacyInventory()
-    if (inventory.some((item) => item.itemId === payload.itemId)) throw new Error('Pharmacy inventory item already exists')
-    const record: PharmacyInventoryRecord = {
-      itemId: payload.itemId,
-      drugId: payload.drugId,
-      drugName: payload.drugName,
-      warehouse: payload.warehouse,
-      batchNo: payload.batchNo,
-      lotNo: payload.lotNo,
-      unit: payload.unit,
-      currentStock: payload.currentStock,
-      reservedStock: payload.reservedStock,
-      minStock: payload.minStock,
-      expiryDate: payload.expiryDate,
-      status: payload.status,
-      supplier: payload.supplier,
-      lastInboundAt: new Date().toISOString(),
-      lastOutboundAt: new Date().toISOString(),
-      updatedBy: 'frontend-demo',
-      updatedAt: new Date().toISOString(),
-    }
-    demoPharmacyInventory = [record, ...inventory]
-    return clone(record) as T
-  }
-  if (s[0] === 'pharmacy' && s[1] === 'inventory' && s[2] && m === 'GET') {
-    const item = ensureDemoPharmacyInventory().find((x) => x.itemId === s[2])
-    if (!item) throw new Error('Pharmacy inventory item not found')
-    return clone(item) as T
-  }
-  if (s[0] === 'pharmacy' && s[1] === 'inventory' && s[2] && m === 'PUT') {
-    const payload = body<PharmacyInventoryUpsertRequest>(options.body)
-    const inventory = ensureDemoPharmacyInventory()
-    const index = inventory.findIndex((item) => item.itemId === s[2])
-    if (index < 0) throw new Error('Pharmacy inventory item not found')
-    const current = inventory[index]
-    if (!current) throw new Error('Pharmacy inventory item not found')
-    const updated: PharmacyInventoryRecord = {
-      itemId: s[2],
-      drugId: payload.drugId,
-      drugName: payload.drugName,
-      warehouse: payload.warehouse,
-      batchNo: payload.batchNo,
-      lotNo: payload.lotNo,
-      unit: payload.unit,
-      currentStock: payload.currentStock,
-      reservedStock: payload.reservedStock,
-      minStock: payload.minStock,
-      expiryDate: payload.expiryDate,
-      status: payload.status,
-      supplier: payload.supplier,
-      lastInboundAt: current.lastInboundAt,
-      lastOutboundAt: current.lastOutboundAt,
-      updatedBy: 'frontend-demo',
-      updatedAt: new Date().toISOString(),
-    }
-    demoPharmacyInventory = inventory.map((item, itemIndex) => (itemIndex === index ? updated : item))
-    return clone(updated) as T
-  }
-  if (s[0] === 'pharmacy' && s[1] === 'inventory' && s[2] && s[3] === 'adjust' && m === 'PATCH') {
-    const payload = body<PharmacyStockAdjustRequest>(options.body)
-    const inventory = ensureDemoPharmacyInventory()
-    const index = inventory.findIndex((item) => item.itemId === s[2])
-    if (index < 0) throw new Error('Pharmacy inventory item not found')
-    const current = inventory[index]
-    if (!current) throw new Error('Pharmacy inventory item not found')
-    const delta = payload.direction === 'inbound' || payload.direction === 'transfer' ? payload.quantity : -payload.quantity
-    const updated: PharmacyInventoryRecord = {
-      ...current,
-      currentStock: Math.max(0, current.currentStock + delta),
-      status: Math.max(0, current.currentStock + delta) <= 0 ? 'out_of_stock' : Math.max(0, current.currentStock + delta) <= current.minStock ? 'low' : current.status,
-      lastInboundAt: payload.direction === 'inbound' ? new Date().toISOString() : current.lastInboundAt,
-      lastOutboundAt: payload.direction === 'inbound' ? current.lastOutboundAt : new Date().toISOString(),
-      updatedBy: payload.operatorName || 'frontend-demo',
-      updatedAt: new Date().toISOString(),
-    }
-    demoPharmacyInventory = inventory.map((item, itemIndex) => (itemIndex === index ? updated : item))
-    return clone(updated) as T
-  }
-  if (u.pathname === '/pharmacy/transactions') {
-    return clone(ensureDemoPharmacyInventory().slice(0, 10).map((item, index) => ({
-      transactionId: `tx-${item.itemId}-${index + 1}`,
-      itemId: item.itemId,
-      drugId: item.drugId,
-      change: index === 0 ? 12 : index === 1 ? -4 : 6,
-      direction: index === 0 ? 'inbound' : index === 1 ? 'outbound' : 'adjust',
-      note: index === 0 ? '补货入库' : index === 1 ? '门诊出库' : '库存盘点调整',
-      operatorUsername: 'demo_pharmacist',
-      operatorName: 'Pharmacist Zhou',
-      createdAt: item.updatedAt,
-    }))) as T
-  }
-  if (u.pathname === '/pharmacy/review-queue') {
-    const queue = demoPatients.flatMap((patient) =>
-      ensureDemoPatientMedications(patient.patientId).map((medication) => ({
-        patientId: patient.patientId,
-        patientName: patient.name,
-        medicationId: medication.medication_id,
-        drugId: medication.drug_id,
-        drugNameSnapshot: medication.drug_name_snapshot,
-        dosage: medication.dosage,
-        frequency: medication.frequency,
-        route: medication.route,
-        reviewStatus: medication.review_status,
-        status: medication.status,
-        prescribedBy: medication.prescribed_by,
-        note: medication.note,
-        createdAt: medication.created_at,
-        updatedAt: medication.updated_at,
-      })),
-    )
-    const statusFilter = (u.searchParams.get('status') ?? '').trim()
-    return clone(statusFilter ? queue.filter((item) => item.reviewStatus === statusFilter) : queue) as T
-  }
-  if (s[0] === 'pharmacy' && s[1] === 'review-queue' && s[2] && s[3] && m === 'PATCH') {
-    const payload = body<PharmacyReviewDecisionRequest>(options.body)
-    const patientId = s[2]
-    const medicationId = s[3]
-    const patient = findPatient(patientId)
-    if (!patient) throw new Error('Patient not found')
-    const records = ensureDemoPatientMedications(patientId)
-    const index = records.findIndex((item) => item.medication_id === medicationId)
-    if (index < 0) throw new Error('Patient medication not found')
-    const current = records[index]
-    if (!current) throw new Error('Patient medication not found')
-    const updated: PatientMedicationRecord = {
-      ...current,
-      review_status: payload.reviewStatus,
-      note: payload.note || current.note,
-      updated_at: new Date().toISOString(),
-    }
-    demoPatientMedications = demoPatientMedications.map((item) => (item.patient_id === patientId && item.medication_id === medicationId ? updated : item))
-    return clone({
-      patientId,
-      patientName: patient.name,
-      medicationId: updated.medication_id,
-      drugId: updated.drug_id,
-      drugNameSnapshot: updated.drug_name_snapshot,
-      dosage: updated.dosage,
-      frequency: updated.frequency,
-      route: updated.route,
-      reviewStatus: updated.review_status,
-      status: updated.status,
-      prescribedBy: updated.prescribed_by,
-      note: updated.note,
-      createdAt: updated.created_at,
-      updatedAt: updated.updated_at,
-    }) as T
-  }
-  if (u.pathname === '/coordination/board') {
-    return { summary: [
-      { label: '协同总数', value: String(ensureDemoCoordinationItems().length), trend: '稳定' },
-      { label: '待处理', value: String(ensureDemoCoordinationItems().filter((item) => item.status === 'open').length), trend: '待跟进' },
-      { label: '处理中', value: String(ensureDemoCoordinationItems().filter((item) => item.status === 'in_progress').length), trend: '推进中' },
-      { label: '阻塞', value: String(ensureDemoCoordinationItems().filter((item) => item.status === 'blocked').length), trend: '重点关注' },
-    ], items: clone(ensureDemoCoordinationItems()) } as T
-  }
-  if (u.pathname === '/coordination/items') {
-    const status = (u.searchParams.get('status') ?? '').trim()
-    const category = (u.searchParams.get('category') ?? '').trim()
-    const keyword = (u.searchParams.get('keyword') ?? '').trim().toLowerCase()
-    const items = ensureDemoCoordinationItems().filter((item) => {
-      if (status && item.status !== status) return false
-      if (category && item.category !== category) return false
-      if (keyword) {
-        const haystack = [item.coordinationId, item.patientId, item.patientName, item.primaryDisease, item.currentStage, item.ownerName, item.summary, item.nextAction].join(' ').toLowerCase()
-        return haystack.includes(keyword)
-      }
-      return true
-    })
-    return clone(items) as T
-  }
-  if (s[0] === 'coordination' && s[1] === 'items' && s[2] && m === 'GET') {
-    const item = ensureDemoCoordinationItems().find((x) => x.coordinationId === s[2])
-    if (!item) throw new Error('Coordination item not found')
-    return clone(item) as T
-  }
-  if (u.pathname === '/coordination/items' && m === 'POST') {
-    const payload = body<CoordinationItemUpsertRequest>(options.body)
-    const item: CoordinationItem = {
-      coordinationId: payload.coordinationId,
-      patientId: payload.patientId,
-      patientName: payload.patientName,
-      primaryDisease: payload.primaryDisease,
-      currentStage: payload.currentStage,
-      riskLevel: payload.riskLevel,
-      category: payload.category,
-      status: payload.status,
-      ownerRole: payload.ownerRole,
-      ownerName: payload.ownerName,
-      nextAction: payload.nextAction,
-      dueDate: payload.dueDate,
-      lastUpdatedAt: new Date().toISOString(),
-      summary: payload.summary,
-      participants: payload.participants,
-      notes: [],
-    }
-    demoCoordinationItems = [item, ...ensureDemoCoordinationItems().filter((x) => x.coordinationId !== item.coordinationId)]
-    return clone(item) as T
-  }
-  if (s[0] === 'coordination' && s[1] === 'items' && s[2] && m === 'PUT') {
-    const payload = body<CoordinationItemUpsertRequest>(options.body)
-    const items = ensureDemoCoordinationItems()
-    const index = items.findIndex((x) => x.coordinationId === s[2])
-    if (index < 0) throw new Error('Coordination item not found')
-    const item: CoordinationItem = {
-      coordinationId: s[2],
-      patientId: payload.patientId,
-      patientName: payload.patientName,
-      primaryDisease: payload.primaryDisease,
-      currentStage: payload.currentStage,
-      riskLevel: payload.riskLevel,
-      category: payload.category,
-      status: payload.status,
-      ownerRole: payload.ownerRole,
-      ownerName: payload.ownerName,
-      nextAction: payload.nextAction,
-      dueDate: payload.dueDate,
-      lastUpdatedAt: new Date().toISOString(),
-      summary: payload.summary,
-      participants: payload.participants,
-      notes: items[index]?.notes ?? [],
-    }
-    demoCoordinationItems = items.map((x, itemIndex) => (itemIndex === index ? item : x))
-    return clone(item) as T
-  }
-  if (s[0] === 'coordination' && s[1] === 'items' && s[2] && s[3] === 'status' && m === 'PATCH') {
-    const payload = body<CoordinationStatusUpdateRequest>(options.body)
-    const items = ensureDemoCoordinationItems()
-    const index = items.findIndex((x) => x.coordinationId === s[2])
-    if (index < 0) throw new Error('Coordination item not found')
-    const current = items[index]
-    if (!current) throw new Error('Coordination item not found')
-    const notes = [...current.notes]
-    if (payload.note) {
-      notes.push({
-        noteId: `note-${current.coordinationId}-${notes.length + 1}`,
-        createdAt: new Date().toISOString(),
-        createdBy: payload.operatorName || payload.operatorUsername || 'system',
-        createdByRole: payload.operatorRole || 'doctor',
-        action: 'status',
-        note: payload.note,
-      })
-    }
-    const item: CoordinationItem = { ...current, status: payload.status, notes, lastUpdatedAt: new Date().toISOString() }
-    demoCoordinationItems = items.map((x, itemIndex) => (itemIndex === index ? item : x))
-    return clone(item) as T
-  }
-  if (s[0] === 'coordination' && s[1] === 'items' && s[2] && s[3] === 'notes' && m === 'POST') {
-    const payload = body<CoordinationNoteCreateRequest>(options.body)
-    const items = ensureDemoCoordinationItems()
-    const index = items.findIndex((x) => x.coordinationId === s[2])
-    if (index < 0) throw new Error('Coordination item not found')
-    const current = items[index]
-    if (!current) throw new Error('Coordination item not found')
-    const note: CoordinationNote = {
-      noteId: `note-${current.coordinationId}-${current.notes.length + 1}`,
-      createdAt: new Date().toISOString(),
-      createdBy: payload.operatorName || payload.operatorUsername || 'system',
-      createdByRole: payload.operatorRole || 'doctor',
-      action: payload.action || 'note',
-      note: payload.note,
-    }
-    const item: CoordinationItem = { ...current, notes: [...current.notes, note], lastUpdatedAt: new Date().toISOString() }
-    demoCoordinationItems = items.map((x, itemIndex) => (itemIndex === index ? item : x))
-    return clone(item) as T
-  }
-  if (u.pathname === '/patient' && m === 'POST') {
-    const p = body<PatientUpsertPayload>(options.body)
-    const next = mk(p.patientId || `PID${1000 + demoPatients.length + 1}`, p.name, Number(p.age), p.primaryDisease, p.currentStage, p.riskLevel, p.lastVisit, p.summary || `${p.primaryDisease} demo archive.`, p.dataSupport)
-    demoPatients = [next, ...demoPatients]
-    return clone(next) as T
-  }
-  if (s[0] === 'patient' && s[1] && m === 'PUT') {
-    const p = body<PatientUpsertPayload>(options.body), cur = findPatient(s[1]); if (!cur) throw new Error('Patient not found')
-    const next = { ...cur, ...p, age: Number(p.age || cur.age), patientId: s[1] }
-    demoPatients = demoPatients.map((x) => x.patientId === s[1] ? next : x)
-    return clone(next) as T
-  }
-  if (s[0] === 'patient' && s[1] && s[2] === 'event' && m === 'POST') {
-    const p = body<PatientEventPayload>(options.body), cur = findPatient(s[1]); if (!cur) throw new Error('Patient not found')
-    const event: TimelineEvent = { date: p.eventTime.slice(0, 10), type: p.relation === 'med_adherence' ? 'medication' : p.relation === 'stage' || p.relation === 'has_disease' ? 'diagnosis' : 'risk', title: p.relation, detail: p.note || p.objectValue }
-    const next = { ...cur, timeline: [event, ...cur.timeline], lastVisit: event.date }
-    demoPatients = demoPatients.map((x) => x.patientId === s[1] ? next : x)
-    return clone(next) as T
-  }
-  if (s[0] === 'patient' && s[1] && s[2] === 'contact-log' && m === 'POST') {
-    const p = body<ContactLogCreatePayload>(options.body), cur = findPatient(s[1]); if (!cur) throw new Error('Patient not found')
-    const next = { ...cur, contactLogs: [{ logId: `clog-${Date.now()}`, contactTime: p.contactTime, contactType: p.contactType, contactTarget: p.contactTarget, contactResult: p.contactResult, operatorUsername: p.actorUsername, operatorName: p.actorName, note: p.note || '', nextContactDate: p.nextContactDate }, ...cur.contactLogs] }
-    demoPatients = demoPatients.map((x) => x.patientId === s[1] ? next : x)
-    return clone(next) as T
-  }
-  if (s[0] === 'patient' && s[1] && s[2] === 'encounter-status' && m === 'PATCH') {
-    const p = body<EncounterStatusPayload>(options.body), cur = findPatient(s[1]); if (!cur) throw new Error('Patient not found')
-    const next = { ...cur, encounterStatus: p.status }
-    demoPatients = demoPatients.map((x) => x.patientId === s[1] ? next : x)
-    return clone(next) as T
-  }
-  if (s[0] === 'patient' && s[1] && s[2] === 'outpatient-task' && !s[3] && m === 'POST') {
-    const p = body<OutpatientTaskCreatePayload>(options.body), cur = findPatient(s[1]); if (!cur) throw new Error('Patient not found')
-    const task = { taskId: `task-${Date.now()}`, category: p.category, title: p.title, owner: p.owner, dueDate: p.dueDate, priority: p.priority, status: p.status ?? '待执行', note: p.note, source: p.source ?? 'workspace', updatedBy: p.actorName, updatedAt: new Date().toISOString(), logs: [] }
-    const next = { ...cur, outpatientTasks: [task, ...cur.outpatientTasks] }
-    demoPatients = demoPatients.map((x) => x.patientId === s[1] ? next : x)
-    return clone(next) as T
-  }
-  if (s[0] === 'patient' && s[1] && s[2] === 'outpatient-task' && s[3] && m === 'PATCH') {
-    const p = body<OutpatientTaskStatusUpdatePayload>(options.body), cur = findPatient(s[1]); if (!cur) throw new Error('Patient not found')
-    const next = { ...cur, outpatientTasks: cur.outpatientTasks.map((t) => t.taskId === s[3] ? { ...t, status: p.status, updatedBy: p.actorName, updatedAt: new Date().toISOString() } : t) }
-    demoPatients = demoPatients.map((x) => x.patientId === s[1] ? next : x)
-    return clone(next) as T
-  }
-  throw new Error(`Demo fallback does not support ${m} ${path}`)
-}
-
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const normalizedPath = normalizeApiPath(path)
   const shouldSetContentType =
@@ -1393,19 +350,17 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       data: options.body,
     })
     if (response.status < 200 || response.status >= 300) {
-      if (ENABLE_DEMO_FALLBACK && response.status >= 500) return demoRequest<T>(normalizedPath, options)
       if (response.status === 401) {
         persistAuthSession(null)
       }
-      const detail = extractErrorDetail(response.data, response.statusText || 'Request failed')
+      const detail = response.status >= 500 ? '业务服务处理失败，请稍后重试或联系管理员。' : extractErrorDetail(response.data, response.statusText || 'Request failed')
       throw new Error(`[${response.status}] ${detail}`)
     }
     return parseResponseData<T>(response.data)
   } catch (e) {
     const m = e instanceof Error ? e.message : ''
-    const isNetworkError = !m || /Failed to fetch|NetworkError|Load failed|fetch|ECONNREFUSED|ERR_CONNECTION_REFUSED/i.test(m)
-    if (ENABLE_DEMO_FALLBACK && isNetworkError) return demoRequest<T>(normalizedPath, options)
-    if (isNetworkError) throw new Error(`Cannot connect to backend API (${API_BASE}). Please start backend service.`)
+    const isNetworkError = !m || /Network Error|Failed to fetch|NetworkError|Load failed|fetch|ECONNREFUSED|ERR_CONNECTION_REFUSED/i.test(m)
+    if (isNetworkError) throw new Error('业务服务连接失败，请检查后端服务或重新登录。')
     throw e
   }
 }
@@ -1494,7 +449,7 @@ export async function getBusinessClosureSummary(patientId: string, modelAdvice: 
     getDrugPermissions(),
     getDrugCatalog(),
   ])
-  const role = resolveSessionRole()
+  const role = restoreAuthSession()?.doctor.role ?? 'doctor'
   const permission = permissions.find((item) => item.role === role) ?? null
   const drugById = new Map(drugs.map((drug) => [drug.drug_id, drug]))
   const controlledMedicationCount = medications.filter((item) => drugById.get(item.drug_id)?.is_controlled).length
@@ -1538,7 +493,12 @@ export async function updateDrugPermissionItem(role: string, payload: DrugPermis
 export async function healthCheck(): Promise<HealthResponse> { return request('/health', { method: 'GET' }) }
 export async function getMe(): Promise<MeResponse> { return request('/me', { method: 'GET' }) }
 export async function getAuthzCapabilities(): Promise<AuthzCapabilityResponse> { return request('/authz/capabilities', { method: 'GET' }) }
+export async function getSystemMap(): Promise<SystemMapResponse> { return request('/systems', { method: 'GET' }) }
 export async function getSystemAudit(limit = 50): Promise<SystemAuditResponse> { return request(`/audit/system?limit=${encodeURIComponent(String(limit))}`, { method: 'GET' }) }
+export async function getDatabaseBrowserTables(): Promise<DatabaseBrowserTablesResponse> { return request('/database-browser/tables', { method: 'GET' }) }
+export async function getDatabaseBrowserTable(tableName: string, limit = 50): Promise<DatabaseBrowserPreviewResponse> {
+  return request(`/database-browser/tables/${encodeURIComponent(tableName)}?limit=${encodeURIComponent(String(limit))}`, { method: 'GET' })
+}
 export async function getModelMetrics(): Promise<ModelMetricsResponse> { return request('/model/metrics', { method: 'GET' }) }
 export async function getMaintenanceOverview(): Promise<MaintenanceOverview> { return request('/maintenance/overview', { method: 'GET' }) }
 export async function getGovernanceModules(): Promise<GovernanceModulesResponse> { return request('/governance/modules', { method: 'GET' }) }

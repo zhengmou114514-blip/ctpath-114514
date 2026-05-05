@@ -337,7 +337,6 @@ onMounted(() => {
       <div>
         <p class="eyebrow">药房 / 药库</p>
         <h1>药房药库工作台</h1>
-        <p>像 openhis 一样把库存、审核和出入库拆开处理，医生开药后由药房后台完成记录与复核。</p>
       </div>
       <div class="header-actions">
         <button class="secondary-button" type="button" @click="clearFilters">清空筛选</button>
@@ -381,7 +380,7 @@ onMounted(() => {
         <div class="section-header">
           <div>
             <h2>库存总览</h2>
-            <p>左侧列表用于浏览与筛选，点击任一条库存后右侧会切换到详情和编辑。</p>
+            <p>库存浏览、批次筛选与详情维护。</p>
           </div>
           <button class="secondary-button" type="button" :disabled="loading" @click="loadDashboard()">刷新</button>
         </div>
@@ -596,9 +595,9 @@ onMounted(() => {
 
         <article class="clinical-card pharmacy-adjust-card">
           <div class="section-header">
-            <div>
-              <h2>库存出入库</h2>
-              <p>医生开药后，这里负责后台登记、补货和盘点调整。</p>
+          <div>
+            <h2>库存出入库</h2>
+              <p>后台登记、补货、调拨和盘点调整。</p>
             </div>
           </div>
           <div class="editor-grid compact">

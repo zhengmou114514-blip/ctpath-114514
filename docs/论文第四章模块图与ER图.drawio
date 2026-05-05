@@ -1,0 +1,144 @@
+<mxfile host="app.diagrams.net" modified="2026-05-01T00:00:00.000Z" agent="Codex" version="24.7.17" type="device">
+  <diagram id="functional-structure" name="图4-1 系统功能结构图">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="title" value="慢病辅助诊疗业务系统" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=16;" vertex="1" parent="1"><mxGeometry x="430" y="40" width="300" height="50" as="geometry"/></mxCell>
+        <mxCell id="doctor" value="医生业务端&#xa;医生首页 / 患者详情 / 模型洞察" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5e7;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="90" y="150" width="230" height="70" as="geometry"/></mxCell>
+        <mxCell id="nurse" value="随访工作台&#xa;待随访任务 / 联系记录 / 病程流转" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5e7;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="360" y="150" width="230" height="70" as="geometry"/></mxCell>
+        <mxCell id="archive" value="患者档案与附件&#xa;身份信息 / 电子档案 / 上传预览" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5e7;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="630" y="150" width="230" height="70" as="geometry"/></mxCell>
+        <mxCell id="drug" value="药品与权限&#xa;药品目录 / 角色权限 / 当前用药" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5e7;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="900" y="150" width="230" height="70" as="geometry"/></mxCell>
+        <mxCell id="service" value="FastAPI 业务服务&#xa;认证鉴权 / 患者 / 预测 / 附件 / 随访 / 药品 / 治理" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="300" y="310" width="560" height="80" as="geometry"/></mxCell>
+        <mxCell id="model" value="模型中心&#xa;模型看板 / 调试台 / 训练中心 / 数据集导入" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1"><mxGeometry x="130" y="500" width="300" height="80" as="geometry"/></mxCell>
+        <mxCell id="governance" value="治理中心&#xa;数据质量 / 缺失字段 / 异常时间线 / 审计日志" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1"><mxGeometry x="500" y="500" width="300" height="80" as="geometry"/></mxCell>
+        <mxCell id="data" value="Demo / MySQL 业务数据&#xa;患者、事件、附件、药品、随访、预测结果" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1"><mxGeometry x="870" y="500" width="260" height="80" as="geometry"/></mxCell>
+        <mxCell id="e1" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1" source="title" target="doctor"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e2" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1" source="title" target="nurse"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e3" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1" source="title" target="archive"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e4" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1" source="title" target="drug"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e5" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1" source="doctor" target="service"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e6" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1" source="nurse" target="service"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e7" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1" source="archive" target="service"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e8" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1" source="drug" target="service"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e9" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1" source="service" target="model"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e10" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1" source="service" target="governance"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e11" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1" source="service" target="data"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="patient-predict-flow" name="图4-2 患者详情与预测流程图">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/><mxCell id="1" parent="0"/>
+        <mxCell id="s" value="开始：医生登录工作台" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="80" y="80" width="180" height="50" as="geometry"/></mxCell>
+        <mxCell id="p1" value="选择待处理患者" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1"><mxGeometry x="330" y="80" width="180" height="50" as="geometry"/></mxCell>
+        <mxCell id="p2" value="进入患者详情页&#xa;加载主索引、病程、用药、附件" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1"><mxGeometry x="580" y="70" width="220" height="70" as="geometry"/></mxCell>
+        <mxCell id="d1" value="是否触发真实预测？" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1"><mxGeometry x="870" y="65" width="150" height="80" as="geometry"/></mxCell>
+        <mxCell id="pre" value="展示预置摘要&#xa;不作为真实模型结果" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1"><mxGeometry x="850" y="210" width="190" height="60" as="geometry"/></mxCell>
+        <mxCell id="api" value="POST /api/predict" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5e7;strokeColor=#82b366;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="330" y="240" width="180" height="50" as="geometry"/></mxCell>
+        <mxCell id="events" value="读取患者病程事件&#xa;转换时序四元组" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5e7;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="580" y="230" width="210" height="70" as="geometry"/></mxCell>
+        <mxCell id="model" value="模型推理或回退&#xa;direct / proxy / rules / similar-case" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1"><mxGeometry x="330" y="400" width="240" height="70" as="geometry"/></mxCell>
+        <mxCell id="out" value="返回 Top-K 风险、证据摘要、路径说明、建议来源" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="640" y="400" width="280" height="70" as="geometry"/></mxCell>
+        <mxCell id="end" value="医生查看结果&#xa;进入随访或电子档案" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="480" y="560" width="220" height="60" as="geometry"/></mxCell>
+        <mxCell id="e1" style="endArrow=block;html=1;" edge="1" parent="1" source="s" target="p1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e2" style="endArrow=block;html=1;" edge="1" parent="1" source="p1" target="p2"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e3" style="endArrow=block;html=1;" edge="1" parent="1" source="p2" target="d1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e4" value="否" style="endArrow=block;html=1;" edge="1" parent="1" source="d1" target="pre"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e5" value="是" style="endArrow=block;html=1;" edge="1" parent="1" source="d1" target="api"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e6" style="endArrow=block;html=1;" edge="1" parent="1" source="api" target="events"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e7" style="endArrow=block;html=1;" edge="1" parent="1" source="events" target="model"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e8" style="endArrow=block;html=1;" edge="1" parent="1" source="model" target="out"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e9" style="endArrow=block;html=1;" edge="1" parent="1" source="out" target="end"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="attachment-flow" name="图4-3 电子档案附件流程图">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/><mxCell id="1" parent="0"/>
+        <mxCell id="a1" value="档案员/医生进入患者档案" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="90" y="90" width="220" height="55" as="geometry"/></mxCell>
+        <mxCell id="a2" value="选择附件类型&#xa;患者照片 / 身份证 / 医保卡 / 转诊单 / 检查报告 / 知情同意书" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1"><mxGeometry x="390" y="70" width="300" height="95" as="geometry"/></mxCell>
+        <mxCell id="a3" value="上传文件" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1"><mxGeometry x="770" y="90" width="160" height="55" as="geometry"/></mxCell>
+        <mxCell id="a4" value="校验类型与大小&#xa;扩展名 / MIME / 20MB 上限" style="rhombus;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1"><mxGeometry x="470" y="250" width="170" height="100" as="geometry"/></mxCell>
+        <mxCell id="a5" value="拒绝上传并返回错误" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1"><mxGeometry x="760" y="270" width="190" height="55" as="geometry"/></mxCell>
+        <mxCell id="a6" value="写入患者附件存储&#xa;生成 previewUrl 与元数据" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5e7;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="220" y="420" width="250" height="70" as="geometry"/></mxCell>
+        <mxCell id="a7" value="附件列表展示与预览" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="580" y="430" width="220" height="55" as="geometry"/></mxCell>
+        <mxCell id="e1" style="endArrow=block;html=1;" edge="1" parent="1" source="a1" target="a2"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e2" style="endArrow=block;html=1;" edge="1" parent="1" source="a2" target="a3"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e3" style="endArrow=block;html=1;" edge="1" parent="1" source="a3" target="a4"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e4" value="不通过" style="endArrow=block;html=1;" edge="1" parent="1" source="a4" target="a5"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e5" value="通过" style="endArrow=block;html=1;" edge="1" parent="1" source="a4" target="a6"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e6" style="endArrow=block;html=1;" edge="1" parent="1" source="a6" target="a7"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="followup-loop" name="图4-4 随访闭环流程图">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/><mxCell id="1" parent="0"/>
+        <mxCell id="f1" value="患者详情识别高风险/需复查" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="90" y="100" width="220" height="60" as="geometry"/></mxCell>
+        <mxCell id="f2" value="创建/进入随访任务" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1"><mxGeometry x="390" y="100" width="190" height="60" as="geometry"/></mxCell>
+        <mxCell id="f3" value="护士随访工作台&#xa;查看待办、优先级、到期日期" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1"><mxGeometry x="660" y="85" width="240" height="90" as="geometry"/></mxCell>
+        <mxCell id="f4" value="登记联系记录&#xa;电话/家属/微信/门诊" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5e7;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="380" y="270" width="220" height="70" as="geometry"/></mxCell>
+        <mxCell id="f5" value="更新任务状态&#xa;待执行 / 已完成 / 已关闭" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5e7;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="690" y="270" width="220" height="70" as="geometry"/></mxCell>
+        <mxCell id="f6" value="形成患者审计与病程流转记录" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="460" y="450" width="260" height="60" as="geometry"/></mxCell>
+        <mxCell id="e1" style="endArrow=block;html=1;" edge="1" parent="1" source="f1" target="f2"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e2" style="endArrow=block;html=1;" edge="1" parent="1" source="f2" target="f3"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e3" style="endArrow=block;html=1;" edge="1" parent="1" source="f3" target="f4"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e4" style="endArrow=block;html=1;" edge="1" parent="1" source="f3" target="f5"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e5" style="endArrow=block;html=1;" edge="1" parent="1" source="f4" target="f6"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e6" style="endArrow=block;html=1;" edge="1" parent="1" source="f5" target="f6"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="model-governance-boundary" name="图4-5 模型治理边界图">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/><mxCell id="1" parent="0"/>
+        <mxCell id="m1" value="模型洞察&#xa;当前患者 Top-K、证据、建议来源、下一步动作" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5e7;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="80" y="120" width="280" height="90" as="geometry"/></mxCell>
+        <mxCell id="m2" value="模型看板&#xa;模型版本、MRR、Hits@K、调用量、健康状态" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="450" y="120" width="280" height="90" as="geometry"/></mxCell>
+        <mxCell id="m3" value="模型调试台&#xa;测试样本、输入/输出 JSON、耗时、回退原因" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1"><mxGeometry x="820" y="120" width="280" height="90" as="geometry"/></mxCell>
+        <mxCell id="m4" value="训练中心 / 数据集导入&#xa;训练任务、数据集暂存、校验映射" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1"><mxGeometry x="270" y="360" width="280" height="90" as="geometry"/></mxCell>
+        <mxCell id="m5" value="治理看板&#xa;数据质量、缺失字段、异常时间线、冲突记录" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1"><mxGeometry x="650" y="360" width="280" height="90" as="geometry"/></mxCell>
+        <mxCell id="m6" value="边界原则：医生日常流程只进入患者详情和模型洞察；训练、调试、全局指标、数据治理不混入医生首页。" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="210" y="570" width="760" height="70" as="geometry"/></mxCell>
+        <mxCell id="e1" style="endArrow=none;html=1;dashed=1;" edge="1" parent="1" source="m1" target="m2"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e2" style="endArrow=none;html=1;dashed=1;" edge="1" parent="1" source="m2" target="m3"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e3" style="endArrow=none;html=1;dashed=1;" edge="1" parent="1" source="m4" target="m5"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="er" name="图4-6 数据库ER图">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/><mxCell id="1" parent="0"/>
+        <mxCell id="patient" value="patients&#xa;patient_id PK&#xa;name / gender / age&#xa;primary_disease / current_stage / risk_level" style="swimlane;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="410" y="40" width="260" height="120" as="geometry"/></mxCell>
+        <mxCell id="profile" value="patient_profiles&#xa;patient_id PK/FK&#xa;phone / identity_masked / insurance_type&#xa;emergency_contact_*" style="swimlane;whiteSpace=wrap;html=1;fillColor=#e1f5e7;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="60" y="220" width="270" height="120" as="geometry"/></mxCell>
+        <mxCell id="archive" value="patient_archives&#xa;patient_id PK/FK&#xa;medical_record_number / archive_source&#xa;archive_status / consent_status" style="swimlane;whiteSpace=wrap;html=1;fillColor=#e1f5e7;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="410" y="220" width="270" height="120" as="geometry"/></mxCell>
+        <mxCell id="history" value="patient_medical_histories&#xa;patient_id PK/FK&#xa;allergy_history / family_history&#xa;summary / data_support" style="swimlane;whiteSpace=wrap;html=1;fillColor=#e1f5e7;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="760" y="220" width="280" height="120" as="geometry"/></mxCell>
+        <mxCell id="events" value="patient_events&#xa;id PK&#xa;patient_id FK&#xa;event_time / relation / object_value / source" style="swimlane;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1"><mxGeometry x="60" y="430" width="260" height="125" as="geometry"/></mxCell>
+        <mxCell id="attachments" value="patient_attachments&#xa;attachment_id PK&#xa;patient_id FK&#xa;attachment_type / file_name / preview_url" style="swimlane;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1"><mxGeometry x="370" y="430" width="280" height="125" as="geometry"/></mxCell>
+        <mxCell id="tasks" value="outpatient_tasks&#xa;task_id PK&#xa;patient_id FK&#xa;category / owner / due_date / status" style="swimlane;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1"><mxGeometry x="710" y="430" width="260" height="125" as="geometry"/></mxCell>
+        <mxCell id="contacts" value="patient_contact_logs&#xa;log_id PK&#xa;patient_id FK&#xa;contact_time / contact_type / result" style="swimlane;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1"><mxGeometry x="60" y="620" width="260" height="115" as="geometry"/></mxCell>
+        <mxCell id="drugs" value="drug_catalog&#xa;drug_id PK&#xa;generic_name / dosage_form / controlled / status" style="swimlane;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1"><mxGeometry x="390" y="620" width="250" height="115" as="geometry"/></mxCell>
+        <mxCell id="meds" value="patient_medications&#xa;medication_id PK&#xa;patient_id FK / drug_id FK&#xa;dosage / frequency / review_status" style="swimlane;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1"><mxGeometry x="710" y="620" width="280" height="115" as="geometry"/></mxCell>
+        <mxCell id="roles" value="roles / doctor_users&#xa;role_key PK / username PK&#xa;role / department / title" style="swimlane;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1"><mxGeometry x="60" y="20" width="250" height="115" as="geometry"/></mxCell>
+        <mxCell id="perm" value="drug_permissions&#xa;role PK/FK&#xa;allow_view / prescribe / review / execute / controlled" style="swimlane;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1"><mxGeometry x="800" y="20" width="280" height="115" as="geometry"/></mxCell>
+        <mxCell id="pred" value="prediction_results&#xa;result_id PK&#xa;patient_id FK&#xa;strategy / topk_json / advice_json / source" style="swimlane;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="1010" y="430" width="260" height="125" as="geometry"/></mxCell>
+        <mxCell id="governance" value="governance_records / audit_logs&#xa;record_id PK / log_id PK&#xa;patient_id FK nullable&#xa;category / severity / action / created_at" style="swimlane;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="1020" y="620" width="280" height="125" as="geometry"/></mxCell>
+        <mxCell id="e1" value="1:1" style="endArrow=block;html=1;" edge="1" parent="1" source="patient" target="profile"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e2" value="1:1" style="endArrow=block;html=1;" edge="1" parent="1" source="patient" target="archive"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e3" value="1:1" style="endArrow=block;html=1;" edge="1" parent="1" source="patient" target="history"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e4" value="1:N" style="endArrow=block;html=1;" edge="1" parent="1" source="patient" target="events"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e5" value="1:N" style="endArrow=block;html=1;" edge="1" parent="1" source="patient" target="attachments"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e6" value="1:N" style="endArrow=block;html=1;" edge="1" parent="1" source="patient" target="tasks"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e7" value="1:N" style="endArrow=block;html=1;" edge="1" parent="1" source="patient" target="contacts"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e8" value="1:N" style="endArrow=block;html=1;" edge="1" parent="1" source="patient" target="meds"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e9" value="1:N" style="endArrow=block;html=1;" edge="1" parent="1" source="drugs" target="meds"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e10" value="1:N" style="endArrow=block;html=1;" edge="1" parent="1" source="patient" target="pred"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e11" value="1:N" style="endArrow=block;html=1;" edge="1" parent="1" source="patient" target="governance"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e12" value="1:N" style="endArrow=block;html=1;" edge="1" parent="1" source="roles" target="perm"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

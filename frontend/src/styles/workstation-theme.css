@@ -1,33 +1,33 @@
 :root {
-  --ws-background: #f7fafb;
+  --ws-background: #eef5f6;
   --ws-surface: #ffffff;
-  --ws-surface-container: #ebeeef;
-  --ws-surface-container-low: #f1f4f5;
-  --ws-surface-container-high: #e5e9ea;
-  --ws-surface-container-highest: #e0e3e4;
-  --ws-surface-tint: #19686d;
-  --ws-primary: #004347;
+  --ws-surface-container: #f1f4f5;
+  --ws-surface-container-low: #f7fafb;
+  --ws-surface-container-high: #e8eeef;
+  --ws-surface-container-highest: #dfe8e9;
+  --ws-surface-tint: #005c61;
+  --ws-primary: #003434;
   --ws-primary-container: #005c61;
-  --ws-primary-fixed: #a8eff4;
-  --ws-secondary: #4c616c;
-  --ws-secondary-container: #cfe6f2;
-  --ws-tertiary: #5e2f0e;
-  --ws-tertiary-container: #ffdbc9;
+  --ws-primary-fixed: #dceced;
+  --ws-secondary: #526772;
+  --ws-secondary-container: #e8eeef;
+  --ws-tertiary: #155e75;
+  --ws-tertiary-container: #ddeff3;
   --ws-error: #ba1a1a;
   --ws-error-container: #ffdad6;
-  --ws-outline: #bec8c9;
-  --ws-outline-strong: #6f797a;
-  --ws-on-surface: #181c1d;
-  --ws-on-surface-variant: #3f4849;
+  --ws-outline: #d5dde0;
+  --ws-outline-strong: #9aa8ab;
+  --ws-on-surface: #181c1e;
+  --ws-on-surface-variant: #526772;
   --ws-on-primary: #ffffff;
-  --ws-shadow-soft: 0 20px 50px rgba(24, 28, 29, 0.06);
-  --ws-shadow-card: 0 18px 40px rgba(25, 104, 109, 0.08);
-  --ws-radius-xs: 6px;
-  --ws-radius-sm: 10px;
-  --ws-radius-md: 18px;
-  --ws-radius-lg: 24px;
-  --ws-font-headline: 'Public Sans', 'Microsoft YaHei', sans-serif;
-  --ws-font-body: 'Inter', 'Microsoft YaHei', sans-serif;
+  --ws-shadow-soft: 0 18px 48px rgba(24, 28, 30, 0.08);
+  --ws-shadow-card: 0 1px 6px rgba(24, 28, 30, 0.08);
+  --ws-radius-xs: 2px;
+  --ws-radius-sm: 3px;
+  --ws-radius-md: 4px;
+  --ws-radius-lg: 6px;
+  --ws-font-headline: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  --ws-font-body: 'Microsoft YaHei', 'PingFang SC', sans-serif;
 }
 
 body {
@@ -50,15 +50,15 @@ h4,
 
 h1,
 .page-title {
-  font-size: clamp(32px, 3vw, 56px);
-  line-height: 1.02;
+  font-size: clamp(24px, 2.4vw, 34px);
+  line-height: 1.15;
   font-weight: 800;
 }
 
 h2,
 .section-title {
-  font-size: clamp(24px, 2vw, 36px);
-  line-height: 1.08;
+  font-size: clamp(18px, 1.8vw, 24px);
+  line-height: 1.2;
   font-weight: 700;
 }
 
@@ -87,14 +87,14 @@ input,
 select,
 textarea {
   width: 100%;
-  min-height: 48px;
-  padding: 0 16px;
-  border: 0;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--ws-outline);
   border-radius: var(--ws-radius-sm);
-  background: var(--ws-surface-container-low);
+  background: var(--ws-surface);
   color: var(--ws-on-surface);
-  box-shadow: inset 0 0 0 1px rgba(190, 200, 201, 0.9);
-  transition: box-shadow 180ms ease, background 180ms ease, transform 180ms ease;
+  box-shadow: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
 }
 
 textarea {
@@ -113,20 +113,19 @@ select:focus,
 textarea:focus {
   outline: none;
   background: var(--ws-surface);
-  box-shadow:
-    inset 0 0 0 1px rgba(25, 104, 109, 0.3),
-    0 0 0 3px rgba(25, 104, 109, 0.12);
+  border-color: var(--ws-primary-container);
+  box-shadow: 0 0 0 2px rgba(0, 92, 97, 0.14);
 }
 
 table {
   width: 100%;
   border-collapse: separate;
-  border-spacing: 0 10px;
+  border-spacing: 0;
 }
 
 thead th {
-  padding: 0 18px 10px;
-  color: rgba(24, 28, 29, 0.72);
+  padding: 8px 10px;
+  color: var(--ws-secondary);
   font-family: var(--ws-font-headline);
   font-size: 12px;
   font-weight: 700;
@@ -136,8 +135,8 @@ thead th {
 }
 
 tbody td {
-  padding: 20px 18px;
-  background: rgba(255, 255, 255, 0.92);
+  padding: 8px 10px;
+  background: #fff;
 }
 
 tbody tr td:first-child {
@@ -160,11 +159,10 @@ tbody tr:nth-child(even) td {
 .status-banner,
 .patient-context-bar,
 .login-panel {
-  border: 0;
+  border: 1px solid var(--ws-outline);
   border-radius: var(--ws-radius-md);
-  background: rgba(255, 255, 255, 0.9);
+  background: #fff;
   box-shadow: var(--ws-shadow-card);
-  backdrop-filter: blur(20px);
 }
 
 .clinical-card,
@@ -172,6 +170,13 @@ tbody tr:nth-child(even) td {
 .metric-card,
 .empty-state-card {
   padding: 22px;
+}
+
+.clinical-card,
+.module-card,
+.metric-card,
+.empty-state-card {
+  padding: 14px;
 }
 
 .empty-state-card {
@@ -186,7 +191,7 @@ tbody tr:nth-child(even) td {
 .workstation-page {
   min-width: 0;
   display: grid;
-  gap: 28px;
+  gap: 14px;
 }
 
 .workstation-page-header {
@@ -194,9 +199,10 @@ tbody tr:nth-child(even) td {
   align-items: flex-start;
   justify-content: space-between;
   gap: 24px;
-  padding: 24px 28px;
+  padding: 14px 16px;
   border-radius: var(--ws-radius-md);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(240, 244, 245, 0.9));
+  border: 1px solid var(--ws-outline);
+  background: linear-gradient(180deg, #ffffff, #f2f6f7);
   box-shadow: var(--ws-shadow-soft);
 }
 
@@ -224,8 +230,8 @@ tbody tr:nth-child(even) td {
   font-family: var(--ws-font-headline);
   font-size: 11px;
   font-weight: 800;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-transform: none;
 }
 
 .eyebrow.inverse {
@@ -239,33 +245,26 @@ button.primary-button,
 button.secondary-button,
 .el-button {
   min-height: 48px;
-  border-radius: 12px;
+  border-radius: 3px;
   font-weight: 700;
-  transition: transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
-}
-
-.primary-button:hover,
-.secondary-button:hover,
-.sidebar-button:hover,
-.el-button:hover {
-  transform: translateY(-1px);
+  transition: border-color 160ms ease, background 160ms ease, opacity 160ms ease;
 }
 
 .primary-button,
 button.primary-button,
 .el-button--primary {
   border: 0;
-  background: linear-gradient(135deg, var(--ws-primary), var(--ws-primary-container));
+  background: linear-gradient(180deg, var(--ws-primary-container), var(--ws-primary));
   color: var(--ws-on-primary);
-  box-shadow: 0 16px 28px rgba(0, 67, 71, 0.18);
+  box-shadow: none;
 }
 
 .secondary-button,
 button.secondary-button {
   border: 0;
-  background: rgba(224, 227, 228, 0.9);
-  color: var(--ws-on-surface);
-  box-shadow: inset 0 0 0 1px rgba(190, 200, 201, 0.72);
+  background: #edf7fc;
+  color: var(--ws-secondary);
+  box-shadow: inset 0 0 0 1px var(--ws-outline);
 }
 
 .sidebar-button.ghost {
@@ -281,7 +280,6 @@ button.secondary-button {
 .el-button:disabled {
   opacity: 0.58;
   cursor: not-allowed;
-  transform: none;
 }
 
 .workspace-status-pill,
@@ -358,8 +356,8 @@ button.secondary-button {
 .medical-workbench-shell {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 360px minmax(0, 1fr);
-  background: linear-gradient(180deg, rgba(247, 250, 251, 0.94), rgba(241, 244, 245, 0.95));
+  grid-template-columns: 282px minmax(0, 1fr);
+  background: var(--ws-background);
 }
 
 .workstation-sidebar {
@@ -375,12 +373,66 @@ button.secondary-button {
   min-width: 0;
   display: grid;
   align-content: start;
-  gap: 24px;
-  padding: 16px 20px 28px;
+  gap: 12px;
+  padding: 0 12px 18px;
 }
 
 .workspace-content-region {
   min-width: 0;
+}
+
+.workspace-tabbar {
+  display: flex;
+  min-height: 34px;
+  align-items: flex-end;
+  gap: 3px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--ws-outline);
+  padding: 0 0 0 2px;
+}
+
+.workspace-tab {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--ws-outline);
+  border-bottom: 0;
+  border-radius: 4px 4px 0 0;
+  background: linear-gradient(180deg, #ffffff, #e8f4fb);
+  color: var(--ws-secondary);
+  overflow: hidden;
+}
+
+.workspace-tab.active {
+  background: linear-gradient(180deg, #159bd2, #0878ae);
+  border-color: #0878ae;
+  color: #fff;
+}
+
+.workspace-tab-title,
+.workspace-tab-close {
+  min-height: 30px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.workspace-tab-title {
+  padding: 0 10px;
+  white-space: nowrap;
+}
+
+.workspace-tab-close {
+  width: 26px;
+  border-left: 1px solid rgba(99, 131, 147, 0.36);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.workspace-tab-close:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
 }
 
 .workspace-topbar {
@@ -396,7 +448,7 @@ button.secondary-button {
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
-  padding: 16px 18px;
+  padding: 10px 12px;
 }
 
 .status-banner button {
@@ -433,7 +485,7 @@ button.secondary-button {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 18px 20px;
+  padding: 10px 12px;
 }
 
 .login-shell {

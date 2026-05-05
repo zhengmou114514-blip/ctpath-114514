@@ -57,6 +57,19 @@ function formatFileSize(value: number): string {
   return `${(value / 1024 / 1024).toFixed(1)} MB`
 }
 
+function formatActor(value?: string | null) {
+  if (!value) return '--'
+  const labels: Record<string, string> = {
+    demo_clinic: '门诊医生',
+    demo_nurse: '主管护士',
+    demo_pharmacist: '主管药师',
+    demo_admin: '系统管理员',
+    demo_archivist: '档案管理员',
+    demo_specialist: '专科医生',
+  }
+  return labels[value] ?? value
+}
+
 async function reloadAttachments() {
   if (!props.patientId) {
     attachments.value = []
@@ -142,7 +155,7 @@ onBeforeUnmount(() => {
       <div class="section-header">
         <div>
           <p class="eyebrow">电子档案 / 附件</p>
-          <h2>{{ title || '患者附件工作区' }}</h2>
+          <h2>{{ title || '患者附件' }}</h2>
           <p>区分患者照片、证件、转诊单、检查报告和知情同意书，支持上传、预览和上传人追踪。</p>
         </div>
         <button class="secondary-button" type="button" :disabled="loading" @click="reloadAttachments">刷新附件</button>
@@ -179,12 +192,12 @@ onBeforeUnmount(() => {
               {{ uploading ? '上传中...' : '上传附件' }}
             </button>
           </el-upload>
-          <p class="form-tip">支持图片、PDF、Word。演示时可上传患者照片、转诊单、检查报告或知情同意书。</p>
+          <p class="form-tip">支持图片、PDF、Word。可上传患者照片、转诊单、检查报告或知情同意书。</p>
         </div>
       </section>
 
       <div v-if="!attachments.length && !loading" class="empty-state-card compact-empty">
-        当前患者暂无附件记录，可直接上传演示附件。
+        当前患者暂无附件记录，可直接上传患者附件。
       </div>
 
       <div v-else class="attachment-table">
@@ -204,7 +217,7 @@ onBeforeUnmount(() => {
             <strong>{{ row.fileName }}</strong>
           </div>
           <div class="attachment-cell">{{ formatDateTime(row.uploadedAt) }}</div>
-          <div class="attachment-cell">{{ row.uploadedBy }}</div>
+          <div class="attachment-cell">{{ formatActor(row.uploadedBy) }}</div>
           <div class="attachment-cell">{{ formatFileSize(row.fileSize) }}</div>
           <div class="attachment-cell">
             <button class="text-link" type="button" @click="openPreview(row)">预览</button>
@@ -239,7 +252,7 @@ onBeforeUnmount(() => {
 
       <template #footer>
         <span class="preview-meta">
-          上传时间 {{ formatDateTime(previewRecord?.uploadedAt || '') }} / 上传人 {{ previewRecord?.uploadedBy || '--' }}
+          上传时间 {{ formatDateTime(previewRecord?.uploadedAt || '') }} / 上传人 {{ formatActor(previewRecord?.uploadedBy) }}
         </span>
       </template>
     </el-dialog>

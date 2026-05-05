@@ -27,7 +27,7 @@ const emit = defineEmits<{
 <template>
   <section v-if="props.noPermission" class="empty-state-card">
     <h3>当前账号无随访权限</h3>
-    <p>请使用医生或护士账号进入随访工作区。</p>
+    <p>请切换到医生或护士账号。</p>
   </section>
 
   <section v-else-if="props.loading" class="empty-state-card">
@@ -42,7 +42,7 @@ const emit = defineEmits<{
 
   <section v-else-if="props.modelUnavailable" class="empty-state-card">
     <h3>推理服务当前不可用</h3>
-    <p>随访工作区仍可正常查看任务、录入联系记录和更新状态，预测相关内容会稍后恢复。</p>
+    <p>随访任务、联系记录和状态更新可正常使用，预测服务恢复中。</p>
   </section>
 
   <FollowupPage

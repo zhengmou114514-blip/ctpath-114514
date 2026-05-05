@@ -408,7 +408,7 @@ onBeforeUnmount(() => {
         <section class="mini-panel" :class="{ 'is-focus-target': evidenceFocusState.active }">
           <div class="mini-head">
             <h4>路径解释</h4>
-            <span>展示模型推断链路，便于门诊复核</span>
+            <span>模型推断链路与门诊复核</span>
           </div>
           <ol class="plain-list ordered">
             <li

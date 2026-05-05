@@ -7,6 +7,7 @@ import {
   importModelDataset,
   listModelDatasets,
   listTrainingTasks,
+  syncModelCenterState,
 } from '../services/modelTrainingAdapter'
 import type { ModelTrainingParams } from '../services/types'
 
@@ -18,7 +19,7 @@ const tasks = ref(listTrainingTasks())
 const datasetName = ref('')
 const selectedDatasetId = ref('')
 const selectedFile = ref<File | null>(null)
-const modelName = ref('CTpath Temporal KG')
+const modelName = ref('时序知识图谱辅助诊疗模型')
 const importError = ref('')
 const importSuccess = ref('')
 const trainingError = ref('')
@@ -38,19 +39,10 @@ const runningTaskCount = computed(() => tasks.value.filter((item) => item.status
 const latestTask = computed(() => tasks.value[0] ?? null)
 const selectedDataset = computed(() => datasets.value.find((item) => item.datasetId === selectedDatasetId.value) ?? null)
 
-function refreshTrainingCenter() {
-  datasets.value = listModelDatasets()
-  tasks.value = listTrainingTasks()
-  const firstDataset = datasets.value[0]
-  if (!selectedDataset.value && firstDataset) {
-    selectedDatasetId.value = firstDataset.datasetId
-  }
-}
-
 function startPolling() {
   if (pollTimer !== null) return
   pollTimer = window.setInterval(() => {
-    tasks.value = listTrainingTasks()
+    void refreshTrainingCenter()
   }, 2000)
 }
 
@@ -86,6 +78,20 @@ function handleFileChange(event: Event) {
   selectedFile.value = input.files?.[0] ?? null
 }
 
+async function refreshTrainingCenter() {
+  try {
+    await syncModelCenterState()
+    datasets.value = listModelDatasets()
+    tasks.value = listTrainingTasks()
+    const firstDataset = datasets.value[0]
+    if (!selectedDataset.value && firstDataset) {
+      selectedDatasetId.value = firstDataset.datasetId
+    }
+  } catch (error) {
+    console.error(error)
+  }
+}
+
 async function handleImportDataset() {
   if (!selectedFile.value) {
     importError.value = '请先选择一个 CSV 数据集文件。'
@@ -99,7 +105,7 @@ async function handleImportDataset() {
 
   try {
     const record = await importModelDataset(selectedFile.value, datasetName.value)
-    refreshTrainingCenter()
+    await refreshTrainingCenter()
     selectedDatasetId.value = record.datasetId
     datasetName.value = ''
     selectedFile.value = null
@@ -121,13 +127,13 @@ async function handleLaunchTraining() {
   trainingError.value = ''
 
   try {
-    createTrainingTask({
+    await createTrainingTask({
       datasetId: selectedDataset.value.datasetId,
       datasetName: selectedDataset.value.datasetName,
-      modelName: modelName.value.trim() || 'CTpath Temporal KG',
+      modelName: modelName.value.trim() || '时序知识图谱辅助诊疗模型',
       params: params.value,
     })
-    refreshTrainingCenter()
+    await refreshTrainingCenter()
   } catch (error) {
     trainingError.value = error instanceof Error ? error.message : '训练任务创建失败。'
   } finally {
@@ -141,7 +147,7 @@ function handleBackToModelDashboard() {
 }
 
 onMounted(() => {
-  refreshTrainingCenter()
+  void refreshTrainingCenter()
   startPolling()
 })
 
@@ -156,7 +162,7 @@ onBeforeUnmount(() => {
       <div>
         <p class="eyebrow">模型中心</p>
         <h1>训练中心</h1>
-        <p>训练中心只处理数据集导入和模型训练任务，不进入医生首页，也不混入患者详情。</p>
+        <p>数据集导入、训练任务和模型版本记录。</p>
       </div>
       <div class="header-actions">
         <button class="secondary-button" type="button" @click="refreshTrainingCenter">刷新</button>
@@ -242,7 +248,7 @@ onBeforeUnmount(() => {
             <input
               :value="modelName"
               class="training-input"
-              placeholder="例如 CTpath Temporal KG"
+              placeholder="例如 时序知识图谱辅助诊疗模型"
               @input="modelName = ($event.target as HTMLInputElement).value"
             />
           </label>

@@ -5,11 +5,11 @@ echo ========================================
 echo.
 
 echo [1/2] 启动后端服务...
-start cmd /k "cd /d %~dp0app && python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000"
+start "CTpath Backend" powershell -ExecutionPolicy Bypass -File "%~dp0backend\scripts\start-backend.ps1"
 timeout /t 3 /nobreak >nul
 
 echo [2/2] 启动前端服务...
-start cmd /k "cd /d %~dp0frontend && npm run dev"
+start "CTpath Frontend" powershell -ExecutionPolicy Bypass -File "%~dp0backend\scripts\start-frontend.ps1"
 timeout /t 3 /nobreak >nul
 
 echo.

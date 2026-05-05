@@ -118,7 +118,7 @@ function queueButtonText() {
     <section v-if="props.recentViewed.length" class="recent-inline-panel">
       <div class="mini-head">
         <h4>最近查看</h4>
-        <span>便于快速回到刚才处理的患者详情。</span>
+        <span>快速回到刚才处理的患者详情。</span>
       </div>
       <div class="recent-list practical-recent-list">
         <button

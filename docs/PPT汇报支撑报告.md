@@ -246,7 +246,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 - 按钮位置：[LoginScreen.vue](/e:/CTpath-master/frontend/src/components/LoginScreen.vue)
 - 触发函数：[submitLogin](/e:/CTpath-master/frontend/src/App.vue)
 - 调用接口：[loginDoctor](/e:/CTpath-master/frontend/src/services/api.ts)
-- 对应后端接口：[main.py](/e:/CTpath-master/app/main.py)
+- 对应后端接口：[main.py](/e:/CTpath-master/backend/app/main.py)
 
 链路：
 
@@ -344,7 +344,7 @@ def predict(payload: PredictRequest, _: str = Depends(require_token)) -> Predict
     return PredictResponse(**result)
 ```
 
-这段逻辑来自 [main.py](/e:/CTpath-master/app/main.py)，很适合拿来说明“后端如何把预测和建议整合成一次返回”。
+这段逻辑来自 [main.py](/e:/CTpath-master/backend/app/main.py)，很适合拿来说明“后端如何把预测和建议整合成一次返回”。
 
 ## 9. 基于已训练数据进行预测是否合理
 
@@ -576,7 +576,7 @@ return {
 
 ### 14.3 后端预测接口
 
-- 文件：[main.py](/e:/CTpath-master/app/main.py)
+- 文件：[main.py](/e:/CTpath-master/backend/app/main.py)
 - 用途：说明后端如何整合模型预测和建议生成
 
 ### 14.4 模型服务
@@ -746,3 +746,4 @@ context = {
 - 后端配置从手工设置升级为 `.env` 自动加载。
 - 预测与建议的职责边界更加清晰，工程结构更合理。
 - 对大模型调用增加了缓存和限流，提升了系统稳定性和可维护性。
+

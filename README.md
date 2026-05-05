@@ -15,7 +15,7 @@
 3. `docs/PROJECT_LOGIC_MANIFEST.md`
 4. `frontend/src/router/index.ts`
 5. `frontend/src/pages/AppWorkspacePage.vue`
-6. `app/main.py`
+6. `backend/app/main.py`
 
 当前系统已经明确分为：
 
@@ -102,7 +102,7 @@ npm test -- src/pages/__tests__/PatientDetailPage.spec.ts src/pages/__tests__/Ap
 后端启动：
 
 ```powershell
-cd E:\CTpath-master
+cd E:\CTpath-master\backend
 conda activate ctpath
 uvicorn app.main:app --reload
 ```
@@ -119,13 +119,14 @@ uvicorn app.main:app --reload
 
 系统根据 `CTPATH_DB_URL` 判断数据源模式。
 
-- 未配置 `CTPATH_DB_URL` 时，后端使用 demo 数据，`/api/health` 返回 `mode=demo`
+- 未配置 `CTPATH_DB_URL` 时，后端会直接报错，除非显式开启 `CTPATH_ALLOW_DEMO_FALLBACK`
 - 配置 MySQL 连接后，后端使用 MySQL，`/api/health` 返回 `mode=mysql`
 
 MySQL 示例：
 
 ```powershell
 $env:CTPATH_DB_URL="mysql+pymysql://root:your_password@127.0.0.1:3306/ctpath?charset=utf8mb4"
+cd E:\CTpath-master\backend
 uvicorn app.main:app --reload
 ```
 
@@ -195,7 +196,7 @@ Get-Content .\app\mysql_seed_demo.sql | mysql -u root -p ctpath
 
 后端入口：
 
-- `app/main.py`
+- `backend/app/main.py`
 
 当前挂载的 API router：
 
@@ -332,7 +333,7 @@ Get-Content .\app\mysql_seed_demo.sql | mysql -u root -p ctpath
 3. 读 `docs/PROJECT_LOGIC_MANIFEST.md`，确认模块职责和 canonical 文件
 4. 看 `frontend/src/router/index.ts`，确认前端入口
 5. 看 `frontend/src/pages/AppWorkspacePage.vue` 和 `frontend/src/layouts/AppShell.vue`，确认壳层
-6. 看 `app/main.py`，确认后端路由和中间件
+6. 看 `backend/app/main.py`，确认后端路由和中间件
 7. 再按具体任务进入对应页面或 API
 ## 2026-04-21 前端界面收口记录
 

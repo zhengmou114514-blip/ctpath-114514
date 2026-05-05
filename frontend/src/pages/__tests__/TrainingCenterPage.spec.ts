@@ -1,11 +1,17 @@
 import { flushPromises, mount } from '@vue/test-utils'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import TrainingCenterPage from '../TrainingCenterPage.vue'
 
 const routerPush = vi.fn()
 const workspaceMock = {
   selectSection: vi.fn(),
 }
+
+const syncModelCenterState = vi.fn()
+const listModelDatasets = vi.fn()
+const listTrainingTasks = vi.fn()
+const importModelDataset = vi.fn()
+const createTrainingTask = vi.fn()
 
 vi.mock('vue-router', () => ({
   useRouter: () => ({
@@ -15,6 +21,14 @@ vi.mock('vue-router', () => ({
 
 vi.mock('../../composables/workspaceContext', () => ({
   useWorkspaceContext: () => workspaceMock,
+}))
+
+vi.mock('../../services/modelTrainingAdapter', () => ({
+  syncModelCenterState: (...args: unknown[]) => syncModelCenterState(...args),
+  listModelDatasets: (...args: unknown[]) => listModelDatasets(...args),
+  listTrainingTasks: (...args: unknown[]) => listTrainingTasks(...args),
+  importModelDataset: (...args: unknown[]) => importModelDataset(...args),
+  createTrainingTask: (...args: unknown[]) => createTrainingTask(...args),
 }))
 
 function mountPage() {
@@ -38,35 +52,73 @@ function mountPage() {
 }
 
 describe('TrainingCenterPage', () => {
+  let datasets: Array<Record<string, unknown>>
+  let tasks: Array<Record<string, unknown>>
+
   beforeEach(() => {
     routerPush.mockReset()
     workspaceMock.selectSection.mockReset()
-    window.localStorage.clear()
-    window.localStorage.setItem(
-      'ctpath.model.datasets',
-      JSON.stringify([
-        {
-          datasetId: 'ds-001',
-          datasetName: '慢病训练集',
-          fileName: 'chronic.csv',
-          rowCount: 128,
-          uploadedAt: '2026-04-21T10:00:00',
-          uploadedBy: '演示医生',
-          status: 'ready',
-          source: 'mock-local',
-        },
-      ])
-    )
-    window.localStorage.setItem('ctpath.model.training.tasks', '[]')
+    syncModelCenterState.mockReset()
+    listModelDatasets.mockReset()
+    listTrainingTasks.mockReset()
+    importModelDataset.mockReset()
+    createTrainingTask.mockReset()
+
+    datasets = [
+      {
+        datasetId: 'ds-001',
+        datasetName: '真实训练集',
+        fileName: 'chronic.csv',
+        rowCount: 128,
+        uploadedAt: '2026-04-21T10:00:00Z',
+        uploadedBy: 'model_admin',
+        status: 'ready',
+        source: 'api',
+      },
+    ]
+    tasks = []
+
+    syncModelCenterState.mockResolvedValue(undefined)
+    listModelDatasets.mockImplementation(() => datasets)
+    listTrainingTasks.mockImplementation(() => tasks)
+    importModelDataset.mockImplementation(async (_file: File, datasetName?: string) => {
+      const record = {
+        datasetId: 'ds-002',
+        datasetName: datasetName || '新增训练集',
+        fileName: 'uploaded.csv',
+        rowCount: 2,
+        uploadedAt: '2026-04-24T10:00:00Z',
+        uploadedBy: 'model_admin',
+        status: 'ready',
+        source: 'api',
+      }
+      datasets = [record, ...datasets]
+      return record
+    })
+    createTrainingTask.mockImplementation(async (input: Record<string, unknown>) => {
+      const record = {
+        taskId: 'task-001',
+        datasetId: input.datasetId,
+        datasetName: input.datasetName,
+        modelName: input.modelName,
+        status: 'queued',
+        createdAt: '2026-04-24T10:05:00Z',
+        triggeredBy: 'model_admin',
+        params: input.params,
+        logs: ['训练任务已创建，等待资源调度。'],
+        source: 'api',
+      }
+      tasks = [record, ...tasks]
+      return record
+    })
   })
 
-  afterEach(() => {
-    window.localStorage.clear()
-  })
-
-  it('launches a training task from an imported dataset', async () => {
+  it('loads training data from the adapter and launches a backend-backed task', async () => {
     const wrapper = mountPage()
     await flushPromises()
+
+    expect(syncModelCenterState).toHaveBeenCalled()
+    expect(wrapper.text()).toContain('真实训练集')
 
     const select = wrapper.get('select')
     await select.setValue('ds-001')
@@ -78,10 +130,13 @@ describe('TrainingCenterPage', () => {
     await launchButton!.trigger('click')
     await flushPromises()
 
-    const tasks = JSON.parse(window.localStorage.getItem('ctpath.model.training.tasks') || '[]') as Array<Record<string, unknown>>
-    expect(tasks).toHaveLength(1)
-    expect(tasks[0]!.datasetId).toBe('ds-001')
-    expect(String(wrapper.text())).toContain('排队中')
-    expect(String(wrapper.text())).toContain('慢病训练集')
+    expect(createTrainingTask).toHaveBeenCalledWith(
+      expect.objectContaining({
+        datasetId: 'ds-001',
+        datasetName: '真实训练集',
+      })
+    )
+    expect(wrapper.text()).toContain('排队中')
+    expect(wrapper.text()).toContain('真实训练集')
   })
 })

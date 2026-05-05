@@ -50,7 +50,6 @@ function diseaseLabel(patient: PatientSummary) {
       <div>
         <p class="eyebrow">电子病历 / 病历管理</p>
         <h1>电子病历工作台</h1>
-        <p>参考 openhis 的病历组织方式，拆成患者一览、历史住院/就诊记录和我的管理三个模块，避免把档案、随访和药品管理堆在一起。</p>
       </div>
       <div class="header-actions">
         <button class="secondary-button" type="button" @click="activeTab = 'records'">历史住院记录</button>
@@ -69,7 +68,7 @@ function diseaseLabel(patient: PatientSummary) {
         <div class="section-header">
           <div>
             <h2>患者一览</h2>
-            <p>快速选择患者，右侧联动历史记录与我的管理信息。</p>
+            <p>选择患者后查看历史记录与管理信息。</p>
           </div>
         </div>
 

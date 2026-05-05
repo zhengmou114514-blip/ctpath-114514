@@ -10,6 +10,7 @@ import FollowupWorkbenchPage from './FollowupWorkbenchPage.vue'
 import RoleWorkspacePage from './RoleWorkspacePage.vue'
 import PatientArchivePage from './PatientArchivePage.vue'
 import SystemCenterPage from './SystemCenterPage.vue'
+import { allowedSectionsForRole } from '../config/workspaceMenu'
 import type { AppSection } from '../types/workspace'
 
 const workspace = useWorkspaceController()
@@ -18,6 +19,17 @@ provideWorkspaceContext(workspace)
 const route = useRoute()
 const router = useRouter()
 const redirectingToLogin = ref(false)
+
+const allowedSections = computed(() =>
+  workspace.currentDoctor ? allowedSectionsForRole(workspace.currentDoctor.role) : []
+)
+const hasSectionAccess = computed(() =>
+  workspace.currentDoctor ? allowedSections.value.includes(workspace.section) : true
+)
+
+function defaultSectionForCurrentRole(): AppSection {
+  return allowedSections.value[0] ?? 'doctor'
+}
 
 const splitRouteSections: Record<string, AppSection> = {
   'nurse-followups': 'tasks',
@@ -155,8 +167,9 @@ function syncWorkspaceFromRoute() {
           ? requestedSection
           : 'tasks'
         : splitRouteSections[routeName] ?? 'doctor'
-  if (workspace.section !== nextSection) {
-    workspace.selectSection(nextSection)
+  const safeSection = allowedSections.value.includes(nextSection) ? nextSection : defaultSectionForCurrentRole()
+  if (workspace.section !== safeSection) {
+    workspace.selectSection(safeSection)
   }
 }
 
@@ -184,6 +197,10 @@ function ensureLoginRoute() {
 
 function handleSelectSection(nextSection: Parameters<typeof workspace.selectSection>[0]) {
   const currentRouteName = typeof route.name === 'string' ? route.name : ''
+  if (!allowedSections.value.includes(nextSection)) {
+    workspace.selectSection(defaultSectionForCurrentRole())
+    return
+  }
   workspace.selectSection(nextSection)
 
   if (currentRouteName === 'patient-detail') {
@@ -227,6 +244,12 @@ function handleDoctorOpenArchive(payload: { patientId: string; focus?: 'overview
 
 function handleDoctorOpenFollowup(payload: { patientId: string; section?: 'tasks' | 'contacts' | 'flow' }) {
   void workspace.openFollowupModule(payload.patientId, payload.section ?? 'tasks')
+}
+
+async function handleDoctorOpenModel(patientId: string) {
+  await workspace.openPatient(patientId, 'doctor')
+  workspace.selectSection('insights')
+  void router.push({ name: 'model-insight' })
 }
 
 function handleBackToList() {
@@ -303,7 +326,12 @@ watch(
     @back-to-list="handleBackToList"
   >
     <template #workspace>
-      <RouterView v-if="isSplitWorkspaceRoute" />
+      <section v-if="!hasSectionAccess" class="empty-state-card no-permission-card">
+        <h3>无权限访问</h3>
+        <p>当前角色暂无该业务权限，请联系管理员。</p>
+      </section>
+
+      <RouterView v-else-if="isSplitWorkspaceRoute" />
 
       <DoctorDashboardPage
         v-else-if="workspace.currentWorkspace === 'doctor'"
@@ -322,6 +350,7 @@ watch(
         @open-detail="handleOpenPatientDetail"
         @open-archive="handleDoctorOpenArchive"
         @open-followup="handleDoctorOpenFollowup"
+        @open-model="handleDoctorOpenModel"
       />
 
       <PatientArchivePage
@@ -401,7 +430,7 @@ watch(
 
       <section v-else class="empty-state-card">
         <h3>模块正在整理中</h3>
-        <p>当前工作区尚未挂载可展示内容，请返回医生工作台、患者档案或随访任务继续操作。</p>
+        <p>请返回医生工作台、患者档案或随访任务继续操作。</p>
       </section>
     </template>
   </AppShell>

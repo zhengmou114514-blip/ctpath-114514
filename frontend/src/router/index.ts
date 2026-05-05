@@ -9,12 +9,28 @@ import PatientArchivePrintPage from '../pages/PatientArchivePrintPage.vue'
 import GovernancePage from '../pages/GovernancePage.vue'
 import NurseFollowupsPage from '../pages/NurseFollowupsPage.vue'
 import PharmacyWarehousePage from '../pages/PharmacyWarehousePage.vue'
-import CareCoordinationPage from '../pages/CareCoordinationPage.vue'
 import TrainingCenterPage from '../pages/TrainingCenterPage.vue'
 import DrugCatalogPage from '../pages/medication/DrugCatalogPage.vue'
 import DrugPermissionManagementPage from '../pages/medication/permissions/DrugPermissionManagementPage.vue'
 import { useAuthStore } from '../stores/auth'
 import { pinia } from '../stores/pinia'
+import { allowedSectionsForRole } from '../config/workspaceMenu'
+import type { AppSection } from '../types/workspace'
+
+const routeSectionMap: Record<string, AppSection> = {
+  'nurse-followups': 'tasks',
+  'model-dashboard': 'model-dashboard',
+  'training-center': 'training-center',
+  'model-operations': 'model-operations',
+  'model-insight': 'insights',
+  governance: 'governance',
+  'role-workspaces': 'role-workspaces',
+  'drug-management': 'drug-management',
+  'drug-permission-management': 'drug-permission-management',
+  pharmacy: 'pharmacy',
+  coordination: 'coordination',
+  'patient-detail': 'doctor',
+}
 
 const routes: RouteRecordRaw[] = [
   {
@@ -83,7 +99,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'coordination',
         name: 'coordination',
-        component: CareCoordinationPage,
+        component: NurseFollowupsPage,
       },
     ],
   },
@@ -154,6 +170,14 @@ router.beforeEach((to) => {
 
   if (authenticated && to.path === '/login') {
     return { path: '/' }
+  }
+
+  if (authenticated && typeof to.name === 'string') {
+    const section = routeSectionMap[to.name]
+    const role = authStore.doctor?.role
+    if (section && role && !allowedSectionsForRole(role).includes(section)) {
+      return { path: '/', query: { denied: section } }
+    }
   }
 
   return true

@@ -6,7 +6,7 @@
       "type": "python",
       "request": "launch",
       "module": "uvicorn",
-      "cwd": "${workspaceFolder}",
+      "cwd": "${workspaceFolder}/backend",
       "console": "integratedTerminal",
       "args": [
         "app.main:app",
@@ -29,8 +29,8 @@
       "name": "CTpath Train (CPU)",
       "type": "python",
       "request": "launch",
-      "program": "${workspaceFolder}/models/learner.py",
-      "cwd": "${workspaceFolder}/models",
+      "program": "${workspaceFolder}/backend/models/learner.py",
+      "cwd": "${workspaceFolder}/backend/models",
       "console": "integratedTerminal",
       "args": [
         "--dataset",

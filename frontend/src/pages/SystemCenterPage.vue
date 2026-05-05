@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import type { AuthzCapabilityResponse, DoctorUser, HealthResponse, SystemAuditLog } from '../services/types'
-import { getAuthzCapabilities, getSystemAudit } from '../services/api'
+import type {
+  AuthzCapabilityResponse,
+  DatabaseBrowserPreviewResponse,
+  DatabaseBrowserTablesResponse,
+  DoctorUser,
+  HealthResponse,
+  SystemAuditLog,
+} from '../services/types'
+import { getAuthzCapabilities, getDatabaseBrowserTable, getDatabaseBrowserTables, getSystemAudit } from '../services/api'
 
 const props = defineProps<{
   doctor: DoctorUser
@@ -12,12 +19,71 @@ const loading = ref(false)
 const error = ref('')
 const caps = ref<AuthzCapabilityResponse | null>(null)
 const auditRows = ref<SystemAuditLog[]>([])
+const dbOverview = ref<DatabaseBrowserTablesResponse | null>(null)
+const dbPreview = ref<DatabaseBrowserPreviewResponse | null>(null)
+const selectedDbTable = ref('')
+const dbLoading = ref(false)
+const dbError = ref('')
 
-const modeLabel = computed(() => props.health?.mode ?? '--')
+const modeLabel = computed(() => (props.health?.status === 'ok' ? '业务数据源正常' : '服务连接中'))
+const healthLabel = computed(() => (props.health?.status === 'ok' ? '接口正常' : '接口待连接'))
 const modelLabel = computed(() => (props.health?.model_available ? '可用' : '不可用'))
 
 function formatTime(value: string) {
   return (value || '').replace('T', ' ').slice(0, 19) || '--'
+}
+
+function formatCell(value: unknown) {
+  if (value === null || value === undefined || value === '') return '--'
+  if (typeof value === 'object') return JSON.stringify(value)
+  return String(value)
+}
+
+function formatActor(value?: string | null) {
+  if (!value) return '--'
+  const labels: Record<string, string> = {
+    demo_clinic: '门诊医生',
+    demo_nurse: '主管护士',
+    demo_pharmacist: '主管药师',
+    demo_admin: '系统管理员',
+    demo_archivist: '档案管理员',
+    demo_specialist: '专科医生',
+  }
+  return labels[value] ?? value
+}
+
+async function loadDatabaseOverview() {
+  if (props.doctor.role !== 'admin') return
+  dbLoading.value = true
+  dbError.value = ''
+  try {
+    dbOverview.value = await getDatabaseBrowserTables()
+    const firstTable = dbOverview.value.tables[0]?.tableName ?? ''
+    selectedDbTable.value = firstTable
+    if (firstTable && dbOverview.value.connected) {
+      dbPreview.value = await getDatabaseBrowserTable(firstTable, 50)
+    } else {
+      dbPreview.value = null
+    }
+  } catch (e) {
+    dbError.value = e instanceof Error ? e.message : '数据库预览加载失败。'
+  } finally {
+    dbLoading.value = false
+  }
+}
+
+async function selectDbTable(tableName: string) {
+  if (!tableName || tableName === selectedDbTable.value || !dbOverview.value?.connected) return
+  dbLoading.value = true
+  dbError.value = ''
+  selectedDbTable.value = tableName
+  try {
+    dbPreview.value = await getDatabaseBrowserTable(tableName, 50)
+  } catch (e) {
+    dbError.value = e instanceof Error ? e.message : '数据表预览加载失败。'
+  } finally {
+    dbLoading.value = false
+  }
 }
 
 async function refresh() {
@@ -27,6 +93,7 @@ async function refresh() {
     const [capsResp, auditResp] = await Promise.all([getAuthzCapabilities(), getSystemAudit(80)])
     caps.value = capsResp
     auditRows.value = auditResp.items
+    await loadDatabaseOverview()
   } catch (e) {
     error.value = e instanceof Error ? e.message : '系统中心加载失败。'
   } finally {
@@ -44,7 +111,7 @@ onMounted(() => {
     <header class="card page-header">
       <div>
         <h2>系统中心</h2>
-        <p>查看当前账号、权限能力和最近系统审计记录。这里不承接模型训练和患者级诊疗内容。</p>
+        <p>当前账号、权限能力和最近系统审计记录。</p>
       </div>
       <button class="primary-button" :disabled="loading" @click="refresh">
         {{ loading ? '刷新中...' : '刷新' }}
@@ -55,9 +122,9 @@ onMounted(() => {
 
     <section class="card grid kpi-grid">
       <article class="kpi">
-        <span>运行模式</span>
+        <span>业务数据源</span>
         <strong>{{ modeLabel }}</strong>
-        <small>health: {{ props.health?.status ?? '--' }}</small>
+        <small>{{ healthLabel }}</small>
       </article>
       <article class="kpi">
         <span>模型状态</span>
@@ -69,6 +136,67 @@ onMounted(() => {
         <strong>{{ props.doctor.name }}</strong>
         <small>{{ props.doctor.department }} / {{ props.doctor.role }}</small>
       </article>
+    </section>
+
+    <section v-if="doctor.role === 'admin'" class="card database-browser">
+      <div class="section-head">
+        <div>
+          <h3>MySQL 数据库预览</h3>
+          <p class="hint">只读查看后端白名单业务表；不开放任意 SQL。</p>
+        </div>
+        <button class="secondary-button" :disabled="dbLoading" @click="loadDatabaseOverview">
+          {{ dbLoading ? '读取中...' : '刷新数据库' }}
+        </button>
+      </div>
+
+      <p v-if="dbError" class="error-banner">{{ dbError }}</p>
+      <p v-if="dbOverview && !dbOverview.connected" class="db-message">
+        {{ dbOverview.message }} 建议配置后端环境变量 <span class="mono">CTPATH_DB_URL=mysql+pymysql://用户:密码@127.0.0.1:3306/库名?charset=utf8mb4</span>。
+      </p>
+
+      <div v-if="dbOverview" class="db-layout">
+        <aside class="db-table-list">
+          <button
+            v-for="table in dbOverview.tables"
+            :key="table.tableName"
+            type="button"
+            :class="{ active: table.tableName === selectedDbTable }"
+            :disabled="!dbOverview.connected"
+            @click="selectDbTable(table.tableName)"
+          >
+            <strong>{{ table.tableName }}</strong>
+            <small>{{ table.description }} / {{ table.rowCount }} 行 / {{ table.columnCount }} 列</small>
+          </button>
+        </aside>
+
+        <article class="db-preview">
+          <template v-if="dbPreview">
+            <div class="db-preview-title">
+              <h4>{{ dbPreview.tableName }}</h4>
+              <span>{{ dbPreview.description }}</span>
+            </div>
+            <div class="db-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th v-for="column in dbPreview.columns.slice(0, 10)" :key="column.name">
+                      {{ column.name }}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(row, index) in dbPreview.rows.slice(0, 50)" :key="index">
+                    <td v-for="column in dbPreview.columns.slice(0, 10)" :key="column.name">
+                      {{ formatCell(row[column.name]) }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </template>
+          <div v-else class="empty-mini">当前没有可预览的 MySQL 表数据。</div>
+        </article>
+      </div>
     </section>
 
     <section class="card grid two-col">
@@ -98,14 +226,14 @@ onMounted(() => {
             <span>时间</span>
             <span>结果</span>
             <span>角色</span>
-            <span>账号</span>
+            <span>人员</span>
             <span>请求</span>
           </header>
           <article v-for="row in auditRows.slice(0, 30)" :key="row.logId">
             <span>{{ formatTime(row.createdAt) }}</span>
             <span class="badge" :class="row.result === 'denied' ? 'bad' : 'ok'">{{ row.result }}</span>
             <span>{{ row.role ?? '--' }}</span>
-            <span>{{ row.username ?? '--' }}</span>
+            <span>{{ formatActor(row.username) }}</span>
             <span class="mono">{{ row.method }} {{ row.path }}</span>
           </article>
         </div>
@@ -170,6 +298,112 @@ onMounted(() => {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+}
+
+.database-browser {
+  padding: 12px;
+  display: grid;
+  gap: 12px;
+}
+
+.section-head,
+.db-preview-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.section-head h3,
+.db-preview-title h4 {
+  margin: 0;
+}
+
+.db-message {
+  margin: 0;
+  border: 1px solid #e4c171;
+  border-radius: 8px;
+  background: #fff8e8;
+  color: #7a5614;
+  padding: 10px;
+  line-height: 1.6;
+}
+
+.db-layout {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 12px;
+  min-height: 260px;
+}
+
+.db-table-list {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  max-height: 420px;
+  overflow: auto;
+}
+
+.db-table-list button {
+  display: grid;
+  gap: 3px;
+  border: 1px solid var(--ws-border, #cfd9e5);
+  border-radius: 8px;
+  background: #fff;
+  padding: 8px;
+  color: var(--ws-title, #10263c);
+  text-align: left;
+}
+
+.db-table-list button.active {
+  border-color: #2f7ebd;
+  background: #eef7ff;
+}
+
+.db-table-list button:disabled {
+  opacity: 0.72;
+  cursor: not-allowed;
+}
+
+.db-table-list small,
+.db-preview-title span {
+  color: var(--ws-text-muted, #617385);
+}
+
+.db-preview {
+  min-width: 0;
+}
+
+.db-scroll {
+  border: 1px solid var(--ws-border, #cfd9e5);
+  border-radius: 10px;
+  overflow: auto;
+  max-height: 420px;
+}
+
+.db-scroll table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.db-scroll th,
+.db-scroll td {
+  border-bottom: 1px solid #e7edf4;
+  padding: 7px 9px;
+  max-width: 260px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.db-scroll th {
+  position: sticky;
+  top: 0;
+  background: #f1f6fb;
+  color: #2f4f70;
+  text-align: left;
 }
 
 .panel h3 {
@@ -278,7 +512,8 @@ onMounted(() => {
 
 @media (max-width: 1100px) {
   .kpi-grid,
-  .two-col {
+  .two-col,
+  .db-layout {
     grid-template-columns: 1fr;
   }
 

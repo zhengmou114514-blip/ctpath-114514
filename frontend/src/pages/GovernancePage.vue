@@ -73,7 +73,7 @@ onMounted(() => {
       <div>
         <p class="eyebrow">治理中心</p>
         <h1>治理看板</h1>
-        <p>面向数据质量、档案治理与异常巡检，不混入当前患者预测结果，也不承担训练中心职责。</p>
+        <p>数据质量、档案治理与异常巡检。</p>
       </div>
       <el-button type="primary" :loading="loading" @click="handleRefresh">刷新治理数据</el-button>
     </header>
@@ -141,7 +141,7 @@ onMounted(() => {
           <div class="section-header">
             <div>
               <h2>主索引冲突</h2>
-              <p>展示跨来源档案冲突或重复风险，便于后续治理确认。</p>
+              <p>跨来源档案冲突或重复风险。</p>
             </div>
           </div>
           <ul v-if="conflictRows.length" class="record-list">

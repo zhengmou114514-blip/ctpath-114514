@@ -20,6 +20,13 @@ const roleWorkspace = computed(() => {
 const roleWorkspaces = computed(() => getRoleWorkspaces())
 const authzSections = computed(() => workspace.authz?.allowedSections ?? [])
 const authzApis = computed(() => workspace.authz?.allowedApis ?? [])
+const roleLabels: Record<string, string> = {
+  doctor: '医生',
+  nurse: '护士',
+  pharmacist: '药师',
+  archivist: '档案员',
+  admin: '管理员',
+}
 
 const canOpenModelDashboard = computed(() => authzSections.value.includes('model-dashboard'))
 const canOpenTrainingCenter = computed(() => authzSections.value.includes('training-center'))
@@ -32,6 +39,8 @@ const modelSnapshot = computed(() =>
     modelMetrics: workspace.modelMetrics,
   })
 )
+
+const dataSourceLabel = computed(() => (workspace.health?.status === 'ok' ? '业务数据源正常' : '服务连接中'))
 
 const collaborationItems = computed<CoordinationItem[]>(() => coordinationBoard.value?.items.slice(0, 5) ?? [])
 
@@ -85,7 +94,7 @@ function labelForSection(section: string) {
     'drug-permission-management': '药品权限',
     'model-dashboard': '模型看板',
     'training-center': '训练中心',
-    'model-operations': '模型调试台',
+    'model-operations': '模型运行台',
     'role-workspaces': '权限与角色工作台',
     system: '系统中心',
   }
@@ -126,7 +135,7 @@ onMounted(() => {
       <div>
         <p class="eyebrow">权限中心</p>
         <h1>权限与角色工作台</h1>
-        <p>统一查看角色边界、协作分工、数据交互和模型后台门禁。这里是权限收口页，不替代医生首页或患者详情。</p>
+        <p>角色边界、协作分工、数据交互和模型后台门禁。</p>
       </div>
       <div class="header-actions">
         <button class="secondary-button" type="button" :disabled="loading" @click="refresh">刷新</button>
@@ -137,18 +146,18 @@ onMounted(() => {
     <section class="metric-grid four">
       <article class="metric-card">
         <span>当前角色</span>
-        <strong>{{ workspace.currentDoctor?.role ?? '--' }}</strong>
+        <strong>{{ roleLabels[workspace.currentDoctor?.role ?? ''] ?? '--' }}</strong>
         <p>{{ workspace.currentDoctor?.name ?? '--' }}</p>
       </article>
       <article class="metric-card">
         <span>可见模块</span>
         <strong>{{ authzSections.length }}</strong>
-        <p>来自后端 `/api/authz/capabilities`</p>
+        <p>当前账号可进入的业务模块</p>
       </article>
       <article class="metric-card">
-        <span>可访问 API</span>
+        <span>可执行能力</span>
         <strong>{{ authzApis.length }}</strong>
-        <p>当前角色的后端能力集合</p>
+        <p>按岗位授权的后端能力集合</p>
       </article>
       <article class="metric-card">
         <span>协同记录</span>
@@ -175,7 +184,7 @@ onMounted(() => {
             </div>
             <span class="role-badge">
               <el-icon><Lock /></el-icon>
-              {{ roleWorkspace.role }}
+              {{ roleLabels[roleWorkspace.role] ?? roleWorkspace.role }}
             </span>
           </div>
 
@@ -223,7 +232,7 @@ onMounted(() => {
           <article v-for="item in roleWorkspaces" :key="item.role" class="role-overview-item">
             <div class="role-overview-head">
               <strong>{{ item.title }}</strong>
-              <span>{{ item.role }}</span>
+              <span>{{ roleLabels[item.role] ?? item.role }}</span>
             </div>
             <p>{{ item.description }}</p>
             <div class="chip-row">
@@ -257,7 +266,7 @@ onMounted(() => {
             <span :class="canOpenTrainingCenter ? 'text-ready' : 'text-muted'">{{ canOpenTrainingCenter ? '已授权' : '未授权' }}</span>
           </li>
           <li>
-            <strong>模型调试台</strong>
+            <strong>模型运行台</strong>
             <span :class="canOpenModelOperations ? 'text-ready' : 'text-muted'">{{ canOpenModelOperations ? '已授权' : '未授权' }}</span>
           </li>
           <li>
@@ -293,7 +302,7 @@ onMounted(() => {
           <article v-for="card in dataInteractionCards" :key="card.title" class="flow-card">
             <div class="flow-head">
               <strong>{{ card.title }}</strong>
-              <span>{{ card.status }}</span>
+              <span>{{ card.status === 'locked' ? '未授权' : card.status }}</span>
             </div>
             <p>{{ card.detail }}</p>
           </article>
@@ -327,7 +336,7 @@ onMounted(() => {
       <div class="section-header">
         <div>
           <h2>模型后台与训练闭环</h2>
-          <p>授权后才开放模型看板、训练中心和调试台，避免把训练和治理动作混进临床主流程。</p>
+          <p>授权后才开放模型看板、训练中心和运行台，避免把训练和治理动作混进临床主流程。</p>
         </div>
       </div>
 
@@ -345,7 +354,7 @@ onMounted(() => {
         <article class="model-summary-card">
           <span>模型健康</span>
           <strong>{{ workspace.health?.model_available ? '可用' : '降级' }}</strong>
-          <small>{{ workspace.health?.mode ?? '--' }}</small>
+          <small>{{ dataSourceLabel }}</small>
         </article>
         <article class="model-summary-card">
           <span>回退比例</span>
@@ -358,7 +367,7 @@ onMounted(() => {
         <button class="secondary-button" type="button" :disabled="!canOpenInsights" @click="openSection('insights')">患者模型洞察</button>
         <button class="secondary-button" type="button" :disabled="!canOpenModelDashboard" @click="openSection('model-dashboard')">模型看板</button>
         <button class="secondary-button" type="button" :disabled="!canOpenTrainingCenter" @click="openSection('training-center')">训练中心</button>
-        <button class="secondary-button" type="button" :disabled="!canOpenModelOperations" @click="openSection('model-operations')">模型调试台</button>
+        <button class="secondary-button" type="button" :disabled="!canOpenModelOperations" @click="openSection('model-operations')">模型运行台</button>
       </div>
     </section>
   </section>

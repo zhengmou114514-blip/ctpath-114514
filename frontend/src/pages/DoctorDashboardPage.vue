@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { View } from '@element-plus/icons-vue'
+import { Aim, Files, FirstAidKit, TrendCharts } from '@element-plus/icons-vue'
 import type { PatientCase, PatientSummary } from '../services/types'
 
 const props = defineProps<{
@@ -22,91 +22,146 @@ const emit = defineEmits<{
   (e: 'open-detail', patientId: string): void
   (e: 'open-archive', payload: { patientId: string; focus?: 'overview' | 'events' }): void
   (e: 'open-followup', payload: { patientId: string; section?: 'tasks' | 'contacts' | 'flow' }): void
+  (e: 'open-model', patientId: string): void
 }>()
 
 const selectedPatientId = computed(() => props.selectedPatient?.patientId ?? '')
 
 const filteredPatients = computed(() => {
-  if (props.patients.length) return props.patients
-
+  const source = props.patients.length ? props.patients : props.allPatients
   const keyword = props.searchText.trim().toLowerCase()
   const risk = props.riskFilter
   const allRisk = !risk || props.riskOptions[0] === risk
 
-  return props.allPatients.filter((patient) => {
+  return source.filter((patient) => {
     const matchRisk = allRisk || patient.riskLevel === risk
-    const haystack = `${patient.patientId} ${patient.name} ${patient.primaryDisease}`.toLowerCase()
+    const haystack = `${patient.patientId} ${patient.name} ${patient.primaryDisease} ${patient.summary}`.toLowerCase()
     return matchRisk && (!keyword || haystack.includes(keyword))
   })
 })
 
-const previewPatients = computed(() => filteredPatients.value.slice(0, 5))
+const queuePatients = computed(() => filteredPatients.value.slice(0, 8))
+const focusPatient = computed<PatientCase | PatientSummary | null>(() => props.selectedPatient ?? queuePatients.value[0] ?? null)
 
-const highRiskCount = computed(() => props.allPatients.filter((patient) => patient.riskLevel.toLowerCase().includes('high')).length)
-const followupCount = computed(() => props.allPatients.filter((patient) => patient.summary.toLowerCase().includes('follow')).length)
+const highRiskCount = computed(() =>
+  props.allPatients.filter((patient) => patient.riskLevel.includes('高') || patient.riskLevel.toLowerCase().includes('high')).length
+)
+
+const followupCount = computed(() =>
+  props.allPatients.filter((patient) => {
+    const text = `${patient.summary} ${patient.lastVisit}`.toLowerCase()
+    return text.includes('随访') || text.includes('复诊') || text.includes('follow')
+  }).length
+)
+
 const modelCoverage = computed(() => {
   if (!props.allPatients.length) return '0%'
-  const readyCount = props.allPatients.filter((patient) => patient.dataSupport !== 'low').length
-  return `${Math.round((readyCount / props.allPatients.length) * 1000) / 10}%`
+  const covered = props.allPatients.filter((patient) => patient.dataSupport !== 'low').length
+  return `${Math.round((covered / props.allPatients.length) * 1000) / 10}%`
 })
 
-const focusPatient = computed(() => props.selectedPatient ?? previewPatients.value[0] ?? null)
+const overviewCards = computed(() => [
+  { label: '待处理患者', value: String(queuePatients.value.length), hint: '当前筛选队列', icon: Files },
+  { label: '高风险患者', value: String(highRiskCount.value), hint: '需优先复核', icon: FirstAidKit },
+  { label: '待随访患者', value: String(followupCount.value), hint: '需发起或查看随访', icon: Aim },
+  { label: '模型覆盖率', value: modelCoverage.value, hint: '按患者数据支持度估算', icon: TrendCharts },
+])
 
 function riskClass(level: string) {
   const raw = (level || '').toLowerCase()
-  if (raw.includes('high')) return 'risk-high'
-  if (raw.includes('medium')) return 'risk-medium'
+  if (raw.includes('高') || raw.includes('high')) return 'risk-high'
+  if (raw.includes('中') || raw.includes('medium')) return 'risk-medium'
   return 'risk-low'
+}
+
+function riskText(level: string) {
+  if (level.includes('高') || level.toLowerCase().includes('high')) return '高风险'
+  if (level.includes('中') || level.toLowerCase().includes('medium')) return '中风险'
+  return '低风险'
+}
+
+function archiveNumber(patient: PatientSummary | PatientCase) {
+  return patient.medicalRecordNumber || '待生成'
+}
+
+function completeness(patient: PatientSummary | PatientCase) {
+  if (patient.dataSupport === 'high') return '完整'
+  if (patient.dataSupport === 'medium') return '基本完整'
+  return '待补全'
+}
+
+function todoText(patient: PatientSummary | PatientCase) {
+  if (patient.riskLevel.includes('高') || patient.riskLevel.toLowerCase().includes('high')) return '风险复核'
+  if (patient.dataSupport === 'low') return '补全档案'
+  if (patient.summary.includes('随访') || patient.summary.includes('复诊')) return '随访跟进'
+  return '诊疗评估'
+}
+
+function recentCourseSummary(patient: PatientCase | PatientSummary) {
+  if ('timeline' in patient && patient.timeline.length) {
+    return patient.timeline[0]?.detail || patient.timeline[0]?.title || patient.summary
+  }
+  return patient.summary || '已纳入慢病门诊长期管理。'
+}
+
+function medicationSummary(patient: PatientCase | PatientSummary) {
+  if ('outpatientTasks' in patient && patient.outpatientTasks.length) {
+    return `当前需处理：${patient.outpatientTasks[0]?.title}`
+  }
+  return '当前用药信息可在患者详情中查看。'
+}
+
+function modelAdviceSummary(patient: PatientCase | PatientSummary) {
+  if ('careAdvice' in patient && patient.careAdvice.length) {
+    return patient.careAdvice[0] || '模型建议已生成。'
+  }
+  if (patient.dataSupport === 'low') return '建议先补全档案和病程记录后再运行模型分析。'
+  return '建议结合病程时间线、风险等级和当前用药进行复核。'
 }
 
 function openPatientDetail(patientId: string) {
   emit('open', patientId)
   emit('open-detail', patientId)
 }
+
+function openModel(patientId: string) {
+  emit('open', patientId)
+  emit('open-model', patientId)
+}
 </script>
 
 <template>
   <section class="doctor-dashboard-page workstation-page">
     <section v-if="noPermission" class="empty-state-card">
-      <h3>当前账号没有医生工作台权限</h3>
-      <p>请切换到具备医生角色的账号，或从左侧导航进入你当前角色可以访问的模块。</p>
+      <h3>无权限访问</h3>
+      <p>当前角色暂无该业务权限，请联系管理员。</p>
     </section>
 
     <template v-else>
-      <section class="dashboard-metrics">
-        <article class="metric-panel clinical-card">
-          <p class="eyebrow">患者总量</p>
-          <strong>{{ allPatients.length }}</strong>
-          <span>当前工作台可见患者数量</span>
-        </article>
-
-        <article class="metric-panel clinical-card accent-warm">
-          <p class="eyebrow">重点处理</p>
-          <strong>{{ highRiskCount + followupCount }}</strong>
-          <span>{{ highRiskCount }} 位高风险，{{ followupCount }} 位待随访</span>
-        </article>
-
-        <article class="metric-panel clinical-card accent-cool">
-          <p class="eyebrow">模型覆盖</p>
-          <strong>{{ modelCoverage }}</strong>
-          <span>按当前患者数据支持度估算</span>
+      <section class="overview-strip" aria-label="医生工作台概览">
+        <article v-for="card in overviewCards" :key="card.label" class="overview-card">
+          <el-icon><component :is="card.icon" /></el-icon>
+          <div>
+            <span>{{ card.label }}</span>
+            <strong>{{ card.value }}</strong>
+            <small>{{ card.hint }}</small>
+          </div>
         </article>
       </section>
 
-      <section class="dashboard-grid">
-        <main class="summary-panel clinical-card">
-          <div class="panel-header">
+      <section class="doctor-station-layout">
+        <main class="clinical-card queue-panel">
+          <div class="station-header">
             <div>
-              <p class="eyebrow">今日摘要</p>
-              <h2>待处理患者入口</h2>
-              <p>医生首页只保留摘要、筛选和少量主入口，不堆叠治理页或完整模型页内容。</p>
+              <p class="eyebrow">慢病门诊医生站</p>
+              <h2>待处理患者队列</h2>
             </div>
 
             <div class="queue-toolbar">
               <input
                 :value="searchText"
                 type="text"
-                placeholder="搜索患者编号、姓名或主诊断..."
+                placeholder="搜索患者姓名、档案号或主诊断"
                 @input="emit('update:search-text', ($event.target as HTMLInputElement).value)"
               />
               <select
@@ -118,80 +173,78 @@ function openPatientDetail(patientId: string) {
             </div>
           </div>
 
-          <div v-if="loadingPatients" class="empty-state-card">正在加载患者摘要...</div>
-          <div v-else-if="!previewPatients.length" class="empty-state-card">当前筛选条件下没有可展示的患者。</div>
+          <div v-if="loadingPatients" class="queue-state">正在加载患者队列...</div>
+          <div v-else-if="!queuePatients.length" class="queue-state">当前没有符合条件的待处理患者。</div>
 
-          <div v-else class="patient-brief-list">
-            <article
-              v-for="patient in previewPatients"
-              :key="patient.patientId"
-              class="patient-brief-card clinical-card"
-              :class="{ selected: selectedPatientId === patient.patientId }"
-              @click="emit('open', patient.patientId)"
-            >
-              <div class="patient-brief-main">
-                <div class="brief-head">
-                  <strong>{{ patient.name }}</strong>
-                  <span class="risk-pill" :class="riskClass(patient.riskLevel)">{{ patient.riskLevel }}</span>
-                </div>
-                <small>{{ patient.patientId }} · {{ patient.primaryDisease }}</small>
-                <p>{{ patient.summary }}</p>
-              </div>
-
-              <div class="brief-actions">
-                <button class="secondary-button" type="button" :disabled="loadingPatient" @click.stop="openPatientDetail(patient.patientId)">
-                  <el-icon><View /></el-icon>
-                  <span>查看详情</span>
-                </button>
-                <button
-                  class="ghost-button"
-                  type="button"
-                  @click.stop="emit('open-archive', { patientId: patient.patientId, focus: 'overview' })"
-                >
-                  档案
-                </button>
-                <button
-                  class="ghost-button"
-                  type="button"
-                  @click.stop="emit('open-followup', { patientId: patient.patientId, section: 'tasks' })"
-                >
-                  随访
-                </button>
-              </div>
-            </article>
-          </div>
+          <table v-else class="patient-queue-table">
+            <thead>
+              <tr>
+                <th>患者姓名</th>
+                <th>档案号</th>
+                <th>性别/年龄</th>
+                <th>主诊断</th>
+                <th>风险等级</th>
+                <th>最近就诊</th>
+                <th>档案完整度</th>
+                <th>待处理事项</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="patient in queuePatients"
+                :key="patient.patientId"
+                :class="{ selected: selectedPatientId === patient.patientId }"
+                @click="emit('open', patient.patientId)"
+              >
+                <td><strong>{{ patient.name }}</strong></td>
+                <td>{{ archiveNumber(patient) }}</td>
+                <td>{{ patient.gender }} / {{ patient.age }}岁</td>
+                <td>{{ patient.primaryDisease }}</td>
+                <td><span class="risk-pill" :class="riskClass(patient.riskLevel)">{{ riskText(patient.riskLevel) }}</span></td>
+                <td>{{ patient.lastVisit || '待补录' }}</td>
+                <td>{{ completeness(patient) }}</td>
+                <td>{{ todoText(patient) }}</td>
+                <td>
+                  <div class="row-actions">
+                    <button class="text-action" type="button" :disabled="loadingPatient" @click.stop="openPatientDetail(patient.patientId)">进入详情</button>
+                    <button class="text-action" type="button" @click.stop="openModel(patient.patientId)">查看模型</button>
+                    <button class="text-action" type="button" @click.stop="emit('open-followup', { patientId: patient.patientId, section: 'tasks' })">发起随访</button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </main>
 
-        <aside class="action-panel">
-          <article class="clinical-card spotlight-card" v-if="focusPatient">
+        <aside class="focus-panel">
+          <article v-if="focusPatient" class="clinical-card focus-card">
             <p class="eyebrow">当前关注患者</p>
-            <strong>{{ focusPatient.name }}</strong>
-            <span>{{ focusPatient.patientId }} · {{ focusPatient.primaryDisease }}</span>
-            <p>{{ focusPatient.summary }}</p>
-            <div class="spotlight-actions">
-              <button class="primary-button" type="button" @click="openPatientDetail(focusPatient.patientId)">进入详情</button>
-              <button
-                class="secondary-button"
-                type="button"
-                @click="emit('open-archive', { patientId: focusPatient.patientId, focus: 'overview' })"
-              >
-                打开档案
-              </button>
+            <div class="focus-title">
+              <strong>{{ focusPatient.name }}</strong>
+              <span class="risk-pill" :class="riskClass(focusPatient.riskLevel)">{{ riskText(focusPatient.riskLevel) }}</span>
             </div>
-          </article>
+            <p class="focus-meta">{{ archiveNumber(focusPatient) }} / {{ focusPatient.primaryDisease }}</p>
 
-          <article class="clinical-card shortcut-card">
-            <p class="eyebrow">主动作入口</p>
-            <div class="shortcut-list">
-              <button type="button" class="shortcut-button" @click="emit('open-followup', { patientId: previewPatients[0]?.patientId ?? '', section: 'tasks' })">
-                随访工作台
-              </button>
-              <button type="button" class="shortcut-button" @click="emit('open-archive', { patientId: previewPatients[0]?.patientId ?? '', focus: 'overview' })">
-                患者档案
-              </button>
-              <button type="button" class="shortcut-button" @click="previewPatients[0] && openPatientDetail(previewPatients[0].patientId)">
-                患者详情
-              </button>
+            <dl class="focus-summary">
+              <div>
+                <dt>最近病程摘要</dt>
+                <dd>{{ recentCourseSummary(focusPatient) }}</dd>
+              </div>
+              <div>
+                <dt>当前用药摘要</dt>
+                <dd>{{ medicationSummary(focusPatient) }}</dd>
+              </div>
+              <div>
+                <dt>模型建议摘要</dt>
+                <dd>{{ modelAdviceSummary(focusPatient) }}</dd>
+              </div>
+            </dl>
+
+            <div class="focus-actions">
+              <button class="primary-button" type="button" @click="openPatientDetail(focusPatient.patientId)">进入详情</button>
+              <button class="secondary-button" type="button" @click="openModel(focusPatient.patientId)">查看模型</button>
+              <button class="secondary-button" type="button" @click="emit('open-followup', { patientId: focusPatient.patientId, section: 'tasks' })">发起随访</button>
             </div>
           </article>
         </aside>
@@ -202,223 +255,270 @@ function openPatientDetail(patientId: string) {
 
 <style scoped>
 .doctor-dashboard-page {
-  gap: 26px;
+  gap: 12px;
 }
 
-.dashboard-metrics {
+.overview-strip {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
 }
 
-.metric-panel {
-  position: relative;
-  overflow: hidden;
+.overview-card {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid #c9d9df;
+  border-radius: 6px;
+  background: #fff;
+  padding: 12px 14px;
+}
+
+.overview-card :deep(.el-icon) {
   display: grid;
-  gap: 14px;
-  min-height: 176px;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 6px;
+  background: #e7f3f8;
+  color: #005c61;
 }
 
-.metric-panel::after {
-  content: '';
-  position: absolute;
-  width: 120px;
-  height: 120px;
-  top: 0;
-  right: 0;
-  border-radius: 0 0 0 36px;
-  background: rgba(207, 230, 242, 0.45);
+.overview-card span,
+.overview-card small {
+  display: block;
+  color: #526772;
+  font-size: 12px;
 }
 
-.metric-panel.accent-warm::after {
-  background: rgba(255, 219, 201, 0.55);
-}
-
-.metric-panel.accent-cool::after {
-  background: rgba(168, 239, 244, 0.34);
-}
-
-.metric-panel strong {
-  position: relative;
-  z-index: 1;
+.overview-card strong {
+  display: block;
+  color: #0f6f95;
   font-family: var(--ws-font-headline);
-  font-size: clamp(44px, 5vw, 58px);
-  line-height: 1;
+  font-size: 28px;
+  line-height: 1.1;
 }
 
-.metric-panel span {
-  position: relative;
-  z-index: 1;
-  color: rgba(24, 28, 29, 0.72);
-  font-size: 15px;
-}
-
-.dashboard-grid {
+.doctor-station-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) 320px;
-  gap: 20px;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 12px;
   align-items: start;
 }
 
-.summary-panel,
-.action-panel {
+.queue-panel,
+.focus-panel,
+.focus-card {
   min-width: 0;
   display: grid;
-  gap: 18px;
+  gap: 12px;
 }
 
-.panel-header {
+.station-header {
   display: flex;
-  align-items: flex-end;
+  align-items: end;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
+}
+
+.station-header h2 {
+  margin: 0;
+  color: #003434;
+  font-family: var(--ws-font-headline);
+  font-size: 24px;
 }
 
 .queue-toolbar {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .queue-toolbar input {
-  min-width: 280px;
+  width: 260px;
 }
 
 .queue-toolbar select {
-  min-width: 168px;
+  width: 132px;
 }
 
-.patient-brief-list {
-  display: grid;
-  gap: 12px;
+.queue-state {
+  border: 1px dashed #c9d9df;
+  border-radius: 6px;
+  color: #526772;
+  padding: 18px;
+  text-align: center;
 }
 
-.patient-brief-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 16px;
-  align-items: center;
+.patient-queue-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  border: 1px solid #b7d1de;
+  background: #fff;
+}
+
+.patient-queue-table th,
+.patient-queue-table td {
+  border-bottom: 1px solid #d5e6ef;
+  padding: 9px 8px;
+  color: #253f4c;
+  font-size: 13px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.patient-queue-table th {
+  background: linear-gradient(180deg, #f8fdff, #e3f1f8);
+  color: #315e73;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.patient-queue-table th:nth-child(1) { width: 86px; }
+.patient-queue-table th:nth-child(2) { width: 86px; }
+.patient-queue-table th:nth-child(3) { width: 82px; }
+.patient-queue-table th:nth-child(4) { width: 112px; }
+.patient-queue-table th:nth-child(5) { width: 88px; }
+.patient-queue-table th:nth-child(6) { width: 92px; }
+.patient-queue-table th:nth-child(7) { width: 96px; }
+.patient-queue-table th:nth-child(8) { width: 96px; }
+.patient-queue-table th:nth-child(9) { width: 190px; }
+
+.patient-queue-table tbody tr {
   cursor: pointer;
 }
 
-.patient-brief-card.selected {
-  border-color: rgba(0, 92, 97, 0.35);
-  box-shadow: 0 0 0 1px rgba(0, 92, 97, 0.16) inset;
+.patient-queue-table tbody tr:nth-child(even) td {
+  background: #f8fbfd;
 }
 
-.patient-brief-main {
-  display: grid;
-  gap: 8px;
+.patient-queue-table tbody tr:hover td,
+.patient-queue-table tbody tr.selected td {
+  background: #e8f6fd;
 }
 
-.brief-head {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.patient-brief-main strong {
-  font-size: 18px;
-}
-
-.patient-brief-main small {
-  color: rgba(63, 72, 73, 0.72);
-}
-
-.patient-brief-main p {
-  margin: 0;
-  color: rgba(63, 72, 73, 0.88);
-  line-height: 1.55;
-}
-
-.brief-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.brief-actions button {
+.risk-pill {
   display: inline-flex;
+  min-width: 54px;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.risk-high {
+  background: #ffe8df;
+  color: #9f3a15;
+}
+
+.risk-medium {
+  background: #fff4d8;
+  color: #865400;
+}
+
+.risk-low {
+  background: #d9f7f5;
+  color: #005c61;
+}
+
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.text-action {
+  min-height: 26px;
+  border: 1px solid #b7d1de;
+  border-radius: 3px;
+  background: #f8fdff;
+  color: #005c61;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 0 7px;
+}
+
+.focus-card {
+  position: sticky;
+  top: 12px;
+}
+
+.focus-title {
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
 }
 
-.spotlight-card {
-  display: grid;
-  gap: 12px;
-}
-
-.spotlight-card strong {
+.focus-title strong {
+  color: #003434;
   font-family: var(--ws-font-headline);
-  font-size: 26px;
+  font-size: 24px;
 }
 
-.spotlight-card span {
-  color: rgba(63, 72, 73, 0.76);
-}
-
-.spotlight-card p {
+.focus-meta {
   margin: 0;
-  color: rgba(63, 72, 73, 0.88);
+  color: #526772;
+}
+
+.focus-summary {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.focus-summary div {
+  border: 1px solid #d5e6ef;
+  border-radius: 6px;
+  background: #f8fbfd;
+  padding: 10px;
+}
+
+.focus-summary dt {
+  color: #003434;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.focus-summary dd {
+  margin: 5px 0 0;
+  color: #3f4848;
   line-height: 1.55;
 }
 
-.spotlight-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.shortcut-card {
+.focus-actions {
   display: grid;
-  gap: 12px;
+  grid-template-columns: 1fr;
+  gap: 8px;
 }
 
-.shortcut-list {
-  display: grid;
-  gap: 10px;
-}
-
-.shortcut-button {
-  min-height: 44px;
-  border: 0;
-  border-radius: 12px;
-  background: rgba(241, 244, 245, 0.95);
-  color: #004347;
-  font-family: var(--ws-font-headline);
-  font-weight: 800;
-  text-align: left;
-  padding: 0 16px;
-}
-
-@media (max-width: 1240px) {
-  .dashboard-grid {
+@media (max-width: 1280px) {
+  .overview-strip,
+  .doctor-station-layout {
     grid-template-columns: 1fr;
+  }
+
+  .focus-card {
+    position: static;
   }
 }
 
 @media (max-width: 900px) {
-  .dashboard-metrics {
-    grid-template-columns: 1fr;
-  }
-
-  .panel-header {
-    display: grid;
-  }
-
+  .station-header,
   .queue-toolbar {
     display: grid;
   }
 
   .queue-toolbar input,
   .queue-toolbar select {
-    min-width: 0;
+    width: 100%;
   }
 
-  .patient-brief-card {
-    grid-template-columns: 1fr;
+  .patient-queue-table {
+    table-layout: auto;
   }
 }
 </style>

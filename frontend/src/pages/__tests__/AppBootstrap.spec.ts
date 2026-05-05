@@ -40,7 +40,7 @@ describe('App bootstrap', () => {
     await nextTick()
 
     expect(router.currentRoute.value.path).toBe('/login')
-    expect(wrapper.text()).toContain('CTpath 慢病辅助诊疗业务系统')
+    expect(wrapper.text()).toContain('慢性病辅助诊疗系统')
     expect(wrapper.text()).toContain('登录系统')
   })
 })
