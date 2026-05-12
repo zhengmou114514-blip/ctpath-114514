@@ -162,11 +162,12 @@ function recentCourseSummary(patient: PatientCase | PatientSummary) {
   return patient.summary || '已纳入慢病门诊长期管理。'
 }
 
-function medicationSummary(patient: PatientCase | PatientSummary) {
+function actionSummary(patient: PatientCase | PatientSummary) {
   if ('outpatientTasks' in patient && patient.outpatientTasks.length) {
     return `当前需处理：${patient.outpatientTasks[0]?.title}`
   }
-  return '当前用药信息可在患者详情中查看。'
+  if (patient.dataSupport === 'low') return '建议先补全档案与病程资料。'
+  return '可进入患者详情继续查看档案、病程和附件。'
 }
 
 function modelAdviceSummary(patient: PatientCase | PatientSummary) {
@@ -174,7 +175,7 @@ function modelAdviceSummary(patient: PatientCase | PatientSummary) {
     return patient.careAdvice[0] || '模型建议已生成。'
   }
   if (patient.dataSupport === 'low') return '建议先补全档案和病程记录后再运行模型分析。'
-  return '建议结合病程时间线、风险等级和当前用药进行复核。'
+  return '建议结合病程时间线、风险等级和随访状态进行复核。'
 }
 
 function openPatientDetail(patientId: string) {
@@ -345,8 +346,8 @@ function primaryActionLabel() {
                 <dd>{{ recentCourseSummary(focusPatient) }}</dd>
               </div>
               <div>
-                <dt>当前用药摘要</dt>
-                <dd>{{ medicationSummary(focusPatient) }}</dd>
+                <dt>当前任务摘要</dt>
+                <dd>{{ actionSummary(focusPatient) }}</dd>
               </div>
               <div>
                 <dt>模型建议摘要</dt>

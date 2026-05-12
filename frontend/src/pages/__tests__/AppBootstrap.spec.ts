@@ -41,6 +41,9 @@ describe('App bootstrap', () => {
 
     expect(router.currentRoute.value.path).toBe('/login')
     expect(wrapper.text()).toContain('慢性病辅助诊疗系统')
+    expect(wrapper.text()).toContain('慢病门诊工作站')
+    expect(wrapper.text()).toContain('风险识别')
+    expect(wrapper.text()).toContain('随访闭环')
     expect(wrapper.text()).toContain('登录系统')
   })
 })

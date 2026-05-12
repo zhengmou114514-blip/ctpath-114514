@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type {
   DoctorUser,
   ImportPreviewPatient,
@@ -37,6 +37,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'open', patientId: string): void
+  (e: 'open-profile', patientId: string): void
+  (e: 'open-attachments', patientId: string): void
   (e: 'open-followup', payload: { patientId?: string; section?: 'tasks' | 'contacts' | 'flow' }): void
   (e: 'create'): void
   (e: 'import'): void
@@ -55,6 +57,8 @@ const diseaseFilter = ref('全部')
 const riskFilter = ref('全部')
 const archiveStatusFilter = ref('全部')
 const consentStatusFilter = ref('全部')
+const archivePageSize = 8
+const localPage = ref(1)
 
 const sourcePatients = computed(() => (props.allPatients.length ? props.allPatients : props.patients))
 const selected = computed(() => props.selectedPatient ?? sourcePatients.value.find((item) => item.patientId === props.selectedPatientId) ?? sourcePatients.value[0] ?? null)
@@ -64,7 +68,7 @@ const riskOptions = computed(() => ['全部', ...Array.from(new Set(sourcePatien
 const archiveStatusOptions = ['全部', '已建档', '待补全', '已停用']
 const consentOptions = ['全部', '已签署', '待签署', '家属授权', '已撤回']
 
-const filteredPatients = computed(() => {
+const filteredAllPatients = computed(() => {
   const text = keyword.value.trim().toLowerCase()
   return sourcePatients.value.filter((patient) => {
     const haystack = `${patient.name} ${patient.patientId} ${archiveNumber(patient)} ${patient.phone}`.toLowerCase()
@@ -74,7 +78,14 @@ const filteredPatients = computed(() => {
     if (archiveStatusFilter.value !== '全部' && archiveStatusLabel(patient.archiveStatus) !== archiveStatusFilter.value) return false
     if (consentStatusFilter.value !== '全部' && consentStatusLabel(patient.consentStatus) !== consentStatusFilter.value) return false
     return true
-  }).slice(0, 12)
+  })
+})
+
+const filteredTotalPages = computed(() => Math.max(1, Math.ceil(filteredAllPatients.value.length / archivePageSize)))
+const filteredPatients = computed(() => {
+  const page = Math.min(localPage.value, filteredTotalPages.value)
+  const start = (page - 1) * archivePageSize
+  return filteredAllPatients.value.slice(start, start + archivePageSize)
 })
 
 const activeCount = computed(() => sourcePatients.value.filter((item) => archiveStatusLabel(item.archiveStatus) === '已建档').length)
@@ -144,6 +155,22 @@ function latestCourse(patient: PatientSummary | PatientCase | null) {
 function openSelectedDetail() {
   if (selected.value) emit('open', selected.value.patientId)
 }
+
+function prevLocalPage() {
+  if (localPage.value > 1) localPage.value -= 1
+}
+
+function nextLocalPage() {
+  if (localPage.value < filteredTotalPages.value) localPage.value += 1
+}
+
+watch([keyword, diseaseFilter, riskFilter, archiveStatusFilter, consentStatusFilter], () => {
+  localPage.value = 1
+})
+
+watch(filteredTotalPages, (total) => {
+  if (localPage.value > total) localPage.value = total
+})
 </script>
 
 <template>
@@ -202,47 +229,59 @@ function openSelectedDetail() {
         <div v-if="props.loadingPatients" class="archive-state">正在加载患者档案...</div>
         <div v-else-if="!filteredPatients.length" class="archive-state">当前筛选条件下暂无患者档案。</div>
 
-        <table v-else class="archive-table">
-          <thead>
-            <tr>
-              <th>档案号</th>
-              <th>姓名</th>
-              <th>性别/年龄</th>
-              <th>主要疾病</th>
-              <th>当前阶段</th>
-              <th>风险等级</th>
-              <th>档案状态</th>
-              <th>同意书</th>
-              <th>最近就诊</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="patient in filteredPatients"
-              :key="patient.patientId"
-              :class="{ selected: selected?.patientId === patient.patientId }"
-              @click="emit('open', patient.patientId)"
-            >
-              <td>{{ archiveNumber(patient) }}</td>
-              <td><strong>{{ patient.name }}</strong></td>
-              <td>{{ patient.gender }} / {{ patient.age }}岁</td>
-              <td>{{ patient.primaryDisease }}</td>
-              <td>{{ stageLabel(patient.currentStage) }}</td>
-              <td><span class="risk-pill" :class="riskClass(patient.riskLevel)">{{ riskText(patient.riskLevel) }}</span></td>
-              <td>{{ archiveStatusLabel(patient.archiveStatus) }}</td>
-              <td>{{ consentStatusLabel(patient.consentStatus) }}</td>
-              <td>{{ patient.lastVisit || '待补录' }}</td>
-              <td>
-                <div class="table-actions">
-                  <button class="text-action" type="button" @click.stop="emit('open', patient.patientId)">详情</button>
-                  <button class="text-action" type="button" @click.stop="emit('open', patient.patientId)">附件</button>
-                  <button class="text-action" type="button" @click.stop="emit('open', patient.patientId)">补全</button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <template v-else>
+          <div class="archive-table-scroll">
+            <table class="archive-table">
+              <thead>
+                <tr>
+                  <th>档案号</th>
+                  <th>姓名</th>
+                  <th>性别/年龄</th>
+                  <th>主要疾病</th>
+                  <th>当前阶段</th>
+                  <th>风险等级</th>
+                  <th>档案状态</th>
+                  <th>同意书</th>
+                  <th>最近就诊</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="patient in filteredPatients"
+                  :key="patient.patientId"
+                  :class="{ selected: selected?.patientId === patient.patientId }"
+                  @click="emit('open', patient.patientId)"
+                >
+                  <td>{{ archiveNumber(patient) }}</td>
+                  <td><strong>{{ patient.name }}</strong></td>
+                  <td>{{ patient.gender }} / {{ patient.age }}岁</td>
+                  <td>{{ patient.primaryDisease }}</td>
+                  <td>{{ stageLabel(patient.currentStage) }}</td>
+                  <td><span class="risk-pill" :class="riskClass(patient.riskLevel)">{{ riskText(patient.riskLevel) }}</span></td>
+                  <td>{{ archiveStatusLabel(patient.archiveStatus) }}</td>
+                  <td>{{ consentStatusLabel(patient.consentStatus) }}</td>
+                  <td>{{ patient.lastVisit || '待补录' }}</td>
+                  <td>
+                    <div class="table-actions">
+                      <button class="text-action" type="button" @click.stop="emit('open', patient.patientId)">详情</button>
+                      <button class="text-action" type="button" @click.stop="emit('open-attachments', patient.patientId)">附件</button>
+                      <button class="text-action" type="button" @click.stop="emit('open-profile', patient.patientId)">补全</button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="archive-pagination">
+            <span>第 {{ localPage }} / {{ filteredTotalPages }} 页，共 {{ filteredAllPatients.length }} 名患者</span>
+            <div>
+              <button class="secondary-button" type="button" :disabled="localPage <= 1" @click="prevLocalPage">上一页</button>
+              <button class="secondary-button" type="button" :disabled="localPage >= filteredTotalPages" @click="nextLocalPage">下一页</button>
+            </div>
+          </div>
+        </template>
       </main>
 
       <aside class="clinical-card archive-summary-card">
@@ -272,8 +311,8 @@ function openSelectedDetail() {
 
           <div class="summary-actions">
             <button class="primary-button" type="button" @click="emit('open', selected.patientId)">进入详情</button>
-            <button class="secondary-button" type="button" @click="emit('open', selected.patientId)">上传附件</button>
-            <button class="secondary-button" type="button" @click="emit('open', selected.patientId)">补全档案</button>
+            <button class="secondary-button" type="button" @click="emit('open-attachments', selected.patientId)">上传附件</button>
+            <button class="secondary-button" type="button" @click="emit('open-profile', selected.patientId)">补全档案</button>
           </div>
         </template>
         <p v-else class="summary-empty">请选择患者档案。</p>
@@ -373,9 +412,14 @@ function openSelectedDetail() {
 
 .archive-table {
   width: 100%;
+  min-width: 960px;
   table-layout: fixed;
   border-collapse: collapse;
   border: 1px solid #b7d1de;
+}
+
+.archive-table-scroll {
+  overflow-x: auto;
 }
 
 .archive-table th,
@@ -491,6 +535,29 @@ function openSelectedDetail() {
 
 .summary-actions {
   display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.summary-actions .primary-button {
+  grid-column: 1 / -1;
+}
+
+.archive-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid #d5e6ef;
+  padding-top: 10px;
+  color: #526772;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.archive-pagination div {
+  display: flex;
+  gap: 8px;
 }
 
 @media (max-width: 1280px) {

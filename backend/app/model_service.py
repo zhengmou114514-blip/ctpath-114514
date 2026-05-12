@@ -184,20 +184,28 @@ class ChronicModelService:
         return entity_name in self._entity_to_id
 
     def _select_relations(self, primary_disease: str) -> List[str]:
-        if "糖尿病" in primary_disease:
+        disease = primary_disease.lower()
+        if "糖尿病" in primary_disease or "diabetes" in disease:
             return ["stage", "med_adherence", "bmi_bin", "bp_sys_bin", "support_system"]
-        if "肾" in primary_disease:
+        if "肾" in primary_disease or "kidney" in disease or "ckd" in disease:
             return ["stage", "bp_sys_bin", "mood_bin", "sleep_hours_bin", "support_system"]
-        if "阿尔茨海默" in primary_disease:
+        if "阿尔茨海默" in primary_disease or "alzheimer" in disease:
             return ["stage", "support_system", "sleep_hours_bin", "mood_bin", "has_caregiver"]
-        if "高血压" in primary_disease:
+        if "帕金森" in primary_disease or "parkinson" in disease:
+            return ["stage", "med_adherence", "sleep_hours_bin", "mood_bin", "support_system"]
+        if "高血压" in primary_disease or "hypertension" in disease:
             return ["bp_sys_bin", "bp_dia_bin", "med_adherence", "support_system", "stage"]
+        if "copd" in disease or "慢阻肺" in primary_disease:
+            return ["stage", "smoker", "support_system", "heart_rate_bin", "med_adherence"]
+        if "coronary" in disease or "heart" in disease or "stroke" in disease or "冠心" in primary_disease or "卒中" in primary_disease:
+            return ["stage", "bp_sys_bin", "cholesterol_bin", "lifestyle", "med_adherence"]
         return ["stage", "med_adherence", "support_system", "mood_bin"]
 
     def _choose_relations(self, primary_disease: str, latest_relations: Dict[str, str]) -> List[str]:
+        # 静态身份/诊断关系容易让链路预测退化成“确认已有疾病”，不适合医生端风险评估展示。
+        clinical_excluded = {"has_disease", "medical_history", "gender", "age_group", "employment_status"}
         relation_order = [
             "stage",
-            "has_disease",
             "med_adherence",
             "support_system",
             "bp_sys_bin",
@@ -208,10 +216,14 @@ class ChronicModelService:
             "cholesterol_bin",
             "has_caregiver",
         ]
-        observed = [relation for relation in relation_order if relation in latest_relations]
+        observed = [relation for relation in relation_order if relation in latest_relations and relation not in clinical_excluded]
         merged = observed + self._select_relations(primary_disease)
         deduped: List[str] = []
         for relation in merged:
+            if relation in clinical_excluded:
+                continue
+            if relation not in self._relation_to_id:
+                continue
             if relation not in deduped:
                 deduped.append(relation)
         return deduped[: max(3, len(self._select_relations(primary_disease)))]
@@ -274,6 +286,151 @@ class ChronicModelService:
             )
         return predictions
 
+    def _normalize_relation(self, relation: object) -> str:
+        raw = str(relation or "").strip()
+        key = raw.lower().replace("-", "_").replace(" ", "_")
+        aliases = {
+            "疾病": "has_disease",
+            "诊断": "has_disease",
+            "主要疾病": "has_disease",
+            "主诊断": "has_disease",
+            "既往史": "medical_history",
+            "病史": "medical_history",
+            "疾病阶段": "stage",
+            "病程阶段": "stage",
+            "当前阶段": "stage",
+            "阶段": "stage",
+            "current_stage": "stage",
+            "用药依从性": "med_adherence",
+            "服药依从性": "med_adherence",
+            "依从性": "med_adherence",
+            "adherence": "med_adherence",
+            "收缩压": "bp_sys_bin",
+            "收缩压分层": "bp_sys_bin",
+            "systolic_bp": "bp_sys_bin",
+            "sbp": "bp_sys_bin",
+            "舒张压": "bp_dia_bin",
+            "舒张压分层": "bp_dia_bin",
+            "diastolic_bp": "bp_dia_bin",
+            "dbp": "bp_dia_bin",
+            "bmi": "bmi_bin",
+            "体重指数": "bmi_bin",
+            "胆固醇": "cholesterol_bin",
+            "总胆固醇": "cholesterol_bin",
+            "cholesterol": "cholesterol_bin",
+            "家庭支持": "support_system",
+            "照护支持": "support_system",
+            "支持系统": "support_system",
+            "睡眠": "sleep_hours_bin",
+            "睡眠时长": "sleep_hours_bin",
+            "情绪": "mood_bin",
+            "心境": "mood_bin",
+            "吸烟": "smoker",
+            "smoking": "smoker",
+            "照护者": "has_caregiver",
+            "看护人": "has_caregiver",
+            "心率": "heart_rate_bin",
+            "生活方式": "lifestyle",
+            "压力": "stress_bin",
+            "步数": "steps_bin",
+        }
+        return aliases.get(raw, aliases.get(key, key))
+
+    def _normalize_object_value(self, relation: str, value: object) -> str:
+        raw = str(value or "").strip()
+        if not raw:
+            return ""
+        key = raw.lower().replace(" ", "_").replace("-", "_")
+
+        disease_aliases = {
+            "糖尿病": "Diabetes",
+            "diabetes": "Diabetes",
+            "高血压": "Hypertension",
+            "hypertension": "Hypertension",
+            "帕金森": "Parkinson's",
+            "帕金森病": "Parkinson's",
+            "parkinson": "Parkinson's",
+            "parkinson's": "Parkinson's",
+            "阿尔茨海默": "Alzheimer's",
+            "阿尔茨海默病": "Alzheimer's",
+            "alzheimer": "Alzheimer's",
+            "alzheimer's": "Alzheimer's",
+            "冠心病": "Heart_Disease",
+            "心脏病": "Heart_Disease",
+            "heart_disease": "Heart_Disease",
+            "coronary_heart_disease": "Heart_Disease",
+            "卒中": "Stroke",
+            "中风": "Stroke",
+            "stroke": "Stroke",
+        }
+        if relation in {"has_disease", "medical_history"}:
+            return disease_aliases.get(raw, disease_aliases.get(key, raw))
+
+        stage_aliases = {
+            "早期": "Early",
+            "初期": "Early",
+            "稳定期": "Early",
+            "early": "Early",
+            "中期": "Mid",
+            "中等": "Mid",
+            "mid": "Mid",
+            "middle": "Mid",
+            "晚期": "Late",
+            "后期": "Late",
+            "late": "Late",
+        }
+        if relation == "stage":
+            return stage_aliases.get(raw, stage_aliases.get(key, raw))
+
+        if raw in {"强", "良好", "好", "高", "high", "strong"} or key in {"high", "strong"}:
+            return "Strong" if relation == "support_system" else "High"
+        if raw in {"中", "一般", "中等", "medium", "moderate"} or key in {"medium", "moderate"}:
+            return "Moderate" if relation == "support_system" else "Medium"
+        if raw in {"弱", "差", "低", "low", "weak"} or key in {"low", "weak"}:
+            return "Weak" if relation == "support_system" else "Low"
+
+        quantile_relations = {
+            "bp_sys_bin",
+            "bp_dia_bin",
+            "bmi_bin",
+            "cholesterol_bin",
+            "heart_rate_bin",
+            "sleep_hours_bin",
+            "stress_bin",
+            "steps_bin",
+        }
+        if relation in quantile_relations:
+            quantile_aliases = {
+                "很低": "Q1",
+                "偏低": "Q1",
+                "低": "Q1",
+                "正常": "Q2",
+                "中": "Q2",
+                "中等": "Q2",
+                "偏高": "Q3",
+                "高": "Q3",
+                "较高": "Q3",
+                "很高": "Q4",
+                "重度": "Q4",
+                "q1": "Q1",
+                "q2": "Q2",
+                "q3": "Q3",
+                "q4": "Q4",
+            }
+            return quantile_aliases.get(raw, quantile_aliases.get(key, raw))
+
+        binary_aliases = {
+            "是": "Yes",
+            "有": "Yes",
+            "yes": "Yes",
+            "true": "Yes",
+            "否": "No",
+            "无": "No",
+            "no": "No",
+            "false": "No",
+        }
+        return binary_aliases.get(raw, binary_aliases.get(key, raw))
+
     def _build_event_profile(self, events: List[dict], primary_disease: str, as_of_time: Optional[str]) -> dict:
         cutoff = (as_of_time or "").strip()
         filtered: List[dict] = []
@@ -281,11 +438,13 @@ class ChronicModelService:
             event_time = str(item.get("event_time", "") or item.get("date", ""))[:10]
             if cutoff and event_time and event_time > cutoff[:10]:
                 continue
+            relation = self._normalize_relation(item.get("relation", ""))
+            object_value = self._normalize_object_value(relation, item.get("object_value", ""))
             filtered.append(
                 {
                     "event_time": event_time,
-                    "relation": item.get("relation", ""),
-                    "object_value": item.get("object_value", ""),
+                    "relation": relation,
+                    "object_value": object_value,
                     "note": item.get("note", ""),
                 }
             )
@@ -311,7 +470,7 @@ class ChronicModelService:
                 path_steps.append("{0} -> {1}: {2}".format(event_time or "unknown", relation, object_value))
 
         if primary_disease:
-            diseases.add(primary_disease)
+            diseases.add(self._normalize_object_value("has_disease", primary_disease))
 
         timepoints = sorted(set(item["event_time"] for item in filtered if item["event_time"]))
         relation_count = len(latest_relations)

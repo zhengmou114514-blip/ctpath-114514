@@ -1,0 +1,214 @@
+{
+  "docPath": "C:\\Users\\挣谋\\Downloads\\毕设论文.doc",
+  "exportedImages": [
+    "image1.png",
+    "image10.png",
+    "image11.png",
+    "image12.png",
+    "image13.png",
+    "image14.png",
+    "image15.png",
+    "image16.png",
+    "image17.png",
+    "image18.png",
+    "image19.png",
+    "image2.png",
+    "image20.png",
+    "image21.png",
+    "image22.png",
+    "image23.png",
+    "image3.png",
+    "image4.png",
+    "image5.png",
+    "image6.png",
+    "image7.png",
+    "image8.png",
+    "image9.png"
+  ],
+  "inlineShapes": [
+    {
+      "shapeIndex": 1,
+      "captionText": "\u0001",
+      "previousText": "",
+      "nextText": "图3.1 系统功能结构图",
+      "width": 424,
+      "height": 235
+    },
+    {
+      "shapeIndex": 2,
+      "captionText": "\u0001",
+      "previousText": "",
+      "nextText": "图3.2 医生用例图",
+      "width": 283,
+      "height": 200
+    },
+    {
+      "shapeIndex": 3,
+      "captionText": "\u0001",
+      "previousText": "",
+      "nextText": "图3.3 护士用例图",
+      "width": 283,
+      "height": 208
+    },
+    {
+      "shapeIndex": 4,
+      "captionText": "\u0001",
+      "previousText": "",
+      "nextText": "图3.4 药房人员用例图",
+      "width": 283,
+      "height": 220
+    },
+    {
+      "shapeIndex": 5,
+      "captionText": "\u0001",
+      "previousText": "",
+      "nextText": "图3.5 管理员用例图",
+      "width": 425,
+      "height": 233
+    },
+    {
+      "shapeIndex": 6,
+      "captionText": "\u0001",
+      "previousText": "",
+      "nextText": "图4.1 系统总体架构图",
+      "width": 425,
+      "height": 280
+    },
+    {
+      "shapeIndex": 7,
+      "captionText": "\u0001",
+      "previousText": "",
+      "nextText": "图4.2 系统功能模块设计图",
+      "width": 425,
+      "height": 115
+    },
+    {
+      "shapeIndex": 8,
+      "captionText": "\u0001",
+      "previousText": "",
+      "nextText": "图4.3 用户入口流程图",
+      "width": 340,
+      "height": 443
+    },
+    {
+      "shapeIndex": 9,
+      "captionText": "\u0001",
+      "previousText": "",
+      "nextText": "图4.4 临床业务流程图",
+      "width": 397,
+      "height": 310
+    },
+    {
+      "shapeIndex": 10,
+      "captionText": "\u0001",
+      "previousText": "",
+      "nextText": "图4.5 随访管理流程图",
+      "width": 368,
+      "height": 364
+    },
+    {
+      "shapeIndex": 11,
+      "captionText": "\u0001",
+      "previousText": "",
+      "nextText": "图4.6 药事管理流程图",
+      "width": 368,
+      "height": 381
+    },
+    {
+      "shapeIndex": 12,
+      "captionText": "\u0001",
+      "previousText": "模型辅助模块主要包括模型洞察和模型看板两部分。模型洞察面向当前患者，用于展示预测结果、证据摘要和建议来源，帮助医生理解当前患者的潜在风险。模型看板面向管理和监控场景，用于展示模型版本、模型指标、调用量、回退比例和健康状态等信息。模型输出结果仅作为诊疗辅助参考，不能替代医生的临床判断。",
+      "nextText": "图4.7 模型辅助流程图",
+      "width": 368,
+      "height": 322
+    },
+    {
+      "shapeIndex": 13,
+      "captionText": "\u0001",
+      "previousText": "",
+      "nextText": "图4.8 系统治理流程图",
+      "width": 368,
+      "height": 366
+    },
+    {
+      "shapeIndex": 14,
+      "captionText": "\u0001",
+      "previousText": "",
+      "nextText": "图4.9 核心数据ER图",
+      "width": 425,
+      "height": 290
+    },
+    {
+      "shapeIndex": 15,
+      "captionText": "\u0001",
+      "previousText": "",
+      "nextText": "图4.4 系统核心业务流程图",
+      "width": 424,
+      "height": 205
+    },
+    {
+      "shapeIndex": 16,
+      "captionText": "\u0001",
+      "previousText": "如图5.1所示，系统登录界面提供账号、密码及登录入口，能够满足不同业务角色的基础登录需求。用户登录成功后，系统保存当前身份状态，并根据角色信息展示可访问的业务页面。",
+      "nextText": "图5.1 系统登录界面",
+      "width": 284,
+      "height": 204
+    },
+    {
+      "shapeIndex": 17,
+      "captionText": "\u0001",
+      "previousText": "如图5.2所示，医生工作台将待处理患者队列和当前患者摘要集中展示，便于医生快速了解患者的当前状态。页面同时提供患者详情、风险查看和相关业务操作入口，从而提高慢病诊疗过程中的信息获取效率。",
+      "nextText": "图5.2 医生工作台运行效果图",
+      "width": 340,
+      "height": 187
+    },
+    {
+      "shapeIndex": 18,
+      "captionText": "\u0001",
+      "previousText": "",
+      "nextText": "图5.3 患者详情运行效果图",
+      "width": 283,
+      "height": 253
+    },
+    {
+      "shapeIndex": 19,
+      "captionText": "\u0001",
+      "previousText": "",
+      "nextText": "图5.4 模型辅助分析运行效果图",
+      "width": 424,
+      "height": 277
+    },
+    {
+      "shapeIndex": 20,
+      "captionText": "\u0001",
+      "previousText": "",
+      "nextText": "图5.5 护士随访运行效果图",
+      "width": 283,
+      "height": 198
+    },
+    {
+      "shapeIndex": 21,
+      "captionText": "\u0001",
+      "previousText": "",
+      "nextText": "图5.6 药品管理运行效果图",
+      "width": 283,
+      "height": 188
+    },
+    {
+      "shapeIndex": 22,
+      "captionText": "\u0001",
+      "previousText": "药品权限管理模块主要用于配置不同角色对药品相关操作的访问权限，避免无权限用户进行不符合职责范围的操作。",
+      "nextText": "图5.7 药品权限管理图",
+      "width": 284,
+      "height": 179
+    },
+    {
+      "shapeIndex": 23,
+      "captionText": "\u0001",
+      "previousText": "",
+      "nextText": "图5.8 模型看板与治理中心运行效果图",
+      "width": 283,
+      "height": 178
+    }
+  ]
+}

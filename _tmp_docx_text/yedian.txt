@@ -1,0 +1,427 @@
+审定成绩：
+二〇二二年 六 月
+重庆邮电大学教务处制
+学院本科毕业设计(论文)诚信承诺书
+本人郑重承诺：
+我向学院呈交的论文《                                    》，是本人在指导教师的指导下，独立进行研究工作所取得的成果。除文中已经注明引用的内容外，本论文不含任何其他个人或集体已经发表或撰写过的作品成果。对本文的研究做出重要贡献的个人和集体，均已在文中以明确方式标明并致谢。本人完全意识到本声明的法律结果由本人承担。
+年级
+专业
+班级
+承诺人签名
+年     月      日
+学位论文版权使用授权书
+本人完全了解重庆邮电大学有权保留、使用学位论文纸质版和电子版的规定，即学校有权向国家有关部门或机构送交论文，允许论文被查阅和借阅等。本人授权重庆邮电大学可以公布本学位论文的全部或部分内容，可编入有关数据库或信息系统进行检索、分析或评价，可以采用影印、缩印、扫描或拷贝等复制手段保存、汇编本学位论文。
+（注：保密的学位论文在解密后适用本授权书。）
+摘要
+随着互联网浪潮迅猛的推进，网络信息技术呈现出的社交方式愈来愈多样化，便利化。到目前时代几乎各个高校或企业都对于信息化的建设提出了更高的要求，而对于社交媒体而言，其形式呈现出百花齐放的态势。得利于各种轻微级的网页技术和框架的广泛应用，使得网络社区更加富有活力。其中论坛系统则是从互联网元年以来不断推陈出新，是一种是种提供在线讨论的程序，或由这些程序创建的以在线讨论为主的网站，其拉近了人们沟通意见发表观点的距离，是用户进行对话讨论的重要渠道。所以针对独立建设一个具有校园特色的BBS论坛，不仅可以展示出本学校的信息化建设的程度，还能展现出部分学校文化实力。本设计系统将根据高校的主要需求，构建校园论坛的大体框架与功能，以面向学生和老师获得更好的服务提供更优质的设计。
+为此将传统的论坛设计理念融合进入到高校服务中，根据校园论坛的基本需求选择合适的架构选型，以此作为基础设计基于JavaEE技术的整个Web论坛系统。该系统通过以spring框架技术的整合，包括以springmvc，mybatis，mysql等多种技术整合，并且与前端jsp页面进行搭桥，取用Browser/Server架构构建Java的动态Web校园网站论坛系统，本系统总体内容分为前后台两个部分，针对不同用户身份做出不同的功能选择，前台功能主要包括注册用户的版块进行对帖子的发放、内容回复与收藏、个人信息资料的修改和处理。后台管理则是以管理员身份需要对各个模块进行管理。
+整体系统简洁美观，用户通过浏览器可以进行对论坛网站的访问，基本功能完整健全，稳定性较高。完成系统的过程中，给出了该系统中的各个功能模块和数据库的具体实现思路，最后进行项目的总结和展望。
+关键词：校园社区，论坛系统，spring，Web，MVC
+Abstract
+With the rapid development of the Internet, the social ways of network information technology are becoming more and more diversified and convenient. In the current era, almost all colleges and universities or enterprises have put forward higher requirements for the construction of informatization, and for social media, its form shows a trend of flourishing. Benefit from the wide application of various minor web technologies and frameworks, the network community is more dynamic. The forum system is from the Internet since the first year of continuous innovation, is a kind of program to provide online discussion, or created by these programs based on online discussion website, which closes the distance between people communicate opinions and opinions, is an important channel for users to discuss dialogue. Therefore, the independent construction of a BBS forum with campus characteristics can not only show the degree of informatization construction of the school, but also show the cultural strength of some schools. This design system will construct the general framework and function of the campus forum according to the main needs of colleges and universities, so as to provide better service for students and teachers to provide better design.
+Therefore, the traditional forum design concept is integrated into the service of colleges and universities. According to the basic needs of the campus forum, the appropriate architecture selection is selected, and the whole Web forum system based on JavaEE technology is designed. Through the integration of spring framework technology, including springmvc, mybatis, mysql and other technologies, and bridging with the front-end jsp page, the system uses Browser / Server architecture to build a Java dynamic Web campus website forum system. The overall content of this system is divided into two parts : front and back, and different functional options are made for different user identities. The front function mainly includes the distribution of posts, content reply and collection, and modification and processing of personal information by the registered user ’ s block. Background management is to manage each module as an administrator.
+The whole system is simple and beautiful. Users can access the forum website through the browser. The basic functions are complete and sound, and the stability is high. In the process of completing the system, the specific implementation ideas of each functional module and database in the system are given. Finally, the summary and prospect of the project are carried out.
+Keywords: campus community, forum system, spring, Web, MVC
+目录
+第1章 引言1
+1.1研究背景和意义1
+1.2 国内外研究现状2
+1.2.1 国外研究现状2
+1.2.2国内研究现状2
+1.3 主要内容和工作安排3
+第2章 技术选型5
+2.1 技术选型简介5
+2.1.1 JSP页面5
+2.1.2JavaScript6
+2.1.3spring framework框架6
+2.1.4Mybatis持久层框架8
+2.1.5 MySQL数据库8
+2.2开发平台环境9
+2.3本章小结9
+第3章   需求分析10
+3.1 可行性分析10
+3.1.1技术可行性10
+3.1.2经济可行性10
+3.1.3操作可行性11
+3.2功能性需求11
+3.2.1 游客（未注册）/普通用户12
+3.2.2 管理员用户14
+3.3业务模块流程14
+3.3.1用户注册登录模块14
+3.3.2用户信息管理模块15
+3.3.3帖子发布管理模块16
+3.3.4后台管理模块17
+3.4非功能性需求18
+3.4.1 性能可靠性18
+3.4.2 安全性19
+3.4.3 可扩展性19
+3.5本章小结19
+第4章 系统设计20
+4.1 系统架构20
+4.2 模块功能设计21
+4.2.1  登录注册模块22
+4.2.2  个人信息管理模块22
+4.2.3  帖子信息模块23
+4.2.4 后台信息管理模块23
+4.3 系统项目结构设计24
+4.4 数据库结构设计25
+4.4.1 数据库设计原则25
+4.4.2 数据表概念结构设计25
+4.4.3数据库表结构设计26
+4.5本章小结29
+第5章 系统实现与测试30
+5.1 功能模块展示30
+5.1.1登陆注册30
+5.1.2个人信息管理31
+5.1.3帖子信息展示35
+5.1.4后台管理37
+5.2 系统测试39
+5.2.1 功能测试39
+5.2.2 性能测试42
+5.3 本章小结43
+第6章 总结和展望44
+6.1 工作总结44
+6.2 后续工作展望44
+参考文献46
+致谢48
+附录  英文翻译49
+第1章 引言
+研究背景和意义
+在互联网飞速发展不断变化的几十年以来，当前社会正在处于急剧变化的信息化转型状态，转型所带来的人口流动增强，数字经济发展，促进了众多网络论坛，BBS等网络社区的日新月异。网络论坛开始逐渐发展成为了人们对于语言交流，意见转接，信息表达的一种主要实现平台。最初的电子公告板网页的出现开辟了一种新的信息交流形式。随着时间的推移，技术的更新换代变成了功能更加齐全发达的在线论坛网站。目前市面上所熟知的大型企业级论坛网如天涯社区、贴吧、知乎等，在日常生活中影响着社会群体等各个方面，这些论坛因为能够承载非常巨大的日常访问量，无论是各种信息的及时处理能力还是多个不同平台的系统兼容性都能够得到相当的保障，但是国内的这些论坛平台存在的问题主要是功能太过冗余，信息量过于繁琐或者界面过于花哨不能够使用户得到良好的体验性[1]。在国外的平台主要有twitter，reddit等大型论坛，这些论坛对于话题的讨论形式基本上都有较强的针对性，某一个论坛中对于不同的话题内容都进行了很详细的分割和细化，各种领域的话题讨论都进行了严格的区分并拥有专业的社区管理者进行对于内容的审核和把关，需求方向更加专一。紧随着未来时代的信息变现，学生尤其是作为大学生一类的群体对于某些知识的获取方法已不仅仅局限于纸质书本，期刊之间。学生们能够通过越来越进化的网络环境，通过更加简易的方式在互联网之中收获到更充足的知识内容。而且除了学习之外，学生们还有其他日常活动需求，如交友闲聊，社团管理，物品交易。如果仅仅使用QQ微信等平台往往会因为信息的大量沉淀导致信息的滞后性而使得想要做的事情没有得到实现。此校园论坛平台可以服务于学生之间的生活心得交流，学习意见分享，或者是成立各种兴趣小组来将志同道合的人群组织起来。其中还拥有社区管理人员对各个板块中的帖子发布能够进行详细认真的审核和监督，能够及时处理好一些不良信息和垃圾内容
+本论坛平台旨在为全体用户提供一种实用性强，操作界面简洁易于使用，界面美观清楚的校园社区论坛平台[2]。
+1.2 国内外研究现状
+1.2.1 国外研究现状
+第一个公共拨号BBS 由Ward Christensen和Randy Suess开发。两人开始了计算机公告板系统或CBBS的初步工作。该系统的出现主要是由于一台备用的 S-100 总线计算机和一个早期的 Hayes 内部调制解调器。现代网络论坛起源于公告板，也就是所谓的计算机会议系统，是拨号公告板系统的技术演进。从技术角度来看，论坛或板是管理用户生成内容的Web 应用程序。早期的基于网络的论坛可以追溯到 1994 年，W3 联盟的 WIT 项目从那时开始，创建了许多替代方案。虚拟社区的内容通常围绕有固定用户的论坛发展。技术、电子游戏、体育、音乐、时尚、宗教和政治是论坛主题的热门区域，但有大量主题的论坛。互联网上流行的互联网俚语和图像在互联网论坛中广泛使用。
+论坛网页在Internet上随处可见，并使用各种编程语言来编写，例如PHP、Perl、Java和ASP。帖子的配置和记录可以存储在文本文件或数据库中。每个包都提供不同的功能，从最基本的提供纯文本帖子到更高级的包，提供多媒体支持和格式化代码。许多软件包可以轻松集成到现有网站中，以允许访问者对文章发表评论。
+论坛由树状目录结构组成。顶端是“类别”。一个论坛可以划分为相关讨论的类别。类别之下是子论坛，这些子论坛还可以有更多的子论坛。主题（通常称为主题）属于最低级别的子论坛，这些是成员可以开始讨论或发帖的地方。从逻辑上讲，论坛被组织成一组有限的通用主题（通常有一个主要主题）。
+1.2.2国内研究现状
+我国内陆的第一个BBS论坛建立于上个世纪90年代初，相较于国外的网络环境，本国的互联网基础起步较慢，从最开始难以普及的网络普及使得关于网络社区的总体访问量变得极少。但随着国内整体经济的迅速发展，个人群体逐渐的能够负担其一台个人计算机并能够进入到互联网的世界之中，所以一些网络论坛就如雨后春笋般逐步建立起来并慢慢的成为各种主题的虚拟社区，此后论坛网站不断得推陈出新，功能变得越来越强大，性能承载量也变得的越来越大，涵盖的话题领域也越来越丰富。这种繁荣的网络社会现象一直持续到达90年代末期。随后在新世纪初的互联网经济的打击下，非常之多的网络论坛社区的因缺乏维护未能幸免逐渐消失在互联网的历史浪潮之中。但又随着一些大型互联网企业的崛起，一些企业级的论坛平台走向了成熟的阶段并且取得了巨大的用户群体数量并且到目前为止也是经久不衰。然而，一些小型的地域性论坛平台却相较于大型论坛比较缺失，专注于校园的网上虚拟社区也屈指可数，相比于大型论坛的信息冗余，商业化过重的缺点。建立一种小型的论坛平台是对校园师生群体很有意义的一步。
+1.3 主要内容和工作安排
+本项目系统在进行合理的调查研究，结合用户群体的深层分析，相较不同于市面上一般性质的商业论坛，设计出了简洁实用，符合用户操作习惯的平台界面，并达到界面交互友好，便利快捷的预期效果。
+在本次的项目设计过程之中，将准备计划和完成一个具有某种特色，并且符合于大学校园特色的功能丰富的个性化学院BBS论坛系统，对于不同所属的高校仍然还有其重要内涵和基本意义，学校的信息化建设也应该在这些相关的方面不断地继续提供帮助，努力打造成一种覆盖更加全面和更加高效的论坛系统， 也许能将成为高校的一种文化的体现。使得这样的论坛可以更加方便服务于广大师生群体提供为一种沟通交流的平台和提高信息收集化的共享程度，将不仅限于提升学生们开放的视角，同时也能够丰富学生之间的复杂情感，对于校友间的沟通能够提高人们之间的感情结构，拉近交流的距离都是鉴于此变得更加有益。与此同时，一些少数具有情感障，或者出现心理问题的同学也能够通过到论坛网页中加以倾诉或发泄自己的话语也具有可能将此心理症状得到有效的缓解。最后将维护论坛社区的健康发展，管理者需要进行严格的监督审核处理工作。能够依据国家相关的法律法规将一些非法信息或者垃圾信息进行及时的杜绝，能够为整体用户创造一个健康交流的活力平台。
+本文主要工作内容以及工作安排由以下体现
+第1章为引言部分，简要介绍了关于本设计系统相关的背景调查研究，通过简要介绍国内外论坛网的发展史来体现了关于论坛社区对于网络社会的一些基本意义。
+第2章为技术选型和环境搭建，简单介绍了在开发此论坛网页项目的过程中选择的基本技术框架载体和搭建的环境平台。
+第3章为需求分析，对于该平台的用户群体进行分类并注意处理了其应用需求，分类别的进行不同关系间的需求并做好记录分析，注意列出所需要的功能点并计划实现目标。
+第4章为系统设计，是在做好本论坛平台需求分析的基础之上，简要概述了整个平台的架构层次和系统平台上具备的功能模块的细节设计，其中包括一些流程，架构，模块组织划分等内容叙述，对各个功能模块的设计流程进行核心的运行逻辑设计实现，对关键的过程做出了分析。
+第5章为系统实现与测试，对该系统平台的各种具体功能模块的实现目标展示出基本操作过程。并对平台系统作出相关的测试用例并解决出现问题的模块。
+第6章为总结与展望，总结该次毕业设计整体的工作表现和内容处理，做出对应的评价，针对不足的地方提出改善和建议，将问题保留下来进行后续的逐步改进和完善。
+第2章 技术选型
+2.1 技术选型简介
+本项目平台作为是在浏览器端的web网页，以B/S架构模型为基础通过建立表示层、业务层和数据持久层三层结构。前端主要采用的是基本的html5，css，JavaScript，JQuery，而后端的技术栈主要有JavaEE，Spring，SpringMVC，Mysql，Mybatis等。基本的开发环境是JetBrains旗下的IntelliJ Idea。
+2.1.1 JSP页面
+JSP（全称Jakarta Server Pages）是由升阳公司独立创造的一种动态网页技术标准。JSP能够部署在本地或网络服务器，是用来响应从客户端中传输的请求，然后通过所请求到的数据内容将自动生成HTML、XML或者其他格式内容的Web动态网页，最后再将处理后的视图返回到请求方[3]。
+图2.1 Jsp的生命周期
+2.1.2JavaScript
+JavaScript 作为一种轻量级的脚本语言， 也是一种嵌入式结构语言。它本身提供的核心语法不算很多，只能用来做一些数学和逻辑运算[5]。
+JavaScript，通常缩写为JS，是一种编程语言，与HTML和CSS同时存在于网页前端的编写，是万维网的核心技术之一。绝大多数网站在客户端使用 JavaScript进行网页设计行为，通常包含第三方库。所有专业Web 浏览器有一个专用的JavaScript 引擎来执行用户设备上的代码。JavaScript 是一种高级的、通常是即时编译的语言，它符合ECMAScript标准。它具有动态类型、基于原型的面向对象和一流的功能。它是多范式的，支持事件驱动、函数式和命令式 编程风格。它具有用于处理文本、日期、正则表达式、标准数据结构和文档对象模型的应用程序编程接口(API)[6]。
+当前的 JavaScript 生态系统有许多库和框架、已建立的编程实践以及在 Web 浏览器之外大量使用 JavaScript。此外，随着单页应用程序和其他大量 JavaScript 网站的兴起，已经创建了几个转译器来帮助开发过程。
+2.1.3spring framework框架
+Spring Framework是Java 平台的应用程序框架和依赖注入和控制反转的容器实现。该框架的核心功能可以被任何 Java 应用程序来使用，而且也有一些扩展可用于在Java EE（企业版）平台之上构建 Web 应用程序。尽管该框架没有强加任何特定的编程模型，但它作为Enterprise JavaBeans (EJB) 模型的补充已经在 J​​ava 社区中流行起来。Spring 框架是开源的[7]。
+Spring Framework 的核心是它的控制反转(IoC) 容器，它提供了使用反射配置和管理 Java 对象的一致方法。容器负责管理特定对象的对象生命周期：创建这些对象，调用它们的初始化方法，并通过将它们连接在一起来配置这些对象。由容器创建的对象也称为托管对象或bean。可以通过加载XML（可扩展标记语言）文件或检测配置类上的特定Java 注释来配置容器。这些数据源包含提供创建 bean 所需信息的 bean 定义。
+Spring 框架有自己的面向切面的编程(AOP) 框架，该框架将切面中的横切关注点模块化。创建一个单独的 AOP 框架的动机来自于这样一种信念，即应该可以提供基本的 AOP 特性，而在设计、实现或配置方面都不会太复杂。Spring AOP 框架还充分利用了 Spring 容器。
+Spring 框架具有自己的模型-视图-控制器(MVC) Web 应用程序框架， Spring 开发人员决定编写自己的 Web 框架，因为当时流行的Jakarta Struts Web 框架的糟糕设计，以及其他可用框架的缺陷。除此之外，他们认为表示层和请求处理层之间以及请求处理层和模型之间的分离不够充分。与 Struts 一样，Spring MVC 是一个基于请求的框架。[8]该框架为现代基于请求的框架必须处理的所有职责定义了策略接口。每个接口的目标是简单明了，以便 Spring MVC 用户可以轻松编写自己的实现，如果他们愿意的话。MVC 为更简洁的前端代码铺平了道路。所有接口都与Servlet API紧密耦合。这种与 Servlet API 的紧密耦合被一些人认为是 Spring 开发人员未能为基于 Web 的应用程序提供高级抽象。然而，这种耦合确保了 Servlet API 的特性仍然可供开发人员使用，同时还提供了一个高度抽象的框架来简化使用它。DispatcherServlet 类是框架的前端控制器，负责在HTTP 请求的执行阶段将控制权委派给各种接口[9]。
+图2.2  springMVC的工作流程
+2.1.4Mybatis持久层框架
+Mybatis是一种主流的ORM持久层框架，之前被称为iBatis，后来更名成为Mybatis，用来实现数据持久化的框架。可以同时应用于Java，.Net，Ruby三种语言，此框架是作用于JDBC并对其进行封装。
+表2.1  ORM框架Hibernate和Mybatis的区别
+Mybatis对所有的JDBC进行了封装，包括参数设置，SQL执行，结果集解析等，通过XML配置/注解的方式完成POJO与数据的映射，简单来说，使用MyBatis进行开发，主要完成两步操作：1、独立编写SQL语句  2、完成数据库与POJO的映射。
+Mybatis极大的简化了JDBC代码的流程开发，简单易用，易于操作，具有更好的灵活性，通过将SQL定义在XML中的方式能够明显的降低程序的耦合性，并且支持动态SQL，可以根据具体业务需求灵活改变功能，数据的移植性相对于Hibernate更高。
+2.1.5 MySQL数据库
+MySQL 是一个开源的关系数据库管理系统，开源表示所有开发人员都可以无条件使用该软件。所有技术开发者可以通过互联网或者是MySQL官方网站中提供的下载渠道进行免费下载，不需要为此付出费用。关系数据库将数据存储在单独的表中，而不是将所有数据放在一个大仓库中。数据库结构被组织成针对速度优化的物理文件[11]。具有数据库、表、视图、行和列等对象的逻辑模型提供了灵活的编程环境。其设置了管理不同数据字段之间关系的规则，例如一对一、一对多、唯一、必需或可选。MySQL 数据库服务器非常快速、可靠、可扩展且易于使用。MySQL Server 可以与其他应用程序、Web 服务器等一起在台式机或笔记本电脑上舒适地运行，几乎不需要特别的配置。如果将整台机器专用于 MySQL，还可以调整设置以利用所有可用的内存、CPU 能力和 I/O 容量。MySQL 还可以扩展到网络在一起的机器集群。
+2.2开发平台环境
+表2.2 开发环境及版本号
+2.3本章小结
+明确了相应的技术选型和开发环境环境的简述，详细叙述了介绍了在开发此论坛网页项目的过程中选择的基本技术载体和对应的框架技术内容。
+第3章   需求分析
+需求分析对于系统或软件项目的正常输出有着绝对重要的地位。需求应提前准确的分析记录、以可操作、可运行、可测试、可追溯为原则来与所需要的业务进行综合比较来取得针对系统的各种要求。最好能够充分的对于用户群体和生态背景详细构思内容。
+3.1 可行性分析
+可行性分析是对于整个平台系统的基本评测评估。可行性分析实质是能够以一种客观理性的角度来具体地表现出现有业务需求的优劣势。
+3.1.1技术可行性
+本平台的主要用户群体是来自PC浏览器端口，是前后端相互结合开发的应用服务系统。根据目前现有的前后端开发技术和流程设计都已经趋于成熟和完善，完全可以参照现有的开发方法进行功能实现的依据。
+对于前端技术而言，目前行业内的设计模式和体系都可以直接拿来借鉴和参考，同时也具有现成的构架模型进行开源使用，能够在短时间内完成页面的开发[12]。而相较于后端的业务逻辑设计，是一些常规的对于相关用户参与的数据的更改，删除，查询，增加的操作。在现目前的技术交流社区中也能够找到很多优秀和强大的设计解决方案来对系统平台的提供支持。
+3.1.2经济可行性
+本系统投入使用之后，因为平台的主要模块功能是针对个人用户的单项服务
+并未考虑商业化改造，主要经济成本只有运行维护的需要和向上服务器的租赁费用，在没有巨额流量冲入的前提下是应该没有特别需要担心的运营费用，所以据此推出经济上面该方案是可以执行的。
+3.1.3操作可行性
+界面是用户直接进行参与交互的媒介，根据本系统主要面向的服务群体是关于学校师生用户，在设计的过程中本着遵循简洁易懂的原则，通过一些简单的前端交互操作按键可以根据相关直接的提示可以快速地上手进行基本功能如浏览，发帖，跟帖，收藏，修改等相关操作，用户并不需要进行特别的教程学习即可进行使用，能够使得体验感更加优秀。
+3.2功能性需求
+本平台作为一个校园论坛系统，首先应该与市面上已经存在的论坛系统具备相同的一般性基础功能。该系统首先提供登录的用户自由发帖的权限，根据自己所选择的感兴趣的模块进行帖子内容的填写，这也是本系统最核心的功能，用户也能根据所选的板块查看主题内容有相关联系的帖子列表，关注自己喜欢的博主和收藏自己喜欢的帖子，在个人主页界面中能够查看编辑关于自己的基本信息，管理自己的帖子内容，形成一个完善的社区结构。对于基本的发帖管理，后台管理人员将被赋予权限对待所有的帖子进行审核查看，对论坛社区的环境进行有序的整理，并且还将统一管理所有的主题模块[14]。
+根据以上内容的需求分析，整个系统将分为四个主要的功能模块、分别是注册登录模块，用户信息管理模块，帖子发布模块和后台管理模块。以下将详细介绍各部分的功能作用和流程模式。
+图3.1 系统顶层数据流图
+图3.2 系统一层数据流图
+3.2.1 游客（未注册）/普通用户
+（1）当未注册用户输入地址进入到改平台系统主页时，在主页的能够观看到别人已经发布的帖子但不能进行进行除浏览之外其他的任何功能操作。在首页的部分位置将提示登录后才能进行有关操作。
+（2）普通用户相较于游客用户是在本平台进行过账号注册的角色，是在经过平台存留过账号数据信息的用户。在经过一些基本信息的注册录入之后，游客就能以此得到对应的用户账号，并能够操作更多的功能业务。
+（3）普通用户进入到论坛主页可以浏览到当前其他用户已经在该平台发布的帖子内容，并且在头部搜索框可以关键字的查询来对自己感兴趣的帖子内容进行搜索并查看，对于感兴趣的帖子内容之下可以跟进自己的独特想法和话语，可以与其他平台用户进行有序和谐的交流，交换不同的见解。
+（4）普通用户对于一些有想保留的帖子内容可以进行对其收藏，以便能够在个人主页之中方便找到之前已经收藏好的浏览记录，其次对于自己感兴趣的用户可以点击关注把其加入到自己的关注列表，其后能随时随地的查看自己关注的博主主页并能够及时的了解到其最近最新的发帖记录
+（5）普通用户能够在顶部的设置导航栏中随时修改自己的登录注册信息，更改自己的用户名，账号，邮箱地址或密码，也能够直接进入到自己的个人主页查看相关信息如自己的帖子内容和审核的状态，自己对其他帖子的评论内容，关注的用户列表和收藏的主题帖。用户也能够在主页中更改自己的基本信息，和更换设置用户头像或者对已经发布的帖子进行内容修改再次提交。
+图3.3   平台用户信息管理用例图
+图3.4   平台用户帖子用例图
+3.2.2 管理员用户
+（1）管理员用户参与的是与论坛主页不同的所独立的后台管理界面，管理员所拥有的账号内容独立于普通用户账户。管理员账户是根据存在的数据库中已有的账号内容，并且不能独自注册增加新的账号。管理员的设置是为了赋予其对平台数据的权限以此来对论坛环境氛围进行有效的治理
+（2）未登录的管理员进入后台界面时，只能进行对论坛的相关状态或者数据内容进行浏览访问，并不能够进行针对各种论坛用户数据进行权限的修改。
+（3）通过正确的信息录入登进的管理员用户能够查询到各种数据板块的列表内容，首先能够查看本平台所有的注册用户，根据需要与否对其进行删除管理，其次能够查看用户发布的帖子，对新发布的帖子内容进行审核处理，审核通过的帖子才能够在论坛主页中显示出来，对于违规的帖子作出拒绝处理不能发表。最后能根据不同主题内容贴添加板块分类，每一帖子都要所属于存在的主题版块中。
+图3.5   后台管理用例图
+3.3业务模块流程
+3.3.1用户注册登录模块
+系统最初始的功能是用户的登录和注册，这是一个系统的最基本的功能要求并且可以通过过此模块判断来访用户是游客还是普通用户，进行后续的功能判断。
+图3.6   游客注册流程图                               图3.7   用户登录流程图
+3.3.2用户信息管理模块
+该模块执行的是个人用户信息的基本管理操作，主要是平台普通用户能够正常的处理自己在系统上的数据信息，可以及时调整修改或者删除且此功能模块仅对于已经注册过的用户提供，游客用户并不能进行管理操作。
+图3.8   个人信息管理流程图图3.9   注册信息管理流程图
+3.3.3帖子发布管理模块
+此功能模块是为平台用户提供帖子的发放，以及对帖子内容的修改和浏览其他用户发帖内容等最核心的业务功能模块。用户根据自己所需来进行帖子的上传和收藏。
+图3.10   帖子信息管理流程图
+图3.11   首页浏览流程图                                        图3.12   帖子发布流程图
+3.3.4后台管理模块
+后台管理系统是针对管理人员需要所进行的业务模块，其中管理员账号不可进行注册只能由数据后台进行提供，管理员能够登入后台系统并被赋予权限进行相关帖子内容的管理和平台账户的管理，对每一则新发布的帖子都要进行内容审核判断是否合规，不合规内容需要进行拒绝通过处理，还可以新加主题板块，删除平台普通用户的功能。
+图3.13   账户管理流程图         图3.14   帖子审核管理流程图     图3.15   主题板块管理流程图
+3.4非功能性需求
+在通用的软件工程流程分析之中，非功能需求分析将是一种整个系统项目的运行标准的评判，不是针对某个业务具体功能实现，它应该是一个系统在运行期间所能满足的执行的质量要求和在后续更新所呈现的品质要求
+3.4.1 性能可靠性
+作为非功能需求的重要的一环，特别是在系统应用程序各个业务的相应时间，这是考察系统应用中人机交互的一个重要角度。系统平台不但要能够正常启动，而且还要使得页面响应时间变得更短，提高数据的处理速度，降低延迟都是评判性能的一个重要指标。
+表.3.1    性能可靠性列表
+3.4.2 安全性
+本系统虽然只是提供给用户的数据交流平台，但是对于数据存储，上传交换等方面也应该做到安全保密，防止个人信息数据的泄露，提高用户账户的安全级别能够加强系统牢固性。在账户类别的区分来进行不同权限的划分，使得数据权限的互相独立不受影响，平台用户账号也应该进行加密处理防止自己的账户内容被他人窃取。
+3.4.3 可扩展性
+系统的扩展性需求也属于软件工程中非功能性需求的设计属性，系统的可扩展性是指将系统内部代码进行模块化处理，尽力在不改变系统各种核心功能的情况下来降低各种底层业务逻辑的耦合性，这能够使得系统功能能够在后续更近中更方便开发人员的重写和优化，降低开发流程总量，提高系统维护效率[15]。同时也能够使得部分代码逻辑更加清晰明了，职能分明。减少开发人员的实际工作量后还能保证代码的共用和可读性。
+3.5本章小结
+对于该平台的用户群体进行分类并注意处理了其应用需求，分类别的进行不同关系间的需求并做好记录分析，讨论该平台系统各种方面的可行性，对于用户群体的实际操作进行功能分析，以及一些非功能需求的重要分析来做好相关指标。保证了系统运行服务的可靠性。
+第4章 系统设计
+系统总体设计是描述整个系统的各个架构的逻辑分层，需要介绍平台的整个架构模式，业务功能之间的运行流程和整个数据库的设计理念，能够清晰明了的展示出整个系统的结构。
+4.1 系统架构
+本平台系统采用了经典的B/S结构模式，前端采用的是HTML+CSS（bootstrap框架）+JS+JQuery的模式编写界面信息，用来确定平台页面的表现形式，后端采用的是Java+springMVC框架设计进行开发，负责系统平台的主要业务逻辑内容，数据库采用Mysql构建关系，本论坛系统架构图如下[17]。
+图4.1      系统架构图
+系统架构自下而上分为六层，分别是：运行环境、通信层、数据层、服务层、应用层、用户层。现针对其主要内容进行说明：
+（1）运行环境层是在创建web系统程序时，提供给程序运行的支持工具，通过服务器能够保证程序能够在浏览器上的运行效果。
+（2）通信层主要负责的是数据的传输，为用户和开发者提供大容量、高带宽、高可靠的网络通信基础设施，包括固定网络、移动网络和传输网络的公用网络，以及专用网络等。
+（3）对于数据层，除了传统的数据库系统用来存储基本的用户以及其他副产物数据，提供不同文件对象存储系统，对不同数据内容进行详细划分。
+（4）服务层提供系统的基本运行逻辑和采用的业务逻辑架构关系，把数据与相关业务联系起来，成为有机的运行整体。
+（5）应用层主要是在以下层提供的服务的基础上运行的业务，是本网站业务的直接体现，使用户能够使用的具体功能服务的体现，以可视化的界面作为最终表现。
+（6）用户层则是使用或者参与本系统的各类用户。
+4.2 模块功能设计
+本系统平台作为网上在线论坛网站，将整体进行了详细功能划分，主要包括个人信息管理模块，帖子发布信息模块，用户注册登录模块，后台信息管理模块。
+其中用户注册登录模块包括新用户的信息注册录入和平台的登入登出，个人信息管理模块包含了平台用户对自己基本信息的查看和编辑，关注相关用户和收藏兴趣帖子。帖子信息发布模块包括了用户个人查询帖子，对帖子的发布，评论跟帖，修改编辑帖子内容，删除自己的帖子或评论内容。后台管理模块包括对平台用户列表的浏览或删除，对用户发布的帖子内容审核，主题版块的新增划分以及管理用户的登录。以下是本系统整体功能模块图。
+图4.2      系统功能模块图
+4.2.1  登录注册模块
+登陆注册模块包含游客角色的注册认证以及登录登出行为操作，游客用户访问首页，开始进行注册时通过Jsp页面中<div>标签进行部分css中的bootstrap框架内容，制作出合适的注册界面形式，用户在注册提示框中输入需要的相关数据，然后调用ajax的方法标准将用户输入的数据进行简单的整合验证处理，通过ajax将固定数据请求方式和内容并对用户名不重复，两次密码保持一致的简单验证处理，正确通过的信息将以POST请求到后端控制层做出后续逻辑处理。登录模式于注册大致相像，也需要通过ajax进行对数据的简单验证通过数据库传来的信息做出对比检测是否含有当前用户。
+4.2.2  个人信息管理模块
+个人信息管理界面中包含了个人主页的显示，以及对个人信息中的各个数据内容作出修改，在对应的个人主页Jsp页面之中通过镶嵌在<span>标签中的EL表达式获取到当前用户的数据资料，并在合适的<div>标签样式中将个人资料显示在主页中,并且设置编辑按钮跳转到信息编辑页面框,同样以填写正确形式的表单内容提交到后端user控制层重定向到相关修改的业务方法，最后在完成数据变化的保存。
+4.2.3  帖子信息模块
+此模块内容作为核心业务功能，涵盖整个帖子的浏览，发布，修改和删除以及对他人帖子的评论和收藏。
+首页上方导航栏由搜索提示框，根据关键字查询到帖子的数据内容并在首页中列出，用户通过首页上方的发帖按钮选项跳转进入到帖子发布的提示框界面，根据输入提示进行各项内容的输出。在经历正确格式的验证下完成帖子的发布，并将该条帖子的审核状态设置为0（{listArticle.status==0 }）提交到后台管理处待审核，成功通过的帖子的状态信息变更为1，最后成功显示在首页上并显示发帖人和发帖内容。首页帖子顺序按时间先后排序，并且登录用户提供收藏和关注按钮（当前用户不能关注自己和收藏自己的帖子）点击即可在个人主页中保存到相关数据，此时将变更用户或帖子信息状态并发送到后端业务方法中进行数据处理。
+在首页中每则帖子末尾显示评论输入框，可以出入数据内容并发表在当前主题帖之后，所有的评论内容都可以在个人主页中查看或删除。
+4.2.4 后台信息管理模块
+后台管理模块包含的是管理用户的主要业务功能，首先需要进行登录验证信息内容与后台数据检验是否用户该管理用户，点击提交按钮时，触发confirmPass事件，会进行弹框提醒以防无视错误信息提交。
+进入后台首页界面之后，左方会显示三项目录选项分别为用户管理，帖子管理和板块管理，点击不同模块会跳转进入对应管理页面，每种数据信息通过基本的表格标签来对应数据的属性，通过EL表达式获取到对应存储的内容并显示到当前页面列表，对于每条信息的任意修改操作都会有提示框来确认是否处理，更改后的内容将会提交到数据后台进行逻辑业务的常规处理并以持久层的方法将变更数据事务提交到数据库。
+4.3 系统项目结构设计
+该论坛平台系统由前后端两个部分共同组成，前端主要由各种统一的jsp文件作为视图层的显示，其中主要是由一些前端代码进行对页面样式的调整和固定，以不同的<div>层叠样式标签对页面的作出页面中各个不同模块的样式分割。所有的前端文件都存放在java/weapps目录层下作为Web应用的网页，并于xml配置文件和一些前端静态资源一起。后端文件中的业务逻辑主要堆放再main/java目录下，再进行更细化的拆分。java/resources下主要是mybatis的配置文件进行与spring的整合和对数据库的访问。整体结构如下图。
+图4.3      系统功能模块图
+（1）bean目录下是实体类，主要是针对数据表内容进行javabean实体模型的创建
+（2）controller目录下是控制层对前端页面的的不同请求，把这期间的收到的请求经过不同逻辑方法处理之后封装成model并返回到具体对应的视图页面进行展示。其中会使用到@Controller注解进行对每个控制器类进行定义标记，再通过@RequestMapping注解将请求和处理的控制器的方法进行关联，建立映射关系。
+（3）Dao目录是数据持久层的映射接口，spring中的applicationContext..xml配置文件扫描目录下所有接口并注入到ioc容器里。
+（4）service目录下对应controller下不同控制器行各种业务逻辑的的实现类，需要调用到已经定义好的Dao中的mapper接口，导入的是mapper下的实现方法，体现出各业务逻辑间的独立性。
+（5）mapper层用mybatis的逆向工程实现于数据库的直接操作和访问，且于Dao中的接口方法进行一一对应。
+4.4 数据库结构设计
+4.4.1 数据库设计原则
+（1）保证数据库的数据一致性，数据来源应该统一，防止数据杂糅保证各种数据的有效性，对每条数据的字段都要备注规范的命名信息。
+（2）表结构应该符合相关泛式标准，以能够减少数据冗余和耦合度的前提下又能够降低表的复杂度，使得数据输入输出速度不至于过于缓慢[20]。
+（3）保证数据库的约束性，按照需求进行表的正规设计。
+4.4.2 数据表概念结构设计
+本系统平台将根据普适数据库设计流程作为方法，逐步进行每个过程的分析和设计，通过最初输出的需求分析为基础划分不同的的表结构，将各个实体之间的关系具体表现出来，形成有着关联关系的表结构并输出对应的E-R模型图，最后根据输出的E-R图详细设计出具体的表结构和其中会出现的数据实体对象[22]。
+图4.4      系统整体E-R图
+4.4.3数据库表结构设计
+通过构建概念模型，找出了实体和事物之间具体清晰的关系并整理出对应的各个实体间的数据库表结构，再最后进行整合。
+（1）用户个人信息表结构 user_info
+表4.1     用户个人信息数据表
+（2）论坛帖子信息状态表结构 article_post
+表4.2     论坛帖子信息状态数据表
+（3）用户关注信息表结构  watchlist
+表4.3     用户关注表结构
+（4）帖子收藏信息表结构 collection
+表4.4     帖子收藏表结构
+（5）帖子评论信息表 commet
+表4.5     帖子评论表结构
+（6）帖子主题板块表 topic_plate
+表4.6     帖子主题板块表结构
+（7）头像图标表 via
+表4.7   头像图标表结构
+（8）管理用户信息表 post_admin
+表4.8     管理用户表结构
+4.5本章小结
+是在做好本论坛平台需求分析的基础之上，简要概述了整个平台的架构层次和系统平台上具备的功能模块的细节设计，其中包括一些流程，架构，模块组织划分等内容叙述，对各个功能模块的设计流程进行核心的运行逻辑设计实现，对关键的过程做出了分析。
+第5章 系统实现与测试
+该节主要展示平台系统中所有的功能模块的实现结果，将需求分析中反馈的各个目标作出完整实现并由相应成品展示，并根据通用的测试方法进行对系统的各个部分作出测试，并根据测试结果作出改善。
+5.1 功能模块展示
+5.1.1登陆注册
+（1）登陆页面实现结果
+图5.1      平台登录页面成功
+图5.2      平台登录页面失败
+（2）注册页面实现结果
+图5.3      平台注册页面
+图5.4      注册成功
+5.1.2个人信息管理
+（1）基本信息设置
+图5.5     基本信息修改
+（2）个人资料管理
+这里可以进行随时对自己的基本信息修改保存，以及上传个性化头像
+图5.6     个人资料编辑
+图5.7    用户头像上传
+（3）个人主页
+这个页面展示的是的人主页的相关内容，用户能够查看自己的帖子动态和审核状态，能够随时修改保存已经通过的帖子，以及自己的评论，关注和收藏。
+图5.8     用户个人主页
+图5.9     个人评论列表
+图5.10     个人关注列表
+图5.11     访问他人主页
+图5.12     个人收藏列表
+5.1.3帖子信息展示
+（1）首页信息
+此模块展示的是论坛主页的详细页面信息。
+图5.13  论坛首页
+图5.14  关键字搜索框
+（2）帖子信息管理
+用户发布帖子的页面和审核状态的查询信息。
+图5.15     帖子发布页面
+图5.16     帖子审核状态
+图5.17     帖子内容修改
+图5.18     帖子评论回复
+5.1.4后台管理
+（1）管理员登录
+图5.19     管理员登录页面
+（2）管理列表
+展示管理员用户的操作界面，对用户，帖子审核和主题模块的权限管理
+图5.20     用户列表管理
+图5.21     帖子审核列表管理
+图5.22     主题板块列表
+图5.23     板块新增页面
+5.2 系统测试
+5.2.1 功能测试
+系统测试是将已经确定完成的应用程序作为评估一些特性和指标的过程。在某种规定的状态条件下能够以各种测试用例来将程序进行合理化的操作，以此来检验整个系统下的完整和正确性。再经历过全面的测试操作后，能够找到存在的程序错误和不足，对于系统后续的迭代开发或者是功能维护都有着不可替代的作用。
+主要测试方法采用的是黑盒测试，并不考虑具体内部构造的运作逻辑，只需要针对某一特定的功能进行预设的输入数据，得到相应的输出反馈判断该功能是否达到设计的实际结果，整体用例设计需要考虑正确有效或错误无效输入验证，确保用例覆盖到全面。
+（1）注册登录功能测试
+表5.1    注册登录功能测试用例
+（2）用户个人信息功能测试
+表5.2   用户个人信息功能测试用例
+（3）发帖信息功能测试
+表5.3 发帖信息功能测试用例
+（4）评论功能测试
+表5.4  评论功能测试用例
+（5）收藏关注功能测试
+表5.5 收藏关注功能测试用例
+5.2.2 性能测试
+（1）兼容性测试
+验证该平台系统在不同浏览器下的运行状态是否正常，各个功能是否能够做出正常响应
+表5.6 系统兼容性测试用例
+（2）性能测试
+性能测试是对应用程序性能的评价，是评估程序的响应及时度能力，需要到达于预期的指标需求。
+表5.7 系统性能测试用例
+5.3 本章小结
+本章节介绍了整个系统中的各个部分功能的正常界面展示和交互事件的页面处理显示，并根据具体的各个功能模块编写了全面的系统测试用例，以此进行对平台系统的功能，兼容性，性能等方面的严谨测试操作，找出系统内隐含的错误或异常问题并改善，提高系统整体运行稳定性。
+第6章 总结和展望
+6.1 工作总结
+本次设计主要以一个完整的校园论坛系统的实现为目标，开发出了一个具备一般论坛普遍功能的信息交流平台。同时通过简洁的页面设计为平台用户打造出符合操作习惯的网页站点。
+本设计的主要工作内容如下：
+（1）首先进行对整个论坛平台系统作出相应的需求分析，分别从功能性和非功能性两方面进行了具体的需求统计和分析介绍。
+（2）通过之前的需求分析实现了论坛系统所应该具备的各个功能模块，其中主要包括了首页的帖子浏览，个人基本信息管理修改，关键字搜索，板块搜索，帖子信息发布修改，关注收藏列表以及管理用户的审核，用户板块增添等一系列的模块功能展示。
+（3）实现了基于 MVC三层架构的设计模式，在整个架构的设计中bean用来存储实体类，还有相应的构造方法。controller层则是用来连接前端和后端的。dao层用来做相关数据的持久化，就是将数据存入到数据库的具体操作及sql。service层则是具体的处理逻辑，将数据处理后重新返回到controller层。程序的整个流程是这样的：接受前端发来的请求，同时向后端发送请求——>service 层——>serviceImpl实现service层,同时连接dao层（在dao层中同样是接口）——>通过dao层去实现对数据库的操作——在XML文件中通过namespace完成连接dao层。
+6.2 后续工作展望
+本系统还存在着多方面的不足和待完善之处，需要通过后续不断地检验和测试进行更进一步的优化开发。
+（1）论坛页面过于简洁，可以在进一步美化界面的布局效果
+（2）全局来看，整体功能还待优化和增加，应该可以增加更多丰富的功能操作选项，提高系统的全面性。
+（3）数据库索引也能够再次优化设计，提高数据访问的效率
+（4）网页有时出现404的错误的空连接状态，可能某些路径容易设置出错找不到对应资源选项，应该进一步完善系统的稳定性，解决目标问题。
+参考文献
+李鹏飞.基于Web技术的校园论坛设计与实现 [D].内蒙古科技大学,2019.
+马秀之.校园BBS论坛管理系统设计与实现[D].电子科技大学,2014
+韩思凡.Web开发中的JSP与Html的基础应用[J].科学技术创新,2020.
+赵晓丹.网页开发中的JSP技术分析[J].南方农机,2019
+薛玉倩.基于HTML5的Web前端设计与开发[J].科技与经济,2019.
+徐华珍,宋伟,姚冬虎,孙佳慧.JavaScript教学方法浅析[J].科技视界,2020.
+刘桃丽,曾志超.MVC架构下网站的设计与实现[J].计算机技术与发展,2020.
+卢慧雅,王磊.基于MVC设计思想的Java实验案例优化[J].计算机教育,2020.
+葛萌,黄素萍,欧阳宏基.基于Spring MVC框架的Java Web应用[J].计算机与现代化,2018.
+李杉,贾彦平,达虎.Mybatis 逆向工程在 JavaEE 中的应用[J].通讯世界,2017.
+石坤泉,杨震伦.基于MySQL数据库的数据隐私与安全策略研究[J].网络安全技术与应用,2017.
+王显梅,陈慧.Web前端技术在网页视觉中的应用研究[J].信息技术与信息化,2020.
+Nastiti Andini,Daeha Kim,Jong Ahn Chun. Operational soil moisture modeling using a multi-stage approach based on the generalized complementary principle[J]. Agricultural Water Management,2020,231.
+]阳小兰,罗明.基于Spring＋SpringMVC＋MyBatis网上论坛的设计与实现[J].黑龙江科技信息,2016.
+李枭,任维政.基于SpringMVC的多平台J2EE开发方式研究[J].吉林大学学报：信息科学版,2017.
+Francisco Ortin,Oscar Rodriguez-Prieto,Nicolas Pascual,Miguel Garcia. Heterogeneous tree structure classification to label Java programmers according to their expertise level[J]. Future Generation Computer Systems,2020,105.
+孙林,于海春,李星宇.基于移动互联WEB开发的MVC模式研究[J].科技风,2019.
+张彦芳.Java Web项目开发中的中文乱码问题与对策[J].电脑知识与技术,2020.
+刘铭宇.基于Web的数据可视化系统设计及应用[D]. 北京邮电大学, 2018.
+赵利庆.Java Web架构中数据库优化模式的研究与实现[D].北京邮电大学,2015.
+唐科. 基于Java应用的自顶向下性能优化方法[J]. 软件导刊,2018
+武宗品.设计模式在Java数据库操作组件中的应用[J].电子技术与软件工程,2019.
+Serdar Yegulalp,Serdar Yegulalp. Google Cloud SQL provides easier MySQL for all[J]. InfoWorld.com,2016.
+刘翠霞.Java数据库连接池的原理与应用[J].无线互联科技,2020
+廖福保.扩展SpringMVC模块的Web应用[J].实验室研究与探索,2012.
+欧阳宏基,李红,宋笑雪. 一种基于ES2SH框架的Java EE应用架构[J]. 实验室研究与探索,2018.
+Tropical Geography; New Tropical Geography Findings from University College London (UCL) Reported (Growth and Growth Constraints In Craft Industry Clusters: the Batik Industries of Central Java)[J]. Science Letter,2020.
+程小红. 基于Java的数据库应用框架的设计分析[J]. 电子设计工程,2018.
+Bahri Muhamad. Analysis of the water, energy, food and land nexus using the system archetypes: A case study in the Jatiluhur reservoir, West Java, Indonesia.[J]. The Science of the total environment,2020.
+Judith Schlehe,Vissia Ita Yulianto. An anthropology of waste[J]. Indonesia and the Malay World,2020.
+致谢
+至此将要结束的大学阶段，我首先要衷心地感谢陈乔松导师在整个毕业设计中给予的谆谆教诲和悉心的关怀。在论文的选题、研究以及撰写过程中，自始至终得到了导师的精心指导和热情帮助，其中无不凝聚着导师的心血和汗水。导师严谨求实和一丝不苟的学风、扎实勤勉和孜孜不倦的工作态度时刻激励着我努力学习，并将鞭策我在未来的工作中锐意进取、奋发努力。导师的指导将使我终生受益。
+其次感谢我的室友，共处一室，每当我需要帮忙的时候，首先想到的并伸出援助之手的总是他们;我是一个有诸多缺点的人，感谢他们对我的宽容和容忍。
+最后，我要感谢我的母校重邮给我提供的学习环境和栽培过程。我不仅在此通过母校的教诲中学到了各种知识，也给予了我为人处事的很多收获。四年以来，有苦有乐，有始有终。我将不辜负与母校对我的期望继续前进和成长
+附录  英文翻译
+The Spring Framework: An Open Source Java Platform for Developing Robust Java Applications
+Dashrath Mane, Ketaki Chitnis, Namrata Ojha
+Spring is the most popular application development framework for enterprise Java. Millions of developers around the world use Spring Framework to create high performing, easily testable, reusable code. Spring framework is an open source Java platform and it was initially written by Rod Johnson and was first released under the Apache 2.0 license in June 2003. Spring is lightweight when it comes to size and transparency. The basic version of spring framework is around 2MB.The core features of the Spring Framework can be used in developing any Java application, but there are extensions for building web applications on top of the Java EE platform. Spring framework targets to make J2EE development easier to use and promote good programming practice by enabling a POJO-based programming model. The Spring Framework provides a comprehensive programming and configuration model for modern Javabased enterprise applications - on any kind of deployment platform. A key element of Spring is infrastructural support at the application level: Spring focuses on the "plumbing" of enterprise applications so that teams can focus on application-level business logic, without unnecessary ties to specific deployment environments. Spring includes: Flexible dependency injection with XML annotationbased configuration styles Advanced support for aspect-oriented programming with proxy-based and AspectJ-based variants. First-class support for common open source frameworks such as Hibernate and Quartz A flexible web framework for building RESTful MVC applications and service endpoints Spring is modular in design, allowing for incremental adoption of individual parts such as the core container or the JDBC support. While all Spring services are a perfect fit for the Spring core container, many services can also be used in a programmatic fashion outside of the container.
+Spring could potentially be a one-stop shop for all your enterprise applications; however, Spring is modular, allowing you to pick and choose which modules are applicable to you, without having to bring in the rest. The Spring Framework provides about 20 modules which can be used based on an application requirement.
+A. Core Container
+The Core Container consists of the Core, Beans, Context, and Expression Language modules whose detail is as follows: The Core module provides the fundamental parts of the framework, including the IoC and Dependency Injection features. The Bean module provides BeanFactory which is a sophisticated implementation of the factory pattern. The Context module builds on the solid base provided by the Core and Beans modules and it is a medium to access any objects defined and configured. The ApplicationContext interface is the focal point of the Context module. The Expression Language module provides a powerful expression language for querying and manipulating an object graph at runtime.
+B. Data Access/Integration
+The Data Access/Integration layer consists of the JDBC, ORM, OXM, JMS and Transaction modules whose detail is as follows: The JDBC module provides a JDBC-abstraction layer that removes the need to do tedious JDBC related coding. The Spring Framework: An Open Source Java Platform for Developing Robust Java Applications Dashrath Mane, Ketaki Chitnis, Namrata Ojha The Spring Framework: An Open Source Java Platform for Developing Robust Java Applications 138 The ORM module provides integration layers for popular object-relational mapping APIs, including JPA, JDO, Hibernate, and iBatis. The OXM module provides an abstraction layer that supports Object/XML mapping implementations for JAXB, Castor, XMLBeans, JiBX and XStream. The Java Messaging Service JMS module contains features for producing and consuming messages. The Transaction module supports programmatic and declarative transaction management for classes that implement special interfaces and for all your POJOs.
+C. Web
+The Web layer consists of the Web, Web-Servlet, WebStruts, and Web-Portlet modules whose detail is as follows: The Web module provides basic web-oriented integration features such as multipart file-upload functionality and the initialization of the IoC container using servlet listeners and a web-oriented application context. The Web-Servlet module contains Spring's model-viewcontroller (MVC) implementation for web applications. The Web-Struts module contains the support classes for integrating a classic Struts web tier within a Spring application.
+D. Miscellaneous:
+The AOP module provides aspect-oriented programming implementation allowing you to define method-interceptors and point cuts to cleanly decouple code that implements functionality that should be separated. The Aspects module provides integration with AspectJ which is again a powerful and mature aspect oriented programming (AOP) framework. The Instrumentation module provides class instrumentation support and class loader implementations to be used in certain application servers. The Test module supports the testing of Spring components with JUnit or TestNG frameworks.
+The Spring container is at the core of the Spring Framework. The container will create the objects, wire them together, configure them, and manage their complete lifecycle from creation till destruction. The Spring container uses dependency injection (DI) to manage the components that make up an application. These objects are called Spring Beans which we will discuss in next chapter.The container gets its instructions on what objects to instantiate, configure, and assemble by reading configuration metadata provided. The configuration metadata can be represented either by XML, Java annotations, or Java code. The following diagram is a highlevel view of how Spring works. The Spring IoC container makes use of Java POJO classes and configuration metadata to produce a fully configured and executable system or application.
+A. Spring BeanFactory Container
+This is the simplest container providing basic support for DI. The BeanFactory and related interfaces, such as BeanFactoryAware, InitializingBean, DisposableBean, are still present in Spring for the purposes of backward compatibility with the large number of third-party frameworks that integrate with Spring.
+B. Spring ApplicationContext Container
+This container adds more enterprise-specific functionality such as the ability to resolve textual messages from a properties file and the ability to publish application events to interested event listeners. This container is defined by the org.springframework.context.ApplicationContextinterface.The ApplicationContext container includes all functionality of the BeanFactory container, so it is generally recommended over the BeanFactory. BeanFactory can still be used for light weight applications like mobile devices or applet based applications where data volume and speed is significant.
+C. Beans
+The objects that form the backbone of your application and that are managed by the Spring IoC container are called beans. A bean is an object that is instantiated, assembled, and otherwise managed by a Spring IoC container. These beans are created with the configuration metadata that you supply to the container, for example, in the form of XML <bean/> definitions.
+D.Spring Configuration Metadata
+Spring IoC container is totally decoupled from the format in which this configuration metadata is actually written. There are following three important methods to provide configuration metadata to the Spring Container:
+XML based configuration file.
+Annotation-based configuration
+Java-based configuration
+Of course often you want to use O/R (Object Relational) mapping, rather than use relational data access. Your overall application framework must support this also. Thus Spring integrates out of the box with Hibernate (versions 2 and 3), JDO (versions 1 and 2), TopLink and other ORM products. Its data access architecture allows it to integrate with any underlying data access technology. Spring and Hibernate are a particularly popular combination.
+Why would you use an ORM product plus Spring, instead of the ORM product directly? Spring adds significant value in the following areas:
+Session management. Spring offers efficient, easy, and safe handling of units of work such as Hibernate or TopLink Sessions. Related code using the ORM tool alone generally needs to use the same "Session" object for efficiency and proper transaction handling. Spring can transparently create and bind a session to the current thread, using either a declarative, AOP method interceptor approach, or by using an explicit, "template" wrapper class at the Java code level. Thus Spring solves
+many of the usage issues that affect many users of ORM technology.
+Resource management. Spring application contexts can handle the location and configuration of Hibernate SessionFactories, JDBC datasources, and other related resources. This makes these values easy to manage and change.Integrated transaction management. Spring allows you to wrap your ORM code with either a declarative, AOP method interceptor, or an explicit 'template' wrapper class at the Java code level. In either case, transaction semantics are handled for you, and proper transaction handling (rollback, etc.) in case of exceptions is taken care of. As we discuss later, you also get the benefit of being able to use and swap various transaction managers, without your ORM-related code being affected. As an added benefit, JDBC-related code can fully integrate transactionally with ORM code, in the case of most supported ORM tools. This is useful for handling functionality not amenable to ORM.Exception wrapping. Spring can wrap exceptions from the ORM layer, converting them from proprietary (possibly checked) exceptions, to a set of abstracted runtime exceptions. This allows you to handle most persistence exceptions, which are non-recoverable, only in the appropriate layers, without annoying boilerplate catches/throws, and exception declarations. You can still trap and handle exceptions anywhere you need to. Remember that JDBC exceptions (including DB specific dialects) are also converted to the same hierarchy, meaning that you can perform some operations with JDBC within a consistent programming model.To avoid vendor lock-in. ORM solutions have different performance other characteristics, and there is no perfect one size fits all solution. Alternatively, you may find that certain functionality is just not suited to an implementation using your ORM tool. Thus it makes sense to decouple your architecture from the toolspecific implementations of your data access object interfaces. If you may ever need to switch to another implementation for reasons of functionality, performance, or any other concerns, using Spring now can make the eventual switch much easier. Spring's abstraction of your ORM tool's Transactions and
+Exceptions, along with its IoC approach which allow you to easily swap in mapper/DAO objects implementing data-access functionality, make it easy to isolate all ORM-specific code in one area of your application, without sacrificing any of the power of your ORM tool. The PetClinic sample application shipped with Spring demonstrates the portability benefits that Spring offers, through providing variants that use JDBC, Hibernate, TopLink and Apache OJB to implement the persistence layer.Ease of testing. Spring's inversion of control approach makes it easy to swap the implementations and locations of resources such as Hibernate session factories, datasources, transaction managers, and mapper object implementations (if needed). This makes it much easier to isolate and test each piece of persistence-related code in isolation.Above all, Spring facilitates a mix-and-match approach to data access. Despite the claims of some ORM vendors, ORM is not the solution to all problems, although it is a valuable productivity win in many cases. Spring enables a consistent architecture, and transaction strategy, even if you mix and match persistence approaches, even without using JTA.Abstracting a data access API is not enough; we also need to consider transaction management. JTA is the obvious solution, but it's a cumbersome API to use directly, and as a result many J2EE developers used to feel that EJB CMT is the only rational option for transaction management. Spring has changed that.
+Spring's transaction abstraction is unique in that it's not tied to JTA or any other transaction management technology. Spring uses the concept of a transaction strategy that decouples application code from the underlying transaction infrastructure (such as JDBC).
+Spring框架：用于开发健壮Java应用程序的开源Java平台
+Spring是企业Java最流行的应用程序开发框架。全球数以百万计的开发人员使用Spring框架来创建高性能、易测试、可重用的代码。Spring框架是一个开源的Java平台，最初由Rod Johnson编写，2003年6月在Apache 2.0许可下首次发布。在尺寸和透明度方面，弹簧是轻量级的。Spring框架的基本版本在2MB左右。Spring框架的核心功能可以用于开发任何Java应用程序，但是在Java EE平台之上构建Web应用程序还有一些扩展。Spring框架的目标是通过一个基于POJO的编程模型，使J2EE开发更容易使用，并促进良好的编程实践。Spring框架提供了全面的编程和配置配置模型- -在任何部署平台上。Spring的一个关键要素是应用级的基础设施支持：Spring关注企业应用的‘管道’，使团队能够专注于应用级的业务逻辑，而不必与具体部署环境发生不必要的联系。Spring包括：灵活的依赖注入和基于XML注释的配置样式高级支持面向方面编程和基于代理和基于aspectj语言的变体。对Hibernate和Quartz等常用开源框架的一流支持一个灵活的构建RESTful MVC应用程序和服务端点的Web框架Spring在设计上是模块化的，允许增量地采用核心容器或JDBC等单个部分的支持。虽然所有Spring服务都是一个完美的适合Spring核心容器的服务，但许多服务也可以在容器之外以程序化的方式使用。
+Spring可能是所有企业应用的一站式商店；然而Spring是模块化的，允许选择和选择哪些模块适用于您，而不必带入其馀模块。Spring框架提供了大约20个模块，可以根据应用需求使用。
+A .核心容器
+Core容器由Core、Beans、Context和Expression Language模块组成，其详细内容如下：Core模块提供框架的基本部分，包括IoC和依赖注入特性。Bean模块提供了BeanFactory，它是工厂模式的精巧实现。Context模块建立在Core和Beans模块提供的实体基础之上，是访问定义和配置的任何对象的媒介。ApplicationContext接口是Context模块的重点。表达式语言模块提供了一个强大的表达式语言，用于在运行时查询和操作对象图。
+B .数据访问/集成
+数据访问/集成层由JDBC、ORM、OXM、JMS和Transaction模块组成，其详细内容如下：JDBC模块提供了一个JDBC-abstract层，消除了进行繁琐的JDBC相关编码的需要。Spring框架：开发健壮Java应用程序的开源Java平台Dashrath Mane，Ketaki Chitnis，Namrata Ojha Spring框架：开发健壮Java应用程序的开源Java平台138 ORM模块为流行的对象-关系映射API提供集成层，包括JPA，JDO，Hibernate和iBatis。OXM模块为JAXB、Castor、XMLBeans、JiBX和XStream提供了一个支持对象/ XML映射实现的抽象层。Java消息服务JMS模块包含用于生成和消费消息的特性。事务模块支持对实现特定接口的类和所有POJO的程序化和声明式事务管理。
+C .Web网页
+Web层由Web、Web-Servlet、WebStruts和Web- Portlet模块组成，其详细内容如下：Web模块提供基本的面向 Web的集成功能，如多部分文件上传功能和使用servlet侦听器初始化IoC容器以及一个面向Web的应用程序上下文。Web-Servlet模块包含Spring针对Web应用程序的模型视图控制器( MVC )实现。Web- Struts模块包含用于在Spring应用程序中集成经典Struts Web层的支持类。
+D .其他
+AOP模块提供了面向方面的编程实现，允许您定义方法截获器和点割，以清洁解耦实现应该分离的功能的代码。Aspects模块提供了与aspectj语言的集成，aspectj语言又是一个强大而成熟的面向方面编程( AOP )框架。Instrumentation模块提供类仪表支持和类装载器实现，用于某些应用服务器。Test模块支持使用JUnit或TestNG框架测试Spring组件。
+Spring容器位于Spring框架的核心。容器将创建对象，将它们连接在一起，配置它们，并管理它们从创建到销毁的完整生命周期。Spring容器使用依赖注入( DI )来管理组成应用程序的组件。这些对象被称为“beans”，我们将在下一章讨论。容器通过读取所提供的配置元数据来获取对哪些对象进行实例化、配置和组装的指令。配置元数据可以用XML、Java注释或Java代码来表示。下图是Spring如何工作的高级视图。SpringIoC容器使用JavaPOJO类和配置元数据生成一个完全配置和可执行的系统或应用程序。
+A．Spring BeanFactory 控制器
+这是为DI提供基本支持的最简单的容器。BeanFactory和相关接口，如BeanFactoryAware、初始化Bean、DisposableBean，仍然存在于Spring中，目的是向后兼容与Spring集成的大量第三方框架。
+B . Spring Application Context容器
+这个容器增加了更多的企业特定功能，如从属性文件解析文本消息的能力，以及向感兴趣的事件监听者发布应用事件的能力。此容器由org . Spring框架. context定义。应用程序上下文接口。ApplicationContext容器包括BeanFactory容器的所有功能，因此一般推荐在BeanFactory之上。BeanFactory仍然可以用于轻量级的应用程序，例如移动设备或基于Applet的应用程序，这些应用程序的数据量和速度非常大。
+C .beans
+构成应用程序主干的对象和由Spring IoC容器管理的对象称为bean。bean是由SpringIoC容器实例化、组装和其他方式管理的对象。这些bean是用您提供给容器的配置元数据创建的，例如，以XML定义的形式。
+D . Spring配置元数据
+SpringIoC容器与实际编写此配置元数据的格式完全解耦。有以下三种重要方法向Spring容器提供配置元数据：
+基于XML的配置文件。
+基于注释的配置
+基于Java的配置
+通常希望使用O / R (对象关系)映射，而不是使用关系数据访问。整体应用框架也必须支持这一点。因此Spring集成了Hibernate ( 版本 2和 3 )、JDO ( 版本 1和 2 )、TopLink软体和其他ORM产品。它的数据访问体系结构允许它与任何基础数据访问技术集成。Spring和Hibernate是一种特别流行的组合。
+为什么要使用ORM产品加上Spring，而不是直接使用ORM产品?spring在以下几个方面增加了显著值。
+资源管理。Spring应用程序上下文可以处理Hibernate SessionFactories、JDBC数据源和其他相关资源的位置和配置。这使得这些价值易于管理和变更。综合事务管理。Spring允许您用声明式、AOP方法截获器或者Java代码级别的显式‘模板’包装类来包装ORM代码。在这两种情况下，事务语义都是为您处理的，并且在例外情况下都要考虑适当的事务处理( 回滚等 )。正如我们后来讨论的那样，您也得到了能够使用和交换各种事务管理器的好处，而不受您ORM相关代码的影响。作为一个附加的好处，JDBC相关的代码可以在大多数支持ORM工具的情况下完全事务地与ORM代码集成。这对于处理不适合ORM的功能是有用的。例外包裹。Spring可以从ORM层封装异常，将其从专有(可能被检查)异常转换为一组抽象的运行时异常。这允许您只在适当的层中处理大多数不可恢复的持久性异常，而不需要烦人的锅盘抓取/抛出和异常声明。您仍然可以在任何需要的地方捕获和处理异常。请记住，JDBC异常( 包括 DB特定语言 )也被转换为相同的层次结构，这意味着您可以在一致的编程模型使用JDBC执行一些操作。避免供应商锁定。ORM解决方案具有其他不同的性能特点，没有一个完美的尺寸适合所有解决方案。或者，可能会发现某些功能恰恰不适合使用ORM工具的实现。因此，将体系结构与数据访问对象接口的工具特定实现解耦是有意义的。如果可能由于功能、性能或任何其他的顾虑而需要切换到另一个实现，现在使用Spring可以使最终的切换变得容易得多。Spring对ORM工具事务和异常的抽象，以及它的IoC方法，使得您可以在实现数据访问功能的mapper / DAO对象中轻松交换，从而可以在应用程序的某个区域中很容易地隔离所有ORM特定的代码，而不会牺牲ORM工具的任何权力。用Spring托运的PetClinic示例应用程序演示Spring提供的可移植性好处，通过提供使用JDBC、Hibernate、TopLink软体和Apache OJB实现持久层的变体。易测性。Spring对控制方法的倒置使得很容易交换Hibernate会话工厂、数据源、事务管理器和mapper对象实现等资源的实现和位置(如果需要)。这使得隔离和测试每一块与持久化相关的代码要容易得多。首先，Spring方便了数据访问的混合匹配方法。尽管一些ORM供应商提出了索赔要求，但ORM并不是所有问题的解决方案，尽管在很多情况下是一种有价值的生产率取胜。Spring提供了一致的体系结构和事务策略，即使混合和匹配持久化方法，即使不使用JTA。抽象一个数据访问API是不够的；我们还需要考虑事务管理。JTA是一个显而易见的解决方案，但它是一个繁琐的API直接使用，因此很多J2EE开发人员习惯认为EJB CMT是事务管理的唯一合理选择。
+Spring的事务抽象独特之处在于它不与JTA或任何其他事务管理技术捆绑在一起。Spring使用了一种事务策略的概念，将应用程序代码与底层事务基础设施(如JDBC )解耦。

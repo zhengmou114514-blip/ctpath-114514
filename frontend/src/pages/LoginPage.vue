@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import LoginScreen from '../components/LoginScreen.vue'
+import LoginScreenSimple from '../components/LoginScreenSimple.vue'
 import { useWorkspaceController } from '../composables/useWorkspaceController'
 
 const route = useRoute()
@@ -49,7 +49,7 @@ watch(
 </script>
 
 <template>
-  <LoginScreen
+  <LoginScreenSimple
     :username="workspace.username"
     :password="workspace.password"
     :login-error="workspace.loginError"

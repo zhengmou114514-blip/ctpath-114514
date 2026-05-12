@@ -15,12 +15,13 @@ from ..schemas import PatientAttachmentRecord, PatientAttachmentType
 
 
 ATTACHMENT_TYPE_LABELS: dict[PatientAttachmentType, str] = {
-    "patient_photo": "Patient photo",
-    "id_card": "ID card",
-    "insurance_card": "Insurance card",
-    "referral_note": "Referral note",
-    "exam_report": "Exam report",
-    "informed_consent": "Informed consent",
+    "patient_photo": "患者照片",
+    "id_card": "身份证",
+    "insurance_card": "医保卡",
+    "referral_note": "转诊资料",
+    "exam_report": "检查报告",
+    "informed_consent": "知情同意书",
+    "other_chronic_material": "其他慢病资料",
 }
 
 ALLOWED_MIME_TYPES = {
@@ -111,7 +112,21 @@ def _to_public_record(record: dict[str, Any]) -> PatientAttachmentRecord:
     return PatientAttachmentRecord.model_validate(payload)
 
 
+def _current_mysql_store() -> Any | None:
+    try:
+        from ..store import _current_store
+
+        return _current_store()
+    except Exception:
+        return None
+
+
 def _find_record(patient_id: str, attachment_id: str) -> dict[str, Any] | None:
+    store = _current_mysql_store()
+    if store and hasattr(store, "get_patient_attachment_record"):
+        record = store.get_patient_attachment_record(patient_id, attachment_id)
+        if record:
+            return record
     for record in _load_records():
         if record.get("patientId") == patient_id and record.get("attachmentId") == attachment_id:
             return record
@@ -125,6 +140,9 @@ def _attachment_path(record: dict[str, Any]) -> Path:
 def list_patient_attachments(patient_id: str) -> list[PatientAttachmentRecord]:
     if not patient_id:
         return []
+    store = _current_mysql_store()
+    if store and hasattr(store, "list_patient_attachments"):
+        return [_to_public_record(record) for record in store.list_patient_attachments(patient_id)]
     records = [
         _to_public_record(record)
         for record in _load_records()
@@ -143,6 +161,30 @@ def get_patient_attachment_file(patient_id: str, attachment_id: str) -> tuple[Pa
         raise HTTPException(status_code=404, detail="Attachment file missing")
 
     return path, record
+
+
+def delete_patient_attachment(patient_id: str, attachment_id: str) -> PatientAttachmentRecord:
+    record = _find_record(patient_id, attachment_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Attachment not found")
+
+    path = _attachment_path(record)
+    if path.exists():
+        path.unlink()
+
+    store = _current_mysql_store()
+    if store and hasattr(store, "delete_patient_attachment_record"):
+        store.delete_patient_attachment_record(patient_id, attachment_id)
+    else:
+        with _LOCK:
+            records = [
+                item
+                for item in _load_records()
+                if not (item.get("patientId") == patient_id and item.get("attachmentId") == attachment_id)
+            ]
+            _save_records(records)
+
+    return _to_public_record(record)
 
 
 def create_patient_attachment(
@@ -184,16 +226,21 @@ def create_patient_attachment(
         "fileName": file_name,
         "mimeType": mime_type or "application/octet-stream",
         "fileSize": len(file_bytes),
+        "previewUrl": _build_preview_url(patient_id, attachment_id),
         "uploadedAt": now,
         "uploadedBy": uploaded_by.strip() or "current-user",
         "source": "local-file",
         "storageFileName": stored_file_name,
     }
 
-    with _LOCK:
-        records = _load_records()
-        records = [item for item in records if item.get("attachmentId") != attachment_id]
-        records.append(record)
-        _save_records(records)
+    store = _current_mysql_store()
+    if store and hasattr(store, "save_patient_attachment_record"):
+        store.save_patient_attachment_record(record)
+    else:
+        with _LOCK:
+            records = _load_records()
+            records = [item for item in records if item.get("attachmentId") != attachment_id]
+            records.append(record)
+            _save_records(records)
 
     return _to_public_record(record)

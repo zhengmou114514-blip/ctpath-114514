@@ -36,7 +36,7 @@ export const ROLE_WORKSPACE_MENUS: Record<DoctorUser['role'], WorkspaceMenuItem[
   ],
   pharmacist: [
     { section: 'drug-management', label: '药品目录', description: '查看药品目录、剂型规格、处方药和管制药标识。' },
-    { section: 'pharmacy', label: '当前用药', description: '查看患者当前用药和药事复核信息。' },
+    { section: 'pharmacy', label: '药事复核', description: '查看库存批次、处方审核队列和药房复核记录。' },
   ],
   archivist: [
     { section: 'archive', label: '患者档案', description: '查看患者身份、病程、附件和电子档案。' },
@@ -63,7 +63,7 @@ export const ROLE_SYSTEMS: Record<DoctorUser['role'], RoleWorkspaceSystem> = {
   },
   pharmacist: {
     title: '慢性病辅助诊疗系统',
-    subtitle: '药事管理 / 药品目录 / 当前用药',
+    subtitle: '药事管理 / 药品目录 / 药事复核',
     portHint: '药房人员',
   },
   archivist: {
@@ -149,7 +149,7 @@ export const SECTION_LABELS: Partial<Record<AppSection, string>> = {
   'training-center': '训练中心',
   'model-operations': '模型运行台',
   'role-workspaces': '角色权限管理',
-  pharmacy: '当前用药',
+  pharmacy: '药事复核',
   coordination: '医护协同',
   'drug-management': '药品目录',
   'drug-permission-management': '药品权限管理',

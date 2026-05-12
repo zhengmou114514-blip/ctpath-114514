@@ -1,5 +1,6 @@
 ﻿<script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import {
   adjustPharmacyInventoryItem,
   createPharmacyInventoryItem,
@@ -20,6 +21,7 @@ import type {
 } from '../services/types'
 
 type PanelMode = 'inventory' | 'review'
+type PharmacyView = 'inventory' | 'review'
 type AdjustDirection = PharmacyStockAdjustRequest['direction']
 type ReviewStatus = PharmacyReviewDecisionRequest['reviewStatus']
 
@@ -30,6 +32,8 @@ const successMessage = ref('')
 const panelMode = ref<PanelMode>('inventory')
 const selectedInventoryId = ref('')
 const selectedReviewKey = ref('')
+const route = useRoute()
+const router = useRouter()
 
 const dashboard = ref<PharmacyDashboardResponse | null>(null)
 const inventoryItems = ref<PharmacyInventoryRecord[]>([])
@@ -84,6 +88,17 @@ const lowStockCount = computed(() => inventoryItems.value.filter((item) => item.
 const expiredCount = computed(() => inventoryItems.value.filter((item) => item.status === 'expired').length)
 const reviewCount = computed(() => reviewQueue.value.filter((item) => item.reviewStatus === 'pending').length)
 const transactionCount = computed(() => transactions.value.length)
+const currentView = computed<PharmacyView>(() => {
+  const view = typeof route.query.view === 'string' ? route.query.view : 'review'
+  return view === 'inventory' ? 'inventory' : 'review'
+})
+const currentViewLabel = computed(() => (currentView.value === 'inventory' ? '药库库存与批次' : '处方复核队列'))
+const currentViewDescription = computed(() =>
+  currentView.value === 'inventory'
+    ? '围绕库存状态、在库批次和补货预警进行药库管理。'
+    : '围绕处方审核、药师通过/退回和出入库记录形成药事复核。'
+)
+const pendingReviewQueue = computed(() => reviewQueue.value.filter((item) => item.reviewStatus === 'pending'))
 
 function createEmptyInventoryForm(): PharmacyInventoryUpsertRequest {
   return {
@@ -227,6 +242,10 @@ async function loadDashboard(selectInventoryId = selectedInventoryId.value, sele
   }
 }
 
+function switchView(view: PharmacyView) {
+  void router.push({ name: 'pharmacy-medication-review', query: { view } })
+}
+
 async function openInventory(item: PharmacyInventoryRecord) {
   try {
     const detail = await getPharmacyInventoryItem(item.itemId)
@@ -329,6 +348,22 @@ function clearFilters() {
 onMounted(() => {
   void loadDashboard()
 })
+
+watch(
+  () => currentView.value,
+  (view) => {
+    panelMode.value = view === 'inventory' ? 'inventory' : 'review'
+    const firstReview = pendingReviewQueue.value[0]
+    const firstInventory = inventoryItems.value[0]
+    if (view === 'review' && firstReview) {
+      fillReviewForm(firstReview)
+    }
+    if (view === 'inventory' && firstInventory && !selectedInventory.value) {
+      fillInventoryForm(firstInventory)
+    }
+  },
+  { immediate: true }
+)
 </script>
 
 <template>
@@ -350,7 +385,7 @@ onMounted(() => {
         <strong>{{ item.value }}</strong>
         <small>{{ item.trend }}</small>
       </article>
-      <article class="metric-card">
+      <article class="metric-card clickable" :class="{ active: currentView === 'inventory' }" @click="switchView('inventory')">
         <span>低库存</span>
         <strong>{{ lowStockCount }}</strong>
         <small>需要补货</small>
@@ -360,7 +395,7 @@ onMounted(() => {
         <strong>{{ expiredCount }}</strong>
         <small>需处理</small>
       </article>
-      <article class="metric-card">
+      <article class="metric-card clickable" :class="{ active: currentView === 'review' }" @click="switchView('review')">
         <span>待审核</span>
         <strong>{{ reviewCount }}</strong>
         <small>处方审核队列</small>
@@ -375,12 +410,17 @@ onMounted(() => {
     <div v-if="errorMessage" class="inline-alert error">{{ errorMessage }}</div>
     <div v-else-if="successMessage" class="inline-alert success">{{ successMessage }}</div>
 
+    <nav class="subview-tabs" aria-label="药事子功能导航">
+      <button class="subview-tab" :class="{ active: currentView === 'inventory' }" type="button" @click="switchView('inventory')">库存与批次</button>
+      <button class="subview-tab" :class="{ active: currentView === 'review' }" type="button" @click="switchView('review')">处方复核</button>
+    </nav>
+
     <section class="pharmacy-layout">
       <article class="clinical-card pharmacy-list-card">
         <div class="section-header">
           <div>
-            <h2>库存总览</h2>
-            <p>库存浏览、批次筛选与详情维护。</p>
+            <h2>{{ currentViewLabel }}</h2>
+            <p>{{ currentViewDescription }}</p>
           </div>
           <button class="secondary-button" type="button" :disabled="loading" @click="loadDashboard()">刷新</button>
         </div>
@@ -451,11 +491,11 @@ onMounted(() => {
           </button>
         </div>
 
-        <div class="section-block">
+        <div class="section-block" v-if="currentView === 'review'">
           <h3>处方审核队列</h3>
           <div class="compact-list">
             <button
-              v-for="item in reviewQueue"
+              v-for="item in pendingReviewQueue"
               :key="`${item.patientId}:${item.medicationId}`"
               class="compact-list-item"
               :class="{ selected: `${item.patientId}:${item.medicationId}` === selectedReviewKey }"
@@ -676,6 +716,40 @@ onMounted(() => {
 .pharmacy-layout {
   grid-template-columns: minmax(0, 1.35fr) minmax(360px, 0.95fr);
   align-items: start;
+}
+
+.metric-card.clickable {
+  cursor: pointer;
+}
+
+.metric-card.active {
+  border-color: rgba(15, 118, 110, 0.5);
+  background: rgba(236, 253, 245, 0.95);
+}
+
+.subview-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.subview-tab {
+  min-width: 108px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: rgba(255, 255, 255, 0.92);
+  color: rgba(15, 23, 42, 0.82);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.subview-tab.active {
+  border-color: rgba(15, 118, 110, 0.5);
+  background: #0f766e;
+  color: #fff;
 }
 
 .pharmacy-side {

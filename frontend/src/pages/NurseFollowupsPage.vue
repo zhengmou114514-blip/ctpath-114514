@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useRoute, useRouter } from 'vue-router'
 import {
   addPatientContactLog,
   createPatientOutpatientTask,
@@ -9,6 +10,7 @@ import {
   getPatientCase,
   getPatients,
   restoreAuthSession,
+  updatePatientEncounterStatus,
   updatePatientOutpatientTaskStatus,
 } from '../services/api'
 import type { ContactLog, FlowBoardRow, FollowupTaskRow, PatientSummary } from '../services/types'
@@ -17,6 +19,8 @@ type ContactLogRow = ContactLog & {
   patientId: string
   patientName: string
 }
+
+type FollowupView = 'overview' | 'today' | 'missed' | 'records' | 'review' | 'stats'
 
 const loading = ref(false)
 const saving = ref(false)
@@ -32,6 +36,8 @@ const pageSize = 6
 const showCreateDialog = ref(false)
 const showContactDialog = ref(false)
 const showStatusDialog = ref(false)
+const route = useRoute()
+const router = useRouter()
 
 const currentUser = computed(() => restoreAuthSession()?.doctor ?? null)
 const today = new Date().toISOString().slice(0, 10)
@@ -54,13 +60,13 @@ const contactForm = reactive({
 })
 
 const statusForm = reactive({
-  status: 'Completed',
+  status: '已完成',
   note: '',
 })
 
 const selectedTask = computed(() => {
-  if (!followups.value.length) return null
-  return followups.value.find((item) => taskKey(item) === selectedTaskKey.value) ?? followups.value[0]
+  if (!filteredFollowups.value.length) return null
+  return filteredFollowups.value.find((item) => taskKey(item) === selectedTaskKey.value) ?? filteredFollowups.value[0]
 })
 
 const selectedPatient = computed(() => patients.value.find((item) => item.patientId === selectedTask.value?.patientId) ?? null)
@@ -95,10 +101,57 @@ const doctorReviewRows = computed(() =>
   )
 )
 const completedTasks = computed(() => followups.value.filter((item) => isClosedStatus(item.status)))
-const totalPages = computed(() => Math.max(1, Math.ceil(followups.value.length / pageSize)))
+const currentView = computed<FollowupView>(() => {
+  if (route.name === 'nurse-followups-today') return 'today'
+  if (route.name === 'nurse-followups-missed') return 'missed'
+  if (route.name === 'nurse-followups-records') return 'records'
+  if (route.name === 'nurse-followups-review') return 'review'
+  if (route.name === 'nurse-followups-stats') return 'stats'
+  const view = typeof route.query.view === 'string' ? route.query.view : 'overview'
+  return ['overview', 'today', 'missed', 'records', 'review', 'stats'].includes(view)
+    ? (view as FollowupView)
+    : 'overview'
+})
+const filteredFollowups = computed(() => {
+  if (currentView.value === 'today') return todayFollowups.value
+  if (currentView.value === 'missed') {
+    const patientIds = new Set(missedContacts.value.map((item) => item.patientId))
+    return followups.value.filter((item) => patientIds.has(item.patientId))
+  }
+  if (currentView.value === 'records') {
+    const patientIds = new Set(contactLogs.value.map((item) => item.patientId))
+    return followups.value.filter((item) => patientIds.has(item.patientId))
+  }
+  if (currentView.value === 'review') return doctorReviewRows.value
+  if (currentView.value === 'stats') return completedTasks.value
+  return followups.value
+})
+const currentViewLabel = computed(() => {
+  const labels: Record<FollowupView, string> = {
+    overview: '随访工作台',
+    today: '今日随访',
+    missed: '未接通任务',
+    records: '联系记录',
+    review: '医生复核',
+    stats: '随访统计',
+  }
+  return labels[currentView.value]
+})
+const currentViewDescription = computed(() => {
+  const descriptions: Record<FollowupView, string> = {
+    overview: '集中处理待随访任务、联系记录与医生复核动作。',
+    today: '优先处理今日到期且尚未关闭的随访任务。',
+    missed: '聚焦近次联系未接通的患者，便于再次回访。',
+    records: '查看已有联系记录并继续追加随访结果。',
+    review: '整理需要医生复核的患者与随访结果。',
+    stats: '查看已完成任务，展示慢病随访闭环结果。',
+  }
+  return descriptions[currentView.value]
+})
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredFollowups.value.length / pageSize)))
 const pagedFollowups = computed(() => {
   const start = (currentPage.value - 1) * pageSize
-  return followups.value.slice(start, start + pageSize)
+  return filteredFollowups.value.slice(start, start + pageSize)
 })
 
 function taskKey(item: FollowupTaskRow) {
@@ -208,6 +261,18 @@ async function reload() {
   }
 }
 
+function switchView(view: FollowupView) {
+  const mapping: Record<FollowupView, { name: string; query?: Record<string, string> }> = {
+    overview: { name: 'nurse-followups', query: { view: 'overview' } },
+    today: { name: 'nurse-followups-today' },
+    missed: { name: 'nurse-followups-missed' },
+    records: { name: 'nurse-followups-records' },
+    review: { name: 'nurse-followups-review' },
+    stats: { name: 'nurse-followups-stats' },
+  }
+  void router.push(mapping[view])
+}
+
 function openCreateDialog() {
   taskForm.patientId = selectedTask.value?.patientId || patients.value[0]?.patientId || ''
   taskForm.taskType = '电话随访'
@@ -229,7 +294,7 @@ function openContactDialog(task = selectedTask.value) {
   showContactDialog.value = true
 }
 
-function openStatusDialog(task = selectedTask.value, nextStatus = 'Completed') {
+function openStatusDialog(task = selectedTask.value, nextStatus = '已完成') {
   if (!task) return
   selectTask(task)
   statusForm.status = nextStatus
@@ -253,7 +318,7 @@ async function submitCreateTask() {
       dueDate: taskForm.dueDate,
       priority: patient?.riskLevel?.toLowerCase().includes('high') ? 'high' : 'medium',
       note: taskForm.note || '慢病患者随访任务',
-      status: 'Pending',
+      status: '待执行',
       source: 'nurse-workstation',
       actorUsername: currentUser.value?.username,
       actorName: currentUser.value?.name,
@@ -297,20 +362,28 @@ async function submitContactLog() {
 
 async function submitStatusUpdate() {
   const task = selectedTask.value
-  if (!task?.taskId) {
-    errorMessage.value = '该任务缺少任务编号，无法更新状态。'
-    return
-  }
   saving.value = true
   errorMessage.value = ''
   try {
-    await updatePatientOutpatientTaskStatus(task.patientId, task.taskId, {
-      status: statusForm.status,
-      actorUsername: currentUser.value?.username,
-      actorName: currentUser.value?.name,
-    })
+    if (!task) {
+      errorMessage.value = '请先选择一条随访任务。'
+      return
+    }
+    if (statusForm.status === 'pending_review') {
+      await updatePatientEncounterStatus(task.patientId, { status: 'pending_review' })
+    } else {
+      if (!task.taskId) {
+        errorMessage.value = '该任务缺少任务编号，无法更新状态。'
+        return
+      }
+      await updatePatientOutpatientTaskStatus(task.patientId, task.taskId, {
+        status: statusForm.status,
+        actorUsername: currentUser.value?.username,
+        actorName: currentUser.value?.name,
+      })
+    }
     showStatusDialog.value = false
-    ElMessage.success('随访状态已更新')
+    ElMessage.success(statusForm.status === 'pending_review' ? '已提交医生复核' : '随访状态已更新')
     await reload()
   } catch {
     errorMessage.value = '随访状态更新失败，请检查后端服务或稍后重试。'
@@ -322,6 +395,29 @@ async function submitStatusUpdate() {
 onMounted(() => {
   void reload()
 })
+
+watch(
+  () => currentView.value,
+  () => {
+    currentPage.value = 1
+  }
+)
+
+watch(
+  () => filteredFollowups.value,
+  (items) => {
+    if (!items.length) {
+      selectedTaskKey.value = ''
+      return
+    }
+    const firstItem = items[0]
+    const exists = items.some((item) => taskKey(item) === selectedTaskKey.value)
+    if (!exists && firstItem) {
+      selectedTaskKey.value = taskKey(firstItem)
+    }
+  },
+  { immediate: true }
+)
 </script>
 
 <template>
@@ -342,35 +438,44 @@ onMounted(() => {
     <div v-else-if="successMessage" class="inline-alert success">{{ successMessage }}</div>
 
     <section class="followup-metrics">
-      <article class="metric-card">
+      <article class="metric-card clickable" :class="{ active: currentView === 'today' }" @click="switchView('today')">
         <span>今日随访</span>
         <strong>{{ todayFollowups.length }}</strong>
       </article>
-      <article class="metric-card">
+      <article class="metric-card clickable" :class="{ active: currentView === 'missed' }" @click="switchView('missed')">
         <span>未接通</span>
         <strong>{{ missedContacts.length }}</strong>
       </article>
-      <article class="metric-card">
+      <article class="metric-card clickable" :class="{ active: currentView === 'review' }" @click="switchView('review')">
         <span>待医生复核</span>
         <strong>{{ doctorReviewRows.length }}</strong>
       </article>
-      <article class="metric-card">
+      <article class="metric-card clickable" :class="{ active: currentView === 'stats' }" @click="switchView('stats')">
         <span>已完成</span>
         <strong>{{ completedTasks.length }}</strong>
       </article>
     </section>
 
+    <nav class="subview-tabs" aria-label="随访子功能导航">
+      <button class="subview-tab" :class="{ active: currentView === 'overview' }" type="button" @click="switchView('overview')">工作台</button>
+      <button class="subview-tab" :class="{ active: currentView === 'today' }" type="button" @click="switchView('today')">今日随访</button>
+      <button class="subview-tab" :class="{ active: currentView === 'missed' }" type="button" @click="switchView('missed')">未接通</button>
+      <button class="subview-tab" :class="{ active: currentView === 'records' }" type="button" @click="switchView('records')">联系记录</button>
+      <button class="subview-tab" :class="{ active: currentView === 'review' }" type="button" @click="switchView('review')">医生复核</button>
+      <button class="subview-tab" :class="{ active: currentView === 'stats' }" type="button" @click="switchView('stats')">随访统计</button>
+    </nav>
+
     <section class="followup-layout">
       <main class="clinical-card task-list-card">
         <div class="section-header">
           <div>
-            <h2>随访任务列表</h2>
-            <p>今日任务、未接通任务和待医生复核任务统一在此处理。</p>
+            <h2>{{ currentViewLabel }}</h2>
+            <p>{{ currentViewDescription }}</p>
           </div>
         </div>
 
         <div v-if="loading" class="table-state">正在加载随访任务...</div>
-        <div v-else-if="!followups.length" class="empty-state-card compact">
+        <div v-else-if="!filteredFollowups.length" class="empty-state-card compact">
           <h3>暂无随访任务</h3>
           <p>可新建随访任务，或稍后刷新查看后端同步结果。</p>
           <button class="primary-button" type="button" @click="openCreateDialog">新建随访任务</button>
@@ -394,7 +499,7 @@ onMounted(() => {
             <tr
               v-for="item in pagedFollowups"
               :key="taskKey(item)"
-              :class="{ selected: taskKey(item) === taskKey(selectedTask || item) }"
+              :class="{ selected: taskKey(item) === (selectedTask ? taskKey(selectedTask) : taskKey(item)) }"
               @click="selectTask(item)"
             >
               <td>{{ item.taskId || taskKey(item) }}</td>
@@ -408,17 +513,17 @@ onMounted(() => {
               <td>
                 <div class="row-actions">
                   <button class="text-action" type="button" @click.stop="openContactDialog(item)">联系记录</button>
-                  <button class="text-action" type="button" @click.stop="openStatusDialog(item, 'Completed')">更新状态</button>
-                  <button class="text-action" type="button" @click.stop="openStatusDialog(item, 'pending_review')">医生复核</button>
+                  <button class="text-action" type="button" @click.stop="openStatusDialog(item, '已完成')">更新状态</button>
+                  <button class="text-action" type="button" @click.stop="openStatusDialog(item!, 'pending_review')">医生复核</button>
                 </div>
               </td>
             </tr>
           </tbody>
         </table>
 
-        <div v-if="followups.length > pageSize" class="followup-pagination">
+        <div v-if="filteredFollowups.length > pageSize" class="followup-pagination">
           <button class="secondary-button" type="button" :disabled="currentPage <= 1" @click="currentPage -= 1">上一页</button>
-          <span>第 {{ currentPage }} / {{ totalPages }} 页，共 {{ followups.length }} 条</span>
+          <span>第 {{ currentPage }} / {{ totalPages }} 页，共 {{ filteredFollowups.length }} 条</span>
           <button class="secondary-button" type="button" :disabled="currentPage >= totalPages" @click="currentPage += 1">下一页</button>
         </div>
       </main>
@@ -587,9 +692,9 @@ onMounted(() => {
         <label class="field">
           <span>状态</span>
           <select v-model="statusForm.status">
-            <option value="Pending">待随访</option>
-            <option value="Completed">已完成</option>
-            <option value="Closed">已关闭</option>
+            <option value="待执行">待执行</option>
+            <option value="已完成">已完成</option>
+            <option value="已关闭">已关闭</option>
             <option value="pending_review">待医生复核</option>
           </select>
         </label>
@@ -634,6 +739,40 @@ onMounted(() => {
 .followup-metrics .metric-card {
   min-height: 68px;
   padding: 12px 16px;
+}
+
+.followup-metrics .metric-card.clickable {
+  cursor: pointer;
+}
+
+.followup-metrics .metric-card.active {
+  border-color: #0f766e;
+  background: #ecfdf5;
+}
+
+.subview-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.subview-tab {
+  min-width: 88px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid #d5e6ef;
+  background: #fff;
+  color: #275d70;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.subview-tab.active {
+  border-color: #0f766e;
+  background: #0f766e;
+  color: #fff;
 }
 
 .followup-layout {

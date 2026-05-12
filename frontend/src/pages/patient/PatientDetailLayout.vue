@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useWorkspaceContext } from '../../composables/workspaceContext'
 
@@ -9,21 +9,35 @@ const router = useRouter()
 
 const patientId = computed(() => {
   const value = route.params.patientId
-  return typeof value === 'string' ? value : ''
+  if (typeof value === 'string' && value) return value
+  if (workspace.selectedPatient?.patientId) return workspace.selectedPatient.patientId
+  return readStoredPatientId()
 })
 const patient = computed(() => workspace.selectedPatient)
+const loadingPatient = ref(false)
+const loadError = ref('')
+
+function readStoredPatientId() {
+  if (typeof window === 'undefined') return ''
+  return window.sessionStorage.getItem('ctpath:selectedPatientId') || ''
+}
+
+function rememberPatientId(id: string) {
+  if (typeof window === 'undefined' || !id) return
+  window.sessionStorage.setItem('ctpath:selectedPatientId', id)
+}
 
 const tabs = computed(() => {
   const id = patientId.value || patient.value?.patientId || ''
   return [
-    { label: '总览', name: 'patient-overview', path: `/doctor/patients/${id}/overview` },
-    { label: '基本档案', name: 'patient-profile', path: `/doctor/patients/${id}/profile` },
-    { label: '联系记录', name: 'patient-contacts', path: `/doctor/patients/${id}/contacts` },
-    { label: '病程时间线', name: 'patient-timeline', path: `/doctor/patients/${id}/timeline` },
-    { label: '附件资料', name: 'patient-attachments', path: `/doctor/patients/${id}/attachments` },
-    { label: '当前用药', name: 'patient-medications', path: `/doctor/patients/${id}/medications` },
-    { label: '风险评估', name: 'patient-risk', path: `/doctor/patients/${id}/risk` },
-    { label: '随访记录', name: 'patient-followups', path: `/doctor/patients/${id}/followups` },
+    { label: '总览', name: 'patient-overview', to: { name: 'patient-overview', params: { patientId: id } } },
+    { label: '基本档案', name: 'patient-profile', to: { name: 'patient-profile', params: { patientId: id } } },
+    { label: '联系记录', name: 'patient-contacts', to: { name: 'patient-contacts', params: { patientId: id } } },
+    { label: '病程时间线', name: 'patient-timeline', to: { name: 'patient-timeline', params: { patientId: id } } },
+    { label: '附件资料', name: 'patient-attachments', to: { name: 'patient-attachments', params: { patientId: id } } },
+    { label: '当前用药', name: 'patient-medications', to: { name: 'patient-medications', params: { patientId: id } } },
+    { label: '风险评估', name: 'patient-risk', to: { name: 'patient-risk', params: { patientId: id } } },
+    { label: '随访记录', name: 'patient-followups', to: { name: 'patient-followups', params: { patientId: id } } },
   ]
 })
 
@@ -41,8 +55,24 @@ function archiveNumber() {
 
 async function loadPatient() {
   if (!patientId.value) return
+  if (!route.params.patientId && typeof route.name === 'string' && route.name.startsWith('patient-')) {
+    void router.replace({ name: route.name, params: { patientId: patientId.value }, query: route.query })
+  }
   if (workspace.selectedPatientId === patientId.value && workspace.selectedPatient) return
-  await workspace.openPatient(patientId.value, 'doctor')
+  loadingPatient.value = true
+  loadError.value = ''
+  try {
+    const loaded = await workspace.openPatient(patientId.value, 'archive')
+    if (!loaded) {
+      loadError.value = workspace.screenError || '患者档案读取失败，请返回患者列表后重试。'
+    } else {
+      rememberPatientId(patientId.value)
+    }
+  } catch (error) {
+    loadError.value = error instanceof Error ? error.message : '患者档案读取失败，请返回患者列表后重试。'
+  } finally {
+    loadingPatient.value = false
+  }
 }
 
 function backToList() {
@@ -50,13 +80,21 @@ function backToList() {
 }
 
 watch(patientId, () => void loadPatient(), { immediate: true })
+watch(
+  () => patient.value?.patientId,
+  (next) => {
+    if (next) rememberPatientId(next)
+  },
+  { immediate: true }
+)
 </script>
 
 <template>
   <section class="patient-detail-layout-page workstation-page">
-    <section v-if="!patient" class="empty-state-card">
-      <h3>患者详情加载中</h3>
-      <p>正在读取患者档案、病程和随访记录。</p>
+    <section v-if="!patient" class="empty-state-card patient-load-state">
+      <h3>{{ loadError ? '患者详情加载失败' : '患者详情加载中' }}</h3>
+      <p>{{ loadError || (loadingPatient ? '正在读取患者档案、病程和随访记录。' : '请选择患者后查看详情。') }}</p>
+      <button class="secondary-button" type="button" @click="backToList">返回患者列表</button>
     </section>
 
     <template v-else>
@@ -75,7 +113,7 @@ watch(patientId, () => void loadPatient(), { immediate: true })
           :key="tab.name"
           class="patient-subnav-item"
           :class="{ active: route.name === tab.name }"
-          :to="tab.path"
+          :to="tab.to"
         >
           {{ tab.label }}
         </RouterLink>
@@ -89,6 +127,13 @@ watch(patientId, () => void loadPatient(), { immediate: true })
 <style scoped>
 .patient-detail-layout-page {
   gap: 12px;
+}
+
+.patient-load-state {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  min-height: 220px;
 }
 
 .patient-detail-shell-header {

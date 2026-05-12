@@ -1,0 +1,480 @@
+编    号：
+审定成绩：
+二〇二二 年 六 月
+重庆邮电大学教务处制
+学院本科毕业设计(论文)诚信承诺书
+本人郑重承诺：
+我向学院呈交的论文《                                    》，是本人在指导教师的指导下，独立进行研究工作所取得的成果。除文中已经注明引用的内容外，本论文不含任何其他个人或集体已经发表或撰写过的作品成果。对本文的研究做出重要贡献的个人和集体，均已在文中以明确方式标明并致谢。本人完全意识到本声明的法律结果由本人承担。
+年级
+专业
+班级
+承诺人签名
+年     月      日
+学位论文版权使用授权书
+本人完全了解重庆邮电大学有权保留、使用学位论文纸质版和电子版的规定，即学校有权向国家有关部门或机构送交论文，允许论文被查阅和借阅等。本人授权重庆邮电大学可以公布本学位论文的全部或部分内容，可编入有关数据库或信息系统进行检索、分析或评价，可以采用影印、缩印、扫描或拷贝等复制手段保存、汇编本学位论文。
+（注：保密的学位论文在解密后适用本授权书。）
+摘要
+随着互联网的迅速发展和计算机普及程度的逐渐加深，当今社会已经进入了一个新的网络时代，信息数字化和网络化已成为现代社会的主要特征，中国也正在进入以计算机化为核心的知识经济时代。互联网技术的高速发展，也带动了视频行业的进步，越来越多的人喜欢在家看电影视频、发表评论等。基于此背景，如何更好地搭建一个视频网站平台，给用户提供更好的体验，同时，如何更加便于网站管理员进行管理，将成为本文主要探讨的问题。
+本文设计与实现了一个基于Web的视频网站，以软件工程基本设计流程来介绍该系统的所有分析、设计、实现和测试过程。首先，介绍研究该视频网站当下的背景和拟采用的开发技术。其次，从可行性、功能性以及非功能性需求角度出发，对该视频网站进行分析，确定其实现的可能性以及需要实现的功能模块。接着，对系统的总体设计和系统具体功能模块进行了详细说明，将系统从整体到具体模块进行分解，明确总体架构、数据库结构以及各个模块的结构。最后，对该网站设计实现的具体开发与测试过程进行说明。
+本网站的设计架构采用B/S架构，采用Spring boot+Vue的开发框架和前后端分离的设计模式，结合Mysql对数据库进行操作，设计并实现该视频网站。该视频网站从用户角色的角度出发将其分为管理员与会员用户两大角色。其中，管理员在系统中能够保证平台正常、稳定的运行，具有登录、视频分类管理等功能模块；会员用户是视频网站的主要使用者，主要具有登录、搜索、发表评论等功能。最终，该系统通过严格开发实现，希望能够给用户带来轻松愉快的体验。
+关键词：视频网站，Web，浏览器/服务器架构，Spring boot，Vue，Mysql
+Abstract
+With the rapid development of the Internet and the gradual deepening of the popularity of computers, today's society has entered a new network era. Information digitization and networking have become the main features of modern society, and China is also entering the era of knowledge economy with computerization as its core. The rapid development of Internet technology has also driven the progress of the video industry. More and more people like to watch movies and videos at home and make comments. Based on this background, how to better build a video website platform, provide users with a better experience, and at the same time, how to make it easier for website administrators to manage it will become the main issue discussed in this paper.
+This paper designs and implements a Web-based video website, and introduces all the analysis, design, implementation and testing processes of the system with the basic design process of software engineering. First of all, it introduces the current background of the video website and the development technology to be adopted. Secondly, from the perspective of feasibility, functional and non-functional requirements, the video website is analyzed to determine the possibility of its realization and the functional modules to be realized. Then, the overall design of the system and the specific functional modules of the system are explained in detail. The system is decomposed from the whole to the specific modules, and the overall architecture, database structure and the structure of each module are defined. Finally, the specific development and testing process of the website design and implementation is explained.
+The design architecture of this website adopts B/S architecture, adopts the development framework of Spring boot+Vue and the design pattern of front-end separation, and combines Mysql to operate the database to design and implement this video website. From the perspective of user roles, the video website can be divided into two roles: administrator and member users. Among them, the administrator can ensure the normal and stable operation of the platform in the system, and has functional modules such as login and video classification management. Members are the main users of video websites, which mainly have the functions of logging in, searching and commenting. Finally, the system is implemented through strict development, hoping to bring users a relaxed and pleasant experience.
+Key words: Video Website, Web, B/S, Spring boot, Vue, Mysql
+目录
+第1章 引言1
+1.1 研究背景和意义1
+1.2 国内外研究现状1
+1.2.1 国外研究现状1
+1.2.2 国内研究现状2
+1.3 研究方法2
+1.3.1文献研究法2
+1.3.2模块化设计法3
+1.3.3调查法3
+1.4 主要内容和工作安排3
+第2章 开发技术简介5
+2.1 Vue2.05
+2.2 MVVM框架5
+2.3 Spring Boot框架概述6
+2.4 Mybatisplus概述6
+2.5 Mysql7
+2.6本章小结7
+第3章 系统可行性分析与需求分析8
+3.1 可行性分析8
+3.1.1 技术可行性8
+3.1.2 经济可行性8
+3.1.3 操作可行性9
+3.2 需求分析9
+3.2.1 功能性需求分析9
+3.2.2 非功能性需求分析11
+3.3 本章小结12
+第4章 系统总体设计13
+4.1 总体设计13
+4.1.1系统概述13
+4.1.2 系统架构设计14
+4.2 功能模块设计15
+4.3 数据库设计15
+4.3.1 概念结构设计15
+4.3.2 物理结构设计17
+4.4 本章小结22
+第5章 系统模块详细设计23
+5.1 用户模块23
+5.1.1 注册、登录模块23
+5.1.2 个人信息、收藏模块24
+5.1.3 评论模块25
+5.1.4 视频搜索模块26
+5.1.5 视频分类模块26
+5.2 管理员后台模块27
+5.2.1 登录模块27
+5.2.2 分类管理模块28
+5.2.3 视频管理模块29
+5.2.4 会员管理模块30
+5.2.5 系统管理模块31
+5.3 本章小结32
+第6章 系统实现33
+6.1 用户模块33
+6.1.1 注册、登录模块33
+6.1.2 个人信息、收藏模块34
+6.1.3 评论模块35
+6.1.4 视频搜索模块35
+6.1.5 视频分类模块36
+6.1.6 视频下载模块36
+6.2 管理员模块37
+6.2.1 登录模块37
+6.2.2 分类管理模块37
+6.2.3 视频管理模块38
+6.2.4 会员管理模块40
+6.2.5 系统管理模块41
+6.3 本章小结42
+第7章 系统测试43
+7.1 功能测试43
+7.1.1 注册、登录模块功能测试43
+7.1.2 评论、收藏模块功能测试46
+7.2 本章小结47
+第8章 总结与展望48
+8.1 工作总结48
+8.2 展望48
+参考文献49
+致谢52
+附录B 英文翻译53
+第1章 引言
+1.1 研究背景和意义
+现代科技突飞猛进，人们正全面步入信息化[1]，智能化时代。计算机相关技术也在众多领域中得到了广泛应用，在信息传播和信息管理方面，计算机已成为不可或缺的重要工具[2]。
+目前而言，信息已成为国际社会中继土地、劳动力之后的又一大抢手资源。而且在现代社会竞争中，只有通过多种途径掌握更多有用信息并且能将其高效利用，才能够占据优势地位。而视频网站作为信息传播最主要、最常见的载体，建立一个良好的视频网站有助于更好地获取、收集和管理信息[3]。从大的方面来说，它顺应了新时代的发展潮流，符合现代社会平台化、资源化的发展趋势，有力推动了信息管理全面步入现代化进程。从小的方面来说，它可以提高信息的周转水平，优化信息管理的方式，为公司或者个人带来更好的经济效益，同时，也能够为大众提供平台，便于获取视频信息。
+对于现阶段而言，一个完整、高效以及主题明确的视频网站不仅可以给人们带来诸多的生活乐趣，成为人们放松、休闲和娱乐的平台，而且还能够更为安全、长久地存储数据信息。同时，这种形式不但会给数据查询和维护带来了极大的便利，还能够缓解管理者的工作压力，大幅度提高工作效率。因此，设计开发一个基于Web的视频网站是十分有必要的。
+1.2 国内外研究现状
+1.2.1 国外研究现状
+视频网站的发展在国外引起了许多研究机构和公司的注意。多媒体视频点播的用户需求在许多新技术、新硬件和新软件平台的背景支持下都逐渐获得满足。例如，qracle的OVS视频点播系统因以其卓越的互动播放性能而广为人知。采用B/S模式运营[4]的视频网站，能够让用户在随时随刻都可以自由地浏览网络视频，由用户以往被动的观看网络电视节目逐步转化而为能够更加自主地根据自身需要去选择浏览网络视频内容，也能够实现在任意的时间内尽情地分享网络视频所带来的各种感官的享受。无论是表现形式还是内容层面，都可以进行更加深入广泛的互动交流，为未来数字电影、互联网视频传播和互联网新媒体应用发展奠定基础。举个例子，YouTube Com是在全球各地都享有盛名的视频网站，它平均每月拥有超过十亿的注册用户[5]。全世界的互联网用户平均每月在视频网络上浏览视频地时长达到约六十亿小时，可见与视频网站的使用相关热度居高不下，这表明视频网站在未来仍会有很大的发展空间。
+1.2.2 国内研究现状
+相比之下，视频网站在国内的建设发展起步稍微晚一些。但是经过我们的不断努力，优酷、爱奇艺、腾讯视频、搜狐视频等优秀视频网站相继诞生[6]。我们国家的视频网站相关建设发展经历了五个阶段，分别是诞生、流行、适应、上市和成熟。当前计算机网络与多媒体技术正在朝着计算机软件多媒体化，电视、网络等与多媒体融汇、整合等方向迈进，这使得应用领域更加多元化，也表明我们国家对于视频网站的建设和发展的重视程度逐渐加深。
+国内视频网站未来发展的重点内容领域是教育和娱乐。大众用户主要会浏览视频、发表观点等，达到个人消遣娱乐的目的。而国内相关企业应用视频网站会传播相关领域的信息以达到增加经济效益的目的。此外，就视频网站以后的实现技术而言，其主流技术将会更专注于分布式多媒体系统和多媒体通信的开发[7]。
+1.3 研究方法
+开展项目前，通过具体有效的研究方法能够提升效率，使其更具有针对性。本系统将借助以下三点研究方法，对系统进行需求分析挖掘和调查，并结合现状对系统方案进行改进，提高系统工作效率，进而展开设计并开发基于Web的视频网站[8]。
+1.3.1文献研究法
+文献研究法是学术论文撰写最基础的科研方式，也是学术论文撰写过程中至关重要的科研方式。一方面在进行系统设计与开发之前，需要搜集并整理大量关于本系统的相关书籍，关键技术的书籍，例如Java语言、MySQL数据库[9]等，在充分掌握系统所相关的技术和理论知识之后，在此基础上进行系统开发和设计，才能够更好的反映真实、科学性。
+1.3.2模块化设计法
+在进行系统研发的流程中，并不可以单纯进行代码的撰写，而是需要将系统分成若干个职能模块，或将职能模块再划分为子职能模块，逐步求精，进而得到一个以功能为单位的系统，这种设计思路就称之为模块化设计。模块化设计的主要目的是为了降低程序的复杂度，方便工作人员后期维护，这种方法不仅可以使各模块结构清晰，用户界面友好，而且还方便用户的使用、使得系统更加的稳定可靠。
+1.3.3调查法
+调查法是在系统需求分析阶段进行的，调查法主要分为问卷调查、电话调查、访谈调查等方法，通过进行实际调查，可以在比较短的时间内获取到更多关于系统基本需求和未来功能设计的相关资料，进而可以避免在系统功能开发过程中出现功能遗漏或者功能缺失的现象。
+1.4 主要内容和工作安排
+本文围绕基于Web的视频网站进行设计与实现，全文共八章，具体内容和安排如下：
+第一章为引言。本章介绍了研究题目当下的背景、国内外研究现状，表明选题原因，并明确设计与实现该视频网站的目的与意义。
+第二章为开发技术简介。本章主要介绍了开发该系统所涉及到的开发技术。例如前后端开发框架，Mysql数据库等，概括了解技术理论知识。
+第三章为系统可行性分析与需求分析。本章是在系统设计开发阶段之前，根据调研给出系统实施的可行性分析与需求分析。
+第四章为系统总体设计。本章说明了系统的总体架构，确定了系统的总体功能结构，并对数据库结构做出相应的设计。
+第五章为系统模块详细设计。本章介绍了系统各个功能模块的具体功能和实现过程。
+第六章为系统实现。本章简述了系统具体功能模块的实现过程。
+第七章为系统测试。本章通过黑盒测试的方法，对系统功能模块进行测试。
+第八章为总结与展望。本章对毕业设计的整个环节进行总结，并对系统的相关迭代做出展望。
+第2章 开发技术简介
+本视频网站是运行在PC浏览器端的Web网站，分为前台、后台两个部分。在设计过程中所运用到的主要框架包括Vue2.0和Spring Boot。本章将对系统开发和实现过程中设计到的相关技术框架进行简单介绍。
+2.1 Vue2.0
+Vue是一套用于构建用户界面的渐进式且自底向上增量开发框架，它可以动态搭建用户使用界面[10]。Vue 自己能够提供核心库，并且所提供的核心库只重视视图层，通俗易懂，便于上手操作，而且在与第三方库或现有项目进行整合[11]的过程也大大简化了。另一方面，结合现代工具链和各种支持类库；除此之外，Vue还可以为复杂的单页应用程序提供驱动程序，Vue框架特点如下：
+1）严格遵循、按照MVVM模式执行；
+2）编码方式简洁，体积小，具有高运行效率，适合移动端/PC端开发；
+3）更多地只关注UI，可以快速轻松引入Vue插件或第三方库开发项目；
+4）采用组件化编程，提高代码复用率，且增加代码可维护性；
+5）声明式编码，让编码人员无需直接操作DOM，由框架封装好一些通用式写法，暴露出容易使用的接口，通过简单的指令即可实现功能[12]。
+2.2 MVVM框架
+MVVM 是Model-View-ViewModel 的缩写，本质上是一种基于前端开发的架构模式[13]，主要目的是更好地分离视图（View）和模型（Model）[14]。View的职责就是如何将数据显示出来、怎样发送命令，ViewModel的功能就是如何提供数据和执行命令，分工明确，各司其职，互不影响[15]。ViewModel层通过接口从后台model层请求数据，进而实现对View 和 ViewModel 的双向数据绑定，这使得ViewModel 的状态改变可以自动传递给 View，即实现所谓的数据双向绑定[16]，这样使得开发效率大大提高，而且很好地增强了代码地可维护性。
+2.3 Spring Boot框架概述
+对于Web开发而言，Java有许多开源的框架。其中Spring系列框架最为著名。在对比了多种后端框架后，最终决定使用目前很流行的Spring boot框架作为本系统的后端框架[17]。Spring Boot 是由 Pivotal 团队提供的一个全新框架，比之前的Spring框架在配置、使用方面都要简化许多。
+Springboot框架还是基于Spring技术开发出来的，但是，它不再需要配置Spring框架那种冗长的XML文件了。它省略了很多配置，方便开发者快速地去上手开发。它集成了多种优秀的框架，内部包含了一个Tomcat Web服务器。并且和Spring一样，它的注解功能也十分强大，能够自动组装容器，完成部署后很快就能投入使用，对开发效率的增强很有益处[18]。
+Spring Boot主要有以下优势：
+1）支持创建基于Maven或者Gradle插件的独立的Spring框架应用程序；
+2） 已经内置了Tomcat和Jetty等常用的servlet容器，无需开发人员单独配置；
+3）支持对已经配置完毕的外部项目（例如健康检查、指标等）提供显示；
+4）完全没有代码生成，无需进行任何XML的相关配置[19]。
+2.4 Mybatisplus概述
+Mybatisplus是一个Mybatis的增强工具，而Mybatis是目前业界一流的持久性框架,并完全可以完美支持自锁定的SQL、存储过程以及高级映射[20]。Mybatis消除掉了几乎全部的JDBC代码以及自动设置参数并返回检查结果。通过解析配置文件以及相关函数的映射文件，完成了对原来的JDBC函数的扩展，使应用程式间与数据库对象间函数的数据相互映射作用变得更加简单[21]，而Mybaitisplus是在其基础上进行的增强。
+1）损耗小，启动就会自动注入基本的CURD，直接面向对象操作；
+2）实体类只需要继承Model类即可进行强大的CURD操作；
+3）支持全局通用方法注入；
+4）内置分页插件并支持Mysql、Oracle等多种数据库，便于快速实现分页查询。同时内置代码生成器，采用代码或者Maven可快速生成Mapper、Model、Service和Controller层代码[22]。
+2.5 Mysql
+本系统采用的是MySQL数据库。 MySQL作为关系型数据库管理系统，关系数据库将数据保存在不同的表中，增加了速度并提高了灵活性[23]。Mysql体积小、速度快、和开源这些特点，使得它在中小型网站的设计开发中很受欢迎。
+MySQL使用的是C/S架构，因此实际由两部分构成：MySQL服务程序(mysqlld)，它主要在服务端运行，主要功能是接收并处理客户端的请求并返回相对应的数据；MySQL客户端程序，主要向服务端建立连接，发起数据库操作（增删改查）请求，以及接收服务器返回的数据。
+2.6本章小结
+本章介绍了在开发过程中使用到的前、后端框架以及数据存储所用到的Mysql，并对其特点进行概况，明确了在网站的开发过程中所使用到的技术。
+第3章 系统可行性分析与需求分析
+3.1 可行性分析
+在开始着手将项目落地之前，为确保项目可实施，需要进一步做好项目可行性的分析。可行性分析的目的主要是指在可行性研究报告的基础框架上，从有关科技、经济文化以及其他社会方面系统地分析研究并进一步审查对该系统产品的可行性，及其进一步开发新系统的内在必要性条件与现实可能性，并据此判断它是否真能在以尽可能最低限度的开发成本投入和在尽可能最短限度的开发时期范围内迅速解决问题。
+3.1.1 技术可行性
+软件技术和硬件技术是否能够达到开发要求是技术可行性主要的评估标准。对于软件技术方面，本系统采用的编程语言是Java语言、数据库是MySQL数据库，并采用了Springboot+vue的前后端独立开发框架[24]，这些技术都是非常成熟的，功能强大，能够支撑大量的数据进行管理和存储；此外，目前计算机的硬件技术都发展得较为迅速，处理性能的不断提升能够满足绝大多数系统的正常、稳定以及安全的运行，所以，本系统在技术方面是可行的。
+3.1.2 经济可行性
+经济可行性主要的评估标准是当下系统所采用的技术、运营和维护成本等是否在经济范畴之内，当系统投入运行后，是否能够取得更明显的经济效益。通过调查发现，基于Web的视频网站[25]的主要经济开支为开发成本、系统部署成本和后期的运营以及维护成本，由于这些工作都是由学生本人去完成的，并且在开发过程中的电脑、服务器都是使用的自己的设备，所以几乎不会产生经济花费。当系统正常投入运行之后，能够增加管理人员的工作效能，提升效率，直接带来可观的经济效益，因此，系统在经济方面是有效的。
+3.1.3 操作可行性
+操作可行性的评估标准是系统的界面是否美观，是否具有人性化、个性化的操作界面，用户在使用过程中每个功能是否会有响应等。基于Web的视频网站在投入运行之前都会经过严格的系统测试，通过测试保证系统使用的可行性[26]，操作的简便性，因此本系统的操作方面是可行的。
+3.2 需求分析
+需求分析是一个彻底理解用户需求和特定设计需求（如功能、性能和可靠性）的过程[27]，并将非正式用户需求转化为功能需求的完整定义，以确定系统必须具备的功能模块。通过需求分析，可以确定视频网站功能性和非功能性需求。
+3.2.1 功能性需求分析
+本视频网站旨在提供一个方便快捷的平台供会员用户进行视频的搜索、点播、分类查询、收藏和评论等，也可以修改用户的个人信息。其次，为了保证网站平台的良好运行和有序管理，需要管理员来对发布的视频及相关内容、用户和相关信息进行管理。为了更加有效地反映用户对视频网站的需求，通过建立用例图来进行需求分析并建立有效的功能模型[28]。
+游客
+游客是指未注册成为会员用户的用户，是视频网站的潜在注册用户。他们可以点播视频、浏览、搜索视频和分类查询视频，相关用例图见图3.1。
+图3.1 游客用例图
+会员用户（用户）
+用户是系统的使用者，用户可以直观的感受系统实用性，当用户遇到问题时，可以找系统的管理员寻求帮助。本系统的用户主要具有登录、首页、视频、评论、个人中心等功能，相关用例图见图3.2。
+图3.2 会员用户用例图
+管理员
+管理员一般是系统中的最顶层的人物角色，它是系统中各个功能的维护管理人员，在系统中拥有最高的权限，管理员的主要作用是为了维护平台正常、稳定的运行。同时还可以协助其他角色处理信息，帮助平台用户更好的使用系统。本系统的管理员主要具有登录、分类管理、视频管理、会员管理、修改密码等功能模块，相关用例图见图3.3。
+图3.3 管理员用例图
+3.2.2 非功能性需求分析
+系统性能直接影响着系统功能是否能够正常的发挥，也进一步影响着用户对系统使用体检，本文将在开放性、易维护性和安全性三个方面，详细介绍系统的性能。
+1）开放性
+随着信息服务要求的日益提高，需求量也会愈来愈大，尤其是在一些要求改变时，信息系统的能够性也就必须会随之的有所变化,所以，信息系统也应该具备可开放性与可扩展性,使得可以适对外部的变化，一般情况下，研发人员会采用分层的开发模式或者是设计接口的方式来提高系统的可扩展性。
+2）易维护性
+当系统投入到正常使用过程中后，维护工作也会是一个相当琐碎且频繁的事情，因此系统在开发过程中需要提高本身的维护性，减少后期开发人员的维护工作量，降低维护成本，进而使系统更加人性化的为用户服务。
+3）安全性
+一般情况下，系统都是需要24小时不间断的运行的，这就要求系统有足够的可靠性和安全性，例如，当系统出现故障时，能够快速的恢复，同时应尽量的避免外来病毒的攻击，保证系统数据，这就要求研发人员在开发系统的过程主必须构建一个完整的、有效的安全体系，以保证系统安全。
+3.3 本章小结
+本章主要探讨分析功能性需求与非功能性需求差异及可行性。可行性的分析能够从开发系统需要的这几个主要方面来认识到如何开发适合本开发系统需要的系统现实情况。功能性需求分析通过以用例图的研究方法来重点地阐述了系统中的各角色对系统的功能需求。
+第4章 系统总体设计
+系统的总体设计必须明确系统中的功能模块以及模块之间的关系，主要包括系统的总体架构、系统功能和数据库设计。
+4.1 总体设计
+4.1.1系统概述
+本系统的整体结构框架采用Spring boot+Vue，并使用前后端分离[29]的设计模式。通过html实现前台页面；通过采用Vue2.0框架搭建后台系统页面。同时，采用Java语言实现对系统逻辑部分的功能实现[30]，结合Mysql实现对数据的存储和处理功能。当用户在前端页面发送请求后，后端controller层接受处理请求，调用service层进行处理，并调用dao层对数据库进行操作，再依次返回到前端页面，整个数据流向见图4.1。
+图4.1 系统数据流向图
+4.1.2 系统架构设计
+本视频网站使用spring boot + vue2.0的前后端开发框架，前端通过MVVM模型更好地实现View层与Model层的分离。另外，整体采用java开发软件的三层架构，包括表示层（UI）、业务逻辑层（BLL）和数据访问层（DAL），能够更好的实现高内聚，低耦合，如图4.2所示。表示层直接地和系统用户直接联系，主要表现为一个Web页面，其实现的最主要的功能即为完成了系统数据信息的直接传入显示与传出。业务逻辑层主要的工作功能是负责对底层某些关键业务问题做出业务逻辑的评估并执行业务操作，以此来完成顶层与底层间复杂的逻辑数据的联系处理与指令传输。数据访问层主要支持数据库操作，并将结果依次返回，在前端页面作出应答，系统架构见图4.2。
+图4.2 系统架构设计
+4.2 功能模块设计
+通过上述的需求分析，结合系统应用开发中的一些基本特点，在应用角色方面，本视频网站主要分为管理员与会员用户两部分。其中，管理员模块主要承担对系统数据和操作权限等的管理，基本的功能将包括登录、视频分类管理等功能模块。用户是系统的主要操作对象之一，用户可以通过该系统注册、登录、搜索视频等操作。如图4.3所示是基于Web的视频网站的功能结构图。
+图4.3 系统功能模块图
+4.3 数据库设计
+4.3.1 概念结构设计
+在整个数据库设计过程中，最重要的部分则是概念结构设计，通过概念结构，可以非常清晰的将实体之间的关系进行关联[31]，进而以清晰化的模式表示实体之间的关系，本系统不同实体之间的部分E-R图如下所示。
+会员用户部分E-R图见图4.4：
+图4.4 会员用户部分E-R图
+2）管理员部分E-R图见图4.5：
+图4.5 管理员部分E-R图
+3）角色部分E-R图见图4.6：
+图4.6 角色部分 E-R图
+4）系统整体E-R图见图4.7：
+图4.7 系统整体E-R图
+4.3.2 物理结构设计
+通过分析系统的概念结构，结合数据库设计规则，得到系统的物理结构表，主要包括用户表、管理员表、视频表、分类表等。
+1）会员用户表
+会员用户表表名为gen_user。具体表结构如表4.1所示。
+表4.1 会员用户表（gen_user）
+2）管理员表
+管理员表表名为sys_user。具体表结构如表4.2所示。
+表4.2 管理员表（sys_user）
+3）评论表
+评论表表名为gen_comment。具体表结构如表4.3所示。
+表4.3 评论表（gen_comment）
+表4.3（续）
+4）收藏表
+收藏表表名为gen_like。具体表结构如表4.4所示。
+表4.4 收藏表（gen_like）
+5）视频分类表
+视频分类表表名为sys_user。具体表结构如表4.5所示。
+表4.5 视频分类表（gen_type）
+6）视频表
+视频表表名为gen_video。具体表结构如表4.6所示。
+表4.6 视频表（gen_video）
+表4.6（续）
+7）验证表
+验证表表名为sys_captcha。具体表结构如表4.7所示。
+表4.7 验证表（sys_captcha）
+8）菜单表
+菜单表表名为sys_menu。具体表结构如表4.8所示。
+表4.8 菜单表（sys_menu）
+表4.8（续）
+9）角色表
+角色表表名为sys_role。具体表结构如表4.9所示。
+表4.9 角色表（sys_role）
+10）角色菜单表
+角色菜单表表名为sys__role_menu。具体表结构如表4.10所示。
+表4.10 角色菜单表（sys_role_menu）
+11）登录token表
+登录token表表名为sys_user_token。具体表结构如表4.11所示。
+表4.11 登录token表（sys_user_token）
+4.4 本章小结
+本章在系统分析基础上，设计了系统总体架构、系统总体功能结构、各功能模块和数据库。
+第5章 系统模块详细设计
+本章将从各功能模块入手，通过流程图的方式展开具体模块设计描述，对其进行详细介绍。
+5.1 用户模块
+5.1.1 注册、登录模块
+1）当用户时首次进入网站时，需要先进行注册，用户需要输入用户名、密码且再次确认密码。点击注册按钮后，前端页面通过ajax以post方式向后端发送请求，GenUserController接受发送的reg请求，调用已注入的service层对实体对象进行操作，并将响应结果传回前端页面，流程见图5.1。
+图5.1会员用户注册流程图
+2）用户登录时，需要输入相应的用户名、密码，输入完成后，进行登录。点击登录后，前端通过ajax在该页面上发送login请求，后端controller层响应请求，调用service层进行业务逻辑处理，然后调用已注入的dao层执行数据库操作进行查询比较，根据比较的结果依次返回至前端页面，见图5.2。
+图5.2会员用户登录流程图
+5.1.2 个人信息、收藏模块
+1）点击修改信息时，会通过ajax以get方式发送请求的url后端接口，GenUserController处理相应请求，调用已经注入的service层通过获取用户id查找用户，并对该实体的信息进行删除、更新等操作，流程见图5.3。
+2）对视频下方的心形图标点击收藏后，通过ajax以post方式发送请求，经后端接受请求后，直接调用在controller层注入的service层根据不同的请求地址进行业务层的处理，再对genlike表对应的实体进行数据操作，响应成功后将其结果返回，流程见图5.4。
+图5.3 会员用户个人信息流程图           图5.4会员用户收藏模块流程图
+5.1.3 评论模块
+会员用户在视频下方输入相关评论内容后，点击图标以ajax发送post请求gencomment/save后端接口，controller层接受请求，获取原存入session中的user实体对象，再依次通过set方法置值，最后service层调用方法处理业务，将响应结果返回，流程见图5.5。
+图5.5会员用户评论模块流程图
+5.1.4 视频搜索模块
+当会员用户输入想要查看的视频名称后，点击搜索，触发事件发送get请求到searchlist后端接口，controller层先解析请求，获取到视频名称，并根据获取到的视频名称与已有的进行查询比较，若有，则按照视频id降序排列，流程见图5.6。
+图5.6 会员用户视频查询模块流程图
+5.1.5 视频分类模块
+会员用户点击不同的视频分类后，鼠标每点击一次就会触发事件，发送get请求至frontSelect后端接口，controller层响应请求后，直接通过service层调用实体对象进行查询完成list列表，并通过type_id计算相同分类的总数，最后将其响应结果返回，流程见图5.7。
+图5.7 会员用户视频分类模块流程图
+5.2 管理员后台模块
+5.2.1 登录模块
+管理员在后台页面输入用户名、密码和验证码，提交表单数据并获取验证码。后端接口层直接调用service层获取图片验证码，再响应发起的login请求，判断验证码、管理员的账号和密码是否匹配，若匹配则成功登录，并生成token，保存到数据库中。若不匹配，则提示错误原因，流程见图5.8。
+图5.8管理员登录模块流程图
+5.2.2 分类管理模块
+1）管理员在分类列表可以查询已有视频分类并新增分类。查询后获取到的数据列表结合PageUtiles实体类对象返回的响应来分页显示。
+2）管理员进行新增分类后将表单信息提交，发送请求到/save后端接口，将响应结果返回。
+3）管理员进行修改时，发送请求到/update后端接口，直接调用业务层处理后，将响应结果返回。
+4）管理员进行删除时，发送请求到/delete后端接口，直接调用业务层处理后，将响应结果返回，流程见图5.9。
+图5.9 管理员分类管理模块流程图
+5.2.3 视频管理模块
+1）当用户进入到视频列表页面时，可以通过输入名称查询，也可以通过选择视频所属分类进行查询。当管理员点击查询都会向后端接口发送请求，后端响应后调用service层进行处理，结合分页实体类，返回数据列表显示在页面上。
+2）管理员可以新增视频，上传视频封面、视频名称、视频描述和视频文件，确认上传时，若获取到的数据信息为空会进行提示，都符合要求时，视频成功上传。
+3）管理员可以播放视频并修改相关视频信息，包括分类、视频名称、视频描述等信息。可以找到相关的视频ID进行删除，也可以对该视频下的用户评论进行查询和删除操作，流程见图5.10。
+图5.10 管理员视频管理模块流程图
+5.2.4 会员管理模块
+1）管理员在会员列表可以对用户昵称进行查询，查询结果按照PageUtiles实体类处理后的响应结果分页显示。
+2）管理员可以对会员进行新增，输入用户名、昵称和密码即可。
+3）管理员可以对已存在的会员用户进行修改和删除，分别发送请求到后端接口/genuser/update和/genuser/delete，直接调用业务层处理后，将对对象的处理响应结果返回，流程见图5.11。
+图5.11 管理员会员管理模块流程图
+5.2.5 系统管理模块
+系统管理模块包括三个子模块：管理员管理模块、角色管理模块和菜单管理模块。
+1）管理员后台管理模块:超级管理员在登录网站的后台管理系统后，能够直接在后台进行查看、新增、修改后台现有的管理员信息。
+2）角色管理模块：管理员可以根据当前网站运行的实际情况，创建具有不同管理权限的角色，查询和删除现有角色。
+3）菜单管理模块：管理员可以根据当下发展情况，对后台系统中已有的菜单侧边分栏进行新增、修改和删除操作，流程见图5.12。
+图5.12 管理员菜单管理模块流程图
+5.3 本章小结
+本章从各个功能模块入手来对系统进行详细设计，搭配流程图描述了系统的具体功能。
+第6章 系统实现
+通过以上需求分析、总体设计和详细的模块设计，系统可以按照设计的功能进行实现。本章将从开发的角度介绍上述功能模块的实现过程。
+6.1 用户模块
+6.1.1 注册、登录模块
+1）如果用户是第一次登录本视频网站，必须通过注册才能成为会员用户，取消注册，就回到首页，见图6.1。
+2）用户已注册成为会员用户，可直接输入用户名和密码登录，见图6.2。
+图6.1 会员注册页面
+图6.2 会员登录页面
+6.1.2 个人信息、收藏模块
+用户成功登录后成为视频网站的会员用户，点击状态栏切换至个人信息板块，用户可以在此处修改个人数据、昵称和密码。同时，用户可以查看收藏的视频列表，并单击该视频查看当前视频的收藏次数。另外用户可对其进行取消收藏、点击播放操作，见图6.3、图6.4和图6.5。
+图6.3 会员个人信息、收藏页面
+图6.4 会员修改个人信息页面
+图6.5 会员收藏列表页面
+6.1.3 评论模块
+会员在相应的视频播放页可以点击评论，输入会员自己的见解发表对该视频的评论，其他会员用户均可见并可以对其进行回复，很大程度上提高了实时性，促进交流，见图6.6。
+图6.6 评论页面
+6.1.4 视频搜索模块
+会员用户登入视频网站后，可以通过在搜索栏输入自己想要观看的影片名称，点击查询，通过模糊查询的方式能够得到相关的视频搜索列表，见图6.7。
+图6.7 视频搜索页面
+6.1.5 视频分类模块
+会员用户成功登录视频网站后，可以根据类型查询视频，并且在相应的类目列表下点击播放视频，见图6.8。
+图6.8 视频分类页面
+6.1.6 视频下载模块
+会员用户点击下载视频按钮后，直接下载MP4格式的视频，见图6.9。
+图6.9 视频下载页面
+6.2 管理员模块
+6.2.1 登录模块
+管理员在后台进行登录，输入用户名、密码和验证码，点击登录，前端页面发送请求，后端会对获取到的输入信息进行匹配，匹配成功则成功登录后台管理系统，匹配失败会提示错误原因，见图6.10。
+图6.10 管理员登录页面
+6.2.2 分类管理模块
+管理员可以登录后台管理系统，对已有的视频进行分类管理，以及查询、添加、修改和删除，见图6.11和图6.12。
+图6.11 分类管理页面
+图6.12 新增分类页面
+6.2.3 视频管理模块
+管理员在该模块可以对已发布的的视频进行管理，可以对查询、新增、修改、点击播放、下载视频、删除当前视频，并可以查看视频相关评论并进行删除，见图6.13、图6.14、图6.15、图6.16和图6.17。
+图6.13 视频列表页面
+图6.14 视频新增页面
+图6.15 视频修改页面
+图6.16 视频评论管理页面
+图6.17 新增分类页面
+6.2.4 会员管理模块
+管理员进入后台管理系统后，可以对已注册的会员用户进行账号管理，获取到会员列表，见图6.18。
+图6.18 会员管理页面
+6.2.5 系统管理模块
+1）管理员列表管理模块
+只有超级管理员才能看到管理员列表，并可以对管理员列表通过分页查询方式进行查询，能新增管理员、对已有管理员信息进行修改和删除的操作，如图6.19。
+2）角色管理
+管理员可以通过分页查询方式查询角色名称，能够新增角色并对其进行授权，同时，能够对已有角色进行删除，如图6.20。
+3）菜单管理
+管理员可以新增目录，在目录下新增菜单，在菜单下新增功能按钮，方便提升用户体验，并更好地为网站运行服务，如图6.21。
+图6.19 列表管理页面
+图6.20 角色管理页面
+图6.21 菜单管理页面
+6.3 本章小结
+本章主要介绍了视频网站和后台管理系统相关功能实现的界面。
+第7章 系统测试
+测试环节通过采用黑盒测试[32]的方法来验证本视频网站的功能使用是否正常。
+7.1 功能测试
+7.1.1 注册、登录模块功能测试
+1）会员注册：游客可以通过注册成为会员用户，并拥有会员用户享有的功能权限。完成注册，必须要填写昵称、用户名、密码并再次确认密码。会员注册等价类划分和测试用例表分别如表7.1和表7.2所示：
+表7.1 会员注册测试等价类表
+表7.2 会员注册测试用例表
+表7.2（续）
+2）会员登录：已注册的会员需要登录才能正常使用视频网站，登录需要输入用户名和密码。会员登录等价类划分和测试用例表分别如表7.3和表7.4所示：
+表7.3 会员登录测试等价类划分表
+表7.4 会员登录测试用例表
+3）管理员登录：管理员在后台进行登录时，需要输入账号、密码和验证码。管理员登录等价类划分和测试用例表分别如表7.5和表7.6所示：
+表7.5 管理员登录测试等价类划分表
+表7.6 管理员登录测试用例表
+表7.6（续）
+7.1.2 评论、收藏模块功能测试
+会员用户登录后在相应视频下输入评论内容或回复他人评论可实现评论功能。同样，会员用户对自己喜欢的视频点击收藏可成功将其收藏在个人信息页面中，也可点击取消来取消收藏。测试用例表如表7.7所示。
+表7.7 信息浏览功能测试用例表
+表7.7（续）
+7.2 本章小结
+本章对系统主要功能模块进行选取，并通过等价类划分，进行黑盒测试，在此过程中不断优化系统功能。
+第8章 总结与展望
+8.1 工作总结
+通过五个月左右的时间，在公司一边进行产品实习的工作，一边完成毕业设计项目，到最终本视频网站的成功运行，在此过程中收获和感悟许多。
+自己在过程中学习新的前端、后端开发框架技术，结合多种资源提升自己的代码能力和理解底层逻辑能力。在进行需求分析时，将自己的实习工作与项目本身友好联系起来，确定了本视频网站应该具备的基础功能。并耗费了大量时间在开发设计过程中，最终分别在会员用户侧和管理员侧实现注册登录、视频查询、视频分类、评论、收藏、信息管理以及对应的后台管理功能模块。此外，本视频网站的耦合性低，易操作性强，界面清晰直观，样式符合大众审美，便于操作。在整个毕业设计过程中，时间紧张，遇到了很多难题，但同时也收获了很多，自己通过多种途径学习新知识，锻炼了自己查阅文献以及独立开发的能力，同时对于软件开发思想以及软件生命周期理论等软件工程的核心思想有了进一步的理解。
+8.2 展望
+本文对注册、登录和收藏评论进行了测试，结果显示功能模块操作正常，能够满足用户日常的需求。从更好地提升用户体验角度出发，在未来的开发和维护中，还需要从以下几方面出发：
+1）进一步保证系统安全性。当前系统只能满足初步的安全性，对于数据攻击等安全性问题，还需要在未来的工作中继续进行；
+2）增加功能的完善性。可增加智能推荐功能，用户直播功能，提升用户体验。
+3）管理员在后台上传视频速率的优化。
+参考文献
+韩鹏飞, 王剑锋, 何彬涛et al. 视频网站信息资源的评价[J]. 电脑知识与技术, 2020, 16(12): 212-213.
+孙丽英. 响应式设计技术在视频网站开发中的应用策略[J]. 电脑编程技巧与维护, 2022, 65(04): 141-143+152.
+韩璐. 视频网站的运营发展困境与变革创新研究[D]. 广州: 暨南大学, 2019.
+Ye Pengwei, Jia Yongxin. Research of Graduation Project Management System Based on B/S Mode[J]. International Journal of Computational and Engineering, 2021, 6(3): 43-44.
+Almarghoub Mohammed A,Alghareeb Muath A,Alhammad AlAnoud K,Alotaibi Haya F,Kattan Abdullah E. Plastic Surgery on YouTube.[J]. Plastic and reconstructive surgery. Global open, 2020, 8(1): 68-69.
+朱鸿倜. 国内视频网站发展困境与对策研究[J]. 西部广播电视, 2021, 42(16): 33-35.
+刘婷艳, 王晰巍, 贾若男et al. 视频网站用户生成内容国内外发展动态及发展趋势[J]. 情报科学, 2020, 38(10): 133-140.
+任焕海, 孙德刚. 基于Web的翻转课堂微视频管理系统的设计[J]. 现代信息科技, 2019, 3(09): 81-83.
+王苏皖, 徐伟业, 马湘蓉. 基于JAVA的校园二手物交易网站设计[J]. 电子技术与软件工程, 2021, 12(13): 148-149.
+Li Nian,Zhang Bo. The Research on Single Page Application Front-end development Based on Vue [J]. Journal of Physics: Conference Series, 2021, 1883(1): 45-46.
+熊柏祥. 基于Springboot和Vue框架的考试资源服务平台的设计与实现[J]. 信息与电脑(理论版), 2022, 34(01): 97-99+103.
+李晓薇. vue.js前端应用技术分析[J]. 网络安全技术与应用, 2022, 19(04): 44-45.
+Knok Željko,Marčec Mark. WPF and MVVM [J]. Tehnički glasnik, 2015, 9(4): 34-35.
+方生. 基于“MVVM”模式的“Web”前端的设计与实现[J]. 电脑知识与技术, 2021, 17(20): 147-149.
+霍福华, 韩慧. 基于SpringBoot微服务架构下前后端分离的MVVM模型[J]. 电子技术与软件工程, 2022, 10(01): 73-76.
+郭蕊, 赵元苏. Web前端框架技术综述[J]. 北京工业职业技术学院学报, 2021, 20(03): 24-27.
+Jian Chen, Chen Jian, Pan Hailan. Design of Man Hour Management Information System on SpringBoot Framework[J]. Journal of Physics: Conference Series, 2020, 1646(1): 102-103.
+陈倩怡, 何军. Vue+Springboot+MyBatis技术应用解析[J]. 电脑编程技巧与维护, 2020, 32(01): 14-15+28.
+吕宇琛. SpringBoot框架在web应用开发中的探讨[J]. 科技创新导报, 2018, 15(08): 168+173.
+张旭刚, 张昕, 高若寒. 基于Spring Boot与MyBatis框架构建动态读写分离模型[J]. 微型电脑应用, 2021, 37(02): 84-86+98.
+陈小虎, 邓惠俊. 基于mybatis的数据持久层研究[J]. 成都工业学院学报, 2020, 23(02): 29-32.
+Y Hou. Design and Implementation of the Framework for Spring+SpringMVC+MyBatis in the Development of Web Application[C]//International Conference on Computer Technology, Electronics and Communication. CN: Y Hou, 2017: 34-36.
+冯凯. “MySQL数据库”课程教学中常见问题探析[J]. 无线互联科技, 2021, 18(24): 158-159.
+张凤. 基于Web的视频新闻点播系统设计与实现[J]. 电脑知识与技术, 2017, 13(27): 199-200+210.
+Matthew Tyson. Angular, React, Vue: JavaScript frameworks compared[J]. InfoWorld.com, 2021, 76(13): 111-112.
+曾远程, 李奏换, 谢玉林et al. 一种结构化的软件需求分析方法及装置. 中国, CN112181365A[P]. 20210105.
+Ing. Ayizdeth Fuentes Zarate,Ing. Miguel ángel Mu?oz Pozos,Dr. René Santaolaya Salgado,Dr. José Juan Hernández Mora. A Hybrid Approach to Software Development Based on Agile and Traditional Methods: Requirements, Analysis, and Design Phases[J]. Journal of Research in Science and Engineering, 2021, 3(5): 65-66.
+雷学锋. 用例图在系统需求分析中的应用研究[J]. 科技广场, 2016, 16(11): 36-39.
+Manuele Kirsch-Pinheiro,Raúl Mazo,Carine Souveyet,Danillo Sprovieri. Requirements Analysis for Context-oriented Systems[J]. Procedia Computer Science, 2016, 83(22): 23-24.
+Meng Hou. Analysis and Design of Community Management System based on Web[J]. Frontiers in Economics and Management, 2021, 2(2): 32-33.
+李志. 论E-R图在数据库建模过程中的重要性[J]. 信息记录材料, 2020, 21(06): 143-145.
+郭文欣, 谭凤. 基于“BOPPPS”模式的“黑盒测试技术-等价类划分法”教学设计与实践[J]. 电脑知识与技术, 2020, 16(26): 138-139.
+致谢
+时间太瘦，指缝太宽。大学四年时光呼啸而过，自己人生中美好的青春年华即将迎来又一个里程碑式的节点——大学毕业，本次毕业论文的完成也标志着自己大学生活的完结撒花，也标志着即将开启去往公司开始产品经理的新路程。
+在进行毕业设计项目的过程中，是很难熬的几个月。有怎么写都觉得不合适的苦恼，有系统开发不理解的郁闷，也有豁然开朗的瞬间，在这个过程中有很多人都来给我鼓励和帮助，在此向所有帮助过我的老师、同学以及公司同事表达我的感谢。
+首先我最想感谢的我的毕设指导老师胡峰老师。由于我更多时间在校外实习，胡老师会提醒各个任务时间节点，并对于我的提问都给予及时且有效的回复，让我能够获得有效的信息资源，此外，胡老师还会对论文进行审阅和修改，让我们能够更好地完成毕业论文。
+其次，我想要感谢大学里帮助过我的每一位同学，同学之间相互帮助，相互监督，都会促使对方成为更好的人。感谢排球队的小伙伴，无论在学习还是生活方面都给我提供很多指导和帮助。一路走来，我们的共同成长都离不开彼此的帮助。
+最后，我想要感谢我的母校—重庆邮电大学。大学四年来，母校给我们提供了更多发现自己可能性的平台，让我们用于去尝试、去拓宽区域。同时，母校中的每一位老师都是辛勤的园丁，他们期待着我们能够更好地成长，无论是专业知识还是做人做事，都让我感受颇深。
+本科四年，转瞬即逝。四年的春夏秋冬、点点滴滴都成为青春记忆中的美丽风景，将成为人生中宝贵的回忆，伴我同行，一路成长。
+附录B 英文翻译
+详细的Spring配置和Spring BootI Cosmina, R Harrop, C Schaefer, C Ho
+管理bean的生命周期：到目前为止，您所看到的所有bean都非常简单，并且与Spring容器完全分离。在本章中，我们介绍了一些策略，可用于使bean在生命周期的各个时间点从Spring容器接收通知。您可以通过实现Spring布局的特定接口，指定Spring可以通过反射调用的方法或使用JSR-250 JavaBeans生命周期注释来实现此目的。
+使Bean具有“Spring意识”：在某些情况下，您希望Bean能够与配置它的ApplicationContext实例进行交互。因此，Spring提供了两个接口BeanNameAware和ApplicationContextAware（在第3章的末尾引入），这两个接口使您的bean可以获取其分配的名称并分别引用其ApplicationContext。本章的这一部分介绍了如何实现这些接口，并给出了在应用程序中使用它们的一些实际想法。
+使用FactoryBeans：顾名思义，FactoryBean接口旨在由充当其他Beanfactory中的任何bean来实现。 FactoryBean接口提供了一种机制，通过该机制，您可以轻松地将自己的工厂与Spring BeanFactory接口集成。
+使用JavaBeans PropertyEditor：PropertyEditor接口是java.beans包中提供的标准接口。 PropertyEditor用于在字符串表示形式之间来回转换属性值。 Spring广泛使用PropertyEditor，主要是读取BeanFactory配置中指定的值并将其转换为正确的类型。在本章中，我们将讨论Spring随附的PropertyEditor集合，以及如何在应用程序中使用它们。我们还将介绍实现自定义PropertyEditor的过程。
+了解有关Spring ApplicationContext的更多信息：众所周知，ApplicationContext是BeanFactory的扩展，旨在在完整的应用程序中使用。 ApplicationContext接口提供了一组有用的附加功能，包括跨地区的消息支持、资源加载和事件发布。
+在本章中，我们将详细介绍ApplicationContext提供的IoC和其他功能。我们还领先一步，向您展示了构建Web应用程序时ApplicationContext如何简化Spring的使用。
+使用Java类进行配置：在3.0之前，Spring仅支持XML基本配置以及Bean和依赖项配置的注释。从3.0开始，Spring为开发人员提供了另一个选项，供开发人员使用Java类配置Spring ApplicationContext接口。我们来看看Spring应用程序配置中的这个新选项。
+使用Spring Boot：使用Spring Boot使Spring应用程序配置更加实用。这个Spring项目使创建“ Spring”的应用程序变得容易。
+使用配置增强功能：我们提供了使应用程序配置更容易的功能，例如，配置文件管理、环境和属性源等。在本节中，我们将介绍这些功能并显示如何使用它们来满足特定的配置需求。
+使用Groovy进行配置：Spring 4.0的新增功能是可以使用Groovy语言配置bean定义，该语言可以用作现有XML和Java配置方法的替代或补充。
+Spring对应用程序可移植性的影响
+本章讨论的大多数功能都是特定于Spring的，在许多情况下，其他IoC容器均不提供这些功能。尽管许多IoC容器提供生命周期管理功能，但它们可能通过与Spring不同的一组接口来实现。如果应用程序在不同IoC容器之间的可移植性确实很重要，那么您可能要避免使用将应用程序耦合到Spring的某些功能。
+但是请记住，通过设置约束（意味着您的应用程序可在IoC容器之间移植），您将失去Spring提供的丰富功能。因为您可能会做出使用Spring的战略选择，所以最好使用Spring。
+小心不要对便携性提出任何要求。在许多情况下，应用程序的最终用户并不关心该应用程序是否可以在三个不同的IoC容器上运行；他们只是想要它运行。根据我们的经验，尝试使用所选技术中可用功能的最低公分母来构建应用程序通常是一个错误。从一开始，这样做通常会使您的应用程序处于不利的地位。但是，如果您的应用程序需要IoC容器可移植性，请不要将其视为缺点-这是真正的要求，因此，您的应用程序应满足这一要求。 Rod Johnson和JürgenHöller在“专家一对一：无EJB的J2EE开发”中（Wrox，2004年）将这些类型的需求描述为虚拟需求，并提供了更详细的讨论以及它们如何影响您的项目。
+尽管使用这些功能可能会将您的应用程序耦合到Spring Framework，但实际上您在更大范围内提高了应用程序的可移植性。考虑您使用的是免费的开放源代码框架，该框架没有特定的供应商关系。使用Spring的IoC容器构建的应用程序可以在Java运行的任何地方运行。对于Java企业应用程序，Spring为可移植性开辟了新的可能性。 Spring提供了许多与JEE相同的功能，还提供了一些类来抽象和简化JEE的许多其他方面。在许多情况下，可以使用Spring构建一个Web应用程序，该Web应用程序运行在一个简单的servlet容器中，但与针对成熟的JEE应用程序服务器的应用程序具有相同的复杂度。通过与Spring耦合，您可以通过用Spring中的等效功能替换许多特定于供应商或依赖于特定于供应商的配置的功能，从而提高应用程序的可移植性。
+Bean生命周期管理：
+任何IoC容器（包括Spring）的一个重要部分是，可以以这样的方式构造bean，使其在生命周期的某些点接收通知。这使您的bean可以在一生中的某些时间执行相关处理。通常，两个生命周期事件与Bean特别相关：初始化后和销毁前。
+在Spring的上下文中，一旦Spring完成在Bean上设置所有属性值并完成您配置为执行的所有依赖项检查，就会引发后初始化事件。在Spring销毁bean实例之前立即触发pre-destruction事件。但是，对于具有原型范围的bean，Spring不会触发预破坏事件。 Spring的设计是，无论对象的bean范围如何，都将在对象上调用初始化生命周期回调方法，而对于具有原型范围的bean，则不会调用销毁生命周期回调方法。 Spring提供了三种机制，bean可以使用这些机制来挂钩每个事件并执行一些附加处理：基于接口的，基于方法的和基于注释的机制。
+使用基于接口的机制，您的bean实现了一个特定于其想要接收的通知类型的接口，并且Spring通过该接口中定义的回调方法来通知bean。对于基于方法的机制，Spring允许您在ApplicationContext配置中指定初始化bean时要调用的方法的名称和破坏bean时要调用的方法的名称。对于注释机制，可以使用JSR-250注释指定Spring在构造之后或销毁之前应调用的方法。
+在这两种情况下，机制均实现完全相同的目标。该接口机制在整个Spring广泛使用，因此您不必每次使用Spring组件之一时都要指定初始化或销毁方法。但是，在您自己的bean中，使用基于方法或注释机制可能会更好，因为您的bean不需要实现任何特定于Spring的接口。尽管我们说可移植性通常并不像您认为的那样重要，但并不意味着您可以在存在完美替代品的情况下牺牲可移植性。就是说，如果您以其他方式将应用程序耦合到Spring，则使用interface方法可以使您一次指定回调，然后将其忽略。如果您要定义许多需要利用生命周期通知的相同类型的bean，那么使用接口机制可以避免为XML配置文件中的每个bean指定生命周期回调方法的需要。使用JSR-250注释也是另一个可行的选择，因为它是JCP定义的标准，并且您也没有与Spring的特定注释耦合。只要确保您在其上运行应用程序的IoC容器支持JSR-250标准即可。
+总体而言，用于接收生命周期通知的机制的选择取决于您的应用程序要求。如果您担心可移植性，或者仅定义一个或两个需要回调的特定类型的bean，请使用基于方法的机制。如果您使用注释类型配置，并且确定您正在使用支持JSR-250的IoC容器，请使用注释机制。如果您不太担心可移植性，或者正在定义许多需要生命周期通知的相同类型的Bean，则使用基于接口的机制是确保您的Bean始终收到他们期望的通知的最佳方法。如果打算在许多不同的Spring项目中使用Bean，那么几乎可以肯定，您希望该Bean的功能尽可能独立，因此您绝对应该使用基于接口的机制。
+使用基于接口的机制，您的bean实现了一个特定于其想要接收的通知类型的接口，并且Spring通过该接口中定义的回调方法来通知bean。对于基于方法的机制，Spring允许您在ApplicationContext配置中指定初始化bean时要调用的方法的名称和破坏bean时要调用的方法的名称。对于注释机制，可以使用JSR-250注释指定Spring在构造之后或销毁之前应调用的方法。
+在这两种情况下，机制均实现完全相同的目标。该接口机制在整个Spring广泛使用，因此您不必每次使用Spring组件之一时都要指定初始化或销毁方法。但是，在您自己的bean中，使用基于方法或注释机制可能会更好，因为您的bean不需要实现任何特定于Spring的接口。尽管我们说可移植性通常并不像您认为的那样重要，但并不意味着您可以在存在完美替代品的情况下牺牲可移植性。就是说，如果您以其他方式将应用程序耦合到Spring，则使用interface方法可以使您一次指定回调，然后将其忽略。如果您要定义许多需要利用生命周期通知的相同类型的bean，那么使用接口机制可以避免为XML配置文件中的每个bean指定生命周期回调方法的需要。使用JSR-250注释也是另一个可行的选择，因为它是JCP定义的标准，并且您也没有与Spring的特定注释耦合。只要确保您在其上运行应用程序的IoC容器支持JSR-250标准即可。
+总体而言，用于接收生命周期通知的机制的选择取决于您的应用程序要求。如果您担心可移植性，或者仅定义一个或两个需要回调的特定类型的bean，请使用基于方法的机制。如果您使用注释类型配置，并且确定您正在使用支持JSR-250的IoC容器，请使用注释机制。如果您不太担心可移植性，或者正在定义许多需要生命周期通知的相同类型的Bean，则使用基于接口的机制是确保您的Bean始终收到他们期望的通知的最佳方法。如果打算在许多不同的Spring项目中使用Bean，那么几乎可以肯定，您希望该Bean的功能尽可能独立，因此您绝对应该使用基于接口的机制。
+附录B 英文原文
+Spring Configuration in Detail and Spring BootI Cosmina, R Harrop, C Schaefer, C Ho
+Managing the bean life cycle: So far, all the beans you have seen have been fairly simple and completely decoupled from the Spring container. In this chapter, we present some strategies you can employ to enable your beans to receive notifications from the Spring container at various points throughout their life cycles. You can do this either by implementing specific interfaces laid out by Spring, by specifying methods that Spring can call via reflection, or by using JSR-250 JavaBeans life-cycle annotations.
+Making your beans “Spring aware”: In some cases, you want a bean to be able to interact with the ApplicationContext instance that configured it. For this reason, Spring offers two interfaces, BeanNameAware and ApplicationContextAware (introduced at the end of Chapter 3), that allow your bean to obtain its assigned name and reference its ApplicationContext, respectively. This section of the chapter covers implementing these interfaces and gives some practical considerations for using them in your application.
+Using FactoryBeans: As its name implies, the FactoryBean interface is meant to be implemented by any bean that acts as a factory for other beans. The FactoryBean interface provides a mechanism by which you can easily integrate your own factories with the Spring BeanFactory interface.
+Working with JavaBeans PropertyEditors: The PropertyEditor interface is a standard interface provided in the java.beans package. PropertyEditors are used to convert property values to and from String representations. Spring uses PropertyEditors extensively, mainly to read values specified in the BeanFactory configuration and convert them into the correct types. In this chapter, we discuss the set of PropertyEditors supplied with Spring and how you can use them within your application. We also take a look at implementing custom PropertyEditors.
+Learning more about the Spring ApplicationContext: As we know, ApplicationContext is an extension of BeanFactory intended for use in full applications. The ApplicationContext interface provides a useful set of additional functionality, including internationalized message support, resource loading, and event publishing. In this chapter, we present a detailed look at the features in addition to IoC that ApplicationContext offers. We also jump ahead of ourselves a little to show you how ApplicationContext simplifies the use of Spring when you are building web applications.
+Using Java classes for configuration: Prior to 3.0, Spring supported only the XML base configuration with annotations for beans and dependency configuration. Starting with 3.0, Spring offers another option for developers to configure the Spring ApplicationContext interface using Java classes. We take a look at this new option in Spring application configuration.
+Using Spring Boot: Spring application configuration is made even more practical by using Spring Boot. This Spring project makes it easy to create stand-alone, production-grade, Spring-based applications that you can “just run.”
+Using configuration enhancements: We present features that make application configuration easier, such as profile management, environment and property source abstraction, and so on. In this section, we cover those features and show how to use them to address specific configuration needs.
+Using Groovy for configuration: New to Spring 4.0 is the ability to configure bean definitions in the Groovy language, which can be used as an alternative or supplement to the existing XML and Java configuration methods.
+Spring’s Impact on Application Portability
+Most of the features discussed in this chapter are specific to Spring and, in many cases, are not available in other IoC containers. Although many IoC containers offer life-cycle management functionality, they probably do so through a different set of interfaces than Spring. If the portability of your application between different IoC containers is truly important, you might want to avoid using some of the features that couple your application to Spring.
+Remember, however, that by setting a constraint—meaning that your application is portable between IoC containers—you are losing out on the wealth of functionality Spring offers. Because you are likely to be making a strategic choice to use Spring, it makes sense that you use it to the best of its ability.
+Be careful not to create a requirement for portability out of thin air. In many cases, the end users of your application do not care whether the application can run on three different IoC containers; they just want it to run. In our experience, it is often a mistake to try to build an application on the lowest common denominator of features available in your chosen technology. Doing so often sets your application at a disadvantage right from the get-go. However, if your application requires IoC container portability, do not see this as a drawback—it is a true requirement and, therefore, one your application should fulfill. In Expert One-on-One: J2EE Development without EJB (Wrox, 2004), Rod Johnson and Jürgen Höller describe these types of requirements as phantom requirements and provide a much more detailed discussion of them and how they can affect your project.
+Although using these features may couple your application to the Spring Framework, in reality you are increasing the portability of your application in the wider scope. Consider that you are using a freely available, open source framework that has no particular vendor affiliation. An application built using Spring’s IoC container runs anywhere Java runs. For Java enterprise applications, Spring opens up new possibilities for portability. Spring provides many of the same capabilities as JEE and also provides classes to abstract and simplify many other aspects of JEE. In many cases, it is possible to build a web application using Spring that runs in a simple servlet container but with the same level of sophistication as an application targeted at a full-blown JEE application server. By coupling to Spring, you can increase your application’s portability by replacing many features that either are vendor-specific or rely on vendor-specific configuration with equivalent features in Spring.
+Bean Life-Cycle Management
+An important part of any IoC container, Spring included, is that beans can be constructed in such a way that they receive notifications at certain points in their life cycle. This enables your beans to perform relevant processing at certain points throughout their life. In general, two life-cycle events are particularly relevant to a bean: post-initialization and pre-destruction.
+In the context of Spring, the post-initialization event is raised as soon as Spring finishes setting all the property values on the bean and finishes any dependency checks that you configured it to perform. The pre-destruction event is fired just before Spring destroys the bean instance. However, for beans with prototype scope, the pre-destruction event will not be fired by Spring. The design of Spring is that the initialization life-cycle callback methods will be called on objects regardless of bean scope, while for beans with prototype scope, the destruction life-cycle callback methods will not be called. Spring provides three mechanisms a bean can use to hook into each of these events and perform some additional processing: interface-based, method-based, and annotation-based mechanisms.
+Using the interface-based mechanism, your bean implements an interface specific to the type of notification it wants to receive, and Spring notifies the bean via a callback method defined in the interface. For the method-based mechanism, Spring allows you to specify, in your ApplicationContext configuration, the name of a method to call when the bean is initialized and the name of a method to call when the bean is destroyed. For the annotation mechanism, you can use JSR-250 annotations to specify the method that Spring should call after construction or before destruction.
+In the case of both events, the mechanisms achieve exactly the same goal. The interface mechanism is used extensively throughout Spring so that you don’t have to remember to specify the initialization or destruction each time you use one of Spring’s components. However, in your own beans, you may be better served using the method-based or annotation mechanism because your beans do not need to implement any Spring-specific interfaces. Although we stated that portability often isn’t as important a requirement as many books lead you to believe, this does not mean you should sacrifice portability when a perfectly good alternative exists. That said, if you are coupling your application to Spring in other ways, using the interface method allows you to specify the callback once and then forget about it. If you are defining a lot of beans of the same type that need to take advantage of the life-cycle notifications, then using the interface mechanism can avoid the need for specifying the life-cycle callback methods for every bean in the XML configuration file. Using JSR-250 annotations is also another viable option, since it’s a standard defined by the JCP and you are also not coupled to Spring’s specific annotations. Just make sure that the IoC container you are running your application on supports the JSR-250 standard.
+Overall, the choice of which mechanism you use for receiving life-cycle notifications depends on your application requirements. If you are concerned about portability or you are just defining one or two beans of a particular type that need the callbacks, use the method-based mechanism. If you use annotation-type configuration and are certain that you are using an IoC container that supports JSR-250, use the annotation mechanism. If you are not too concerned about portability or you are defining many beans of the same type that need the life-cycle notifications, using the interface-based mechanism is the best way to ensure that your beans always receive the notifications they are expecting. If you plan to use a bean across many different Spring projects, you almost certainly want the functionality of that bean to be as self-contained as possible, so you should definitely use the interface-based mechanism.
+By being aware of when it is initialized, a bean can check whether all its required dependencies are satisfied. Although Spring can check dependencies for you, it is pretty much an all-or-nothing approach, and it doesn’t offer any opportunities for applying additional logic to the dependency resolution procedure. Consider a bean that has four dependencies declared as setters, two of which are required and one of which has a suitable default in the event that no dependency is provided. Using an initialization callback, your bean can check for the dependencies it requires, throwing an exception or providing a default as needed.
+A bean cannot perform these checks in its constructor because at this point, Spring has not had an opportunity to provide values for the dependencies it can satisfy. The initialization callback in Spring is called after Spring finishes providing the dependencies that it can and performs any dependency checks that you ask of it.
+You are not limited to using the initialization callback just to check dependencies; you can do anything you want in the callback, but it is most useful for the purpose we have described. In many cases, the initialization callback is also the place to trigger any actions that your bean must take automatically in response to its configuration. For instance, if you build a bean to run scheduled tasks, the initialization callback provides the ideal place to start the scheduler—after all, the configuration data is set on the bean.

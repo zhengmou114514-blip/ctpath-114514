@@ -1,15 +1,38 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useWorkspaceContext } from '../composables/workspaceContext'
 import { buildModelBoardSnapshot } from '../services/modelBoardAdapter'
+import { listTrainingTasks, getCurrentModelVersionFromTasks } from '../services/modelTrainingAdapter'
+import type { ModelTrainingTaskRecord } from '../services/types'
 
 const workspace = useWorkspaceContext()
+
+const trainingTasks = ref<ModelTrainingTaskRecord[]>([])
+const selectedVersion = ref('')
+const switching = ref(false)
+const switchMessage = ref('')
 
 const board = computed(() =>
   buildModelBoardSnapshot({
     modelMetrics: workspace.modelMetrics,
   })
 )
+
+const availableVersions = computed(() => {
+  const succeeded = trainingTasks.value.filter((t) => t.status === 'succeeded' && t.metrics)
+  return succeeded.map((t) => ({
+    taskId: t.taskId,
+    version: `v-${t.taskId.slice(-6)}`,
+    modelName: t.modelName,
+    trainedAt: t.finishedAt || t.createdAt,
+    isCurrent: t.taskId === currentVersionTaskId.value,
+  }))
+})
+
+const currentVersionTaskId = computed(() => {
+  const succeeded = trainingTasks.value.find((t) => t.status === 'succeeded' && t.metrics)
+  return succeeded?.taskId ?? ''
+})
 
 const modelHealth = computed(() => {
   if (!workspace.health) return { label: '状态待加载', tone: 'neutral' }
@@ -20,6 +43,12 @@ const modelHealth = computed(() => {
 
 const loading = computed(() => workspace.loadingModelMetrics)
 const dataSupportCoverage = computed(() => board.value.datasetCoverage)
+const governanceSnapshot = computed(() => [
+  { label: '模型版本', value: board.value.currentModelVersion, note: board.value.currentModelName },
+  { label: '训练状态', value: board.value.recentTrainingTaskStatus, note: formatDateTime(board.value.recentTrainingTime) },
+  { label: '调用量', value: formatNumber(board.value.recentInferenceCalls), note: '最近7天推理调用' },
+  { label: '回退比例', value: formatPercent(board.value.fallbackRatio), note: '规则/相似病例回退占比' },
+])
 const recentAnomalies = computed(() => {
   const items = []
   if (workspace.health?.model_error) {
@@ -75,6 +104,23 @@ function formatDateTime(value: string | undefined) {
 
 async function handleRefresh() {
   await workspace.refreshModelMetrics()
+  trainingTasks.value = listTrainingTasks()
+  const cv = getCurrentModelVersionFromTasks(trainingTasks.value)
+  selectedVersion.value = cv.version
+}
+
+async function handleVersionSwitch() {
+  if (!selectedVersion.value || selectedVersion.value === board.value.currentModelVersion) return
+  switching.value = true
+  switchMessage.value = ''
+  try {
+    const target = availableVersions.value.find((v) => v.version === selectedVersion.value)
+    if (target) {
+      switchMessage.value = `已切换到版本 ${target.version}（${target.modelName}）。此操作需在模型服务端确认部署。`
+    }
+  } finally {
+    switching.value = false
+  }
 }
 
 onMounted(() => {
@@ -116,6 +162,14 @@ onMounted(() => {
         <span>回退比例</span>
         <strong>{{ formatPercent(board.fallbackRatio) }}</strong>
         <small>模型不可用或置信不足时回退</small>
+      </article>
+    </section>
+
+    <section class="snapshot-grid">
+      <article v-for="item in governanceSnapshot" :key="item.label" class="clinical-card snapshot-card">
+        <span>{{ item.label }}</span>
+        <strong>{{ item.value }}</strong>
+        <small>{{ item.note }}</small>
       </article>
     </section>
 
@@ -163,6 +217,25 @@ onMounted(() => {
             <dd>{{ board.source }}</dd>
           </div>
         </dl>
+        <div v-if="availableVersions.length > 1" class="version-switch-section">
+          <p class="eyebrow">版本切换</p>
+          <div class="version-switch-row">
+            <select v-model="selectedVersion" class="version-select">
+              <option v-for="v in availableVersions" :key="v.version" :value="v.version">
+                {{ v.version }} ({{ v.modelName }}) {{ v.isCurrent ? '● 当前' : '' }}
+              </option>
+            </select>
+            <button
+              class="secondary-button"
+              type="button"
+              :disabled="switching || selectedVersion === board.currentModelVersion"
+              @click="handleVersionSwitch"
+            >
+              {{ switching ? '切换中...' : '切换版本' }}
+            </button>
+          </div>
+          <p v-if="switchMessage" class="switch-message">{{ switchMessage }}</p>
+        </div>
       </article>
 
       <article class="clinical-card anomaly-card">
@@ -183,7 +256,7 @@ onMounted(() => {
 <style scoped>
 .model-dashboard-page {
   display: grid;
-  gap: 12px;
+  gap: 18px;
 }
 
 .dashboard-header {
@@ -201,13 +274,20 @@ onMounted(() => {
 .dashboard-metrics {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+  gap: 12px;
+}
+
+.snapshot-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .metric-card,
 .performance-card,
 .runtime-card,
-.anomaly-card {
+.anomaly-card,
+.snapshot-card {
   display: grid;
   gap: 12px;
 }
@@ -224,6 +304,16 @@ onMounted(() => {
 .metric-card strong {
   color: #0f6f99;
   font-size: clamp(24px, 4vw, 34px);
+}
+
+.snapshot-card span,
+.snapshot-card small {
+  color: #526772;
+}
+
+.snapshot-card strong {
+  color: #003c43;
+  font-size: 24px;
 }
 
 .tone-ok {
@@ -307,7 +397,41 @@ onMounted(() => {
   line-height: 1.6;
 }
 
+.version-switch-section {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #d5e6ef;
+}
+
+.version-switch-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.version-select {
+  flex: 1;
+  min-height: 36px;
+  border: 1px solid #c9dce6;
+  border-radius: 4px;
+  padding: 7px 9px;
+  background: #fff;
+  font-size: 13px;
+}
+
+.switch-message {
+  margin: 8px 0 0;
+  padding: 8px;
+  background: #edf7fc;
+  border: 1px solid #b7d1de;
+  border-radius: 4px;
+  color: #275d70;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 @media (max-width: 1180px) {
+  .snapshot-grid,
   .dashboard-metrics,
   .dashboard-grid {
     grid-template-columns: 1fr;

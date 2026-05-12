@@ -120,7 +120,7 @@ function printPage() {
 }
 
 function backToArchive() {
-  void router.push({ name: 'home', query: { module: 'archive' } })
+  void router.push({ name: 'doctor-patients' })
 }
 
 onMounted(load)

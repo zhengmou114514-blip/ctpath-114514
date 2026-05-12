@@ -24,6 +24,26 @@ const isEditing = computed(() => Boolean(selectedDrugId.value))
 const activeCount = computed(() => drugs.value.filter((item) => item.status === 'active').length)
 const controlledCount = computed(() => drugs.value.filter((item) => item.is_controlled).length)
 const prescriptionCount = computed(() => drugs.value.filter((item) => item.is_prescription).length)
+const dosageSummary = computed(() => {
+  const counts = filteredDrugs.value.reduce<Record<string, number>>((acc, item) => {
+    const key = item.dosage_form || '未标注'
+    acc[key] = (acc[key] || 0) + 1
+    return acc
+  }, {})
+  return Object.entries(counts)
+    .map(([label, value]) => ({ label, value }))
+    .sort((left, right) => right.value - left.value)
+    .slice(0, 4)
+})
+const selectedDrugSummary = computed(() => {
+  if (!selectedDrug.value) return []
+  return [
+    { label: '目录状态', value: statusText(selectedDrug.value.status) },
+    { label: '处方属性', value: selectedDrug.value.is_prescription ? '处方药' : '非处方药' },
+    { label: '管制属性', value: selectedDrug.value.is_controlled ? '管制药' : '普通药品' },
+    { label: '适应症', value: selectedDrug.value.indication || '未填写' },
+  ]
+})
 
 const filteredDrugs = computed(() => {
   const keywordValue = keyword.value.trim().toLowerCase()
@@ -195,6 +215,38 @@ onMounted(() => {
       </article>
     </section>
 
+    <section class="drug-summary-grid">
+      <article class="clinical-card spotlight-card">
+        <div class="section-header">
+          <div>
+            <h2>目录展示重点</h2>
+            <p>药品目录用于支撑当前用药、药品权限管理和药师复核，不扩展到库存与收费流程。</p>
+          </div>
+        </div>
+        <div class="spotlight-tags">
+          <span class="tag">慢病常用药</span>
+          <span class="tag">处方药标识</span>
+          <span class="tag warning">管制药标识</span>
+          <span class="tag">启停状态</span>
+        </div>
+      </article>
+
+      <article class="clinical-card dosage-card">
+        <div class="section-header">
+          <div>
+            <h2>剂型分布</h2>
+            <p>便于在论文截图中展示目录结构，而不只是单纯的列表。</p>
+          </div>
+        </div>
+        <div class="dosage-list">
+          <div v-for="item in dosageSummary" :key="item.label" class="dosage-item">
+            <span>{{ item.label }}</span>
+            <strong>{{ item.value }}</strong>
+          </div>
+        </div>
+      </article>
+    </section>
+
     <div v-if="errorMessage" class="inline-alert error">{{ errorMessage }}</div>
     <div v-else-if="successMessage" class="inline-alert success">{{ successMessage }}</div>
 
@@ -316,6 +368,16 @@ onMounted(() => {
           </div>
         </div>
 
+        <div v-if="selectedDrugSummary.length" class="selected-summary-card">
+          <h3>当前药品摘要</h3>
+          <div class="selected-summary-grid">
+            <div v-for="item in selectedDrugSummary" :key="item.label" class="info-item">
+              <span>{{ item.label }}</span>
+              <strong>{{ item.value }}</strong>
+            </div>
+          </div>
+        </div>
+
         <div class="editor-grid">
           <label class="field">
             <span>药品编号</span>
@@ -376,6 +438,7 @@ onMounted(() => {
 <style scoped>
 .drug-catalog-page,
 .drug-layout,
+.drug-summary-grid,
 .filter-grid,
 .catalog-table,
 .editor-grid,
@@ -389,8 +452,15 @@ onMounted(() => {
   align-items: start;
 }
 
+.drug-summary-grid {
+  grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.8fr);
+}
+
 .catalog-table-card,
-.catalog-editor-card {
+.catalog-editor-card,
+.spotlight-card,
+.dosage-card,
+.selected-summary-card {
   display: grid;
   gap: 18px;
 }
@@ -402,6 +472,40 @@ onMounted(() => {
 .catalog-editor-card {
   position: sticky;
   top: 24px;
+}
+
+.spotlight-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.dosage-list,
+.selected-summary-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.dosage-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.dosage-item {
+  display: grid;
+  gap: 6px;
+  border-radius: 14px;
+  background: rgba(241, 244, 245, 0.92);
+  padding: 14px;
+}
+
+.dosage-item span {
+  color: #61737b;
+  font-size: 12px;
+}
+
+.dosage-item strong {
+  color: #0f6f99;
+  font-size: 22px;
 }
 
 .header-actions,
@@ -550,12 +654,14 @@ onMounted(() => {
 }
 
 @media (max-width: 1180px) {
+  .drug-summary-grid,
   .drug-layout {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 900px) {
+  .dosage-list,
   .filter-grid,
   .editor-grid,
   .editor-info-grid,

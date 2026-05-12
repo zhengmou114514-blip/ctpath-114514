@@ -53,7 +53,7 @@ def relation_type(relation: str) -> str:
         return "diagnosis"
     if relation == "med_adherence":
         return "medication"
-    if relation in {"support_system", "sleep_hours_bin", "mood_bin", "bp_sys_bin", "bmi_bin", "cholesterol_bin"}:
+    if relation in {"support_system", "sleep_hours_bin", "mood_bin", "bp_sys_bin", "bmi_bin", "cholesterol_bin", "risk_assessment", "risk_status_refresh"}:
         return "risk"
     return "visit"
 
@@ -620,6 +620,21 @@ def register_doctor(payload: RegisterRequest) -> Optional[DoctorPublic]:
 def get_doctor(username: str) -> Optional[DoctorPublic]:
     for doctor in DOCTORS:
         if doctor.username == username:
+            return doctor.to_public()
+    return None
+
+
+def list_doctors() -> List[DoctorPublic]:
+    return [
+        doctor.to_public()
+        for doctor in sorted(DOCTORS, key=lambda item: (item.department, item.role, item.name, item.username))
+    ]
+
+
+def update_doctor_role(username: str, role: str) -> Optional[DoctorPublic]:
+    for doctor in DOCTORS:
+        if doctor.username == username:
+            doctor.role = role
             return doctor.to_public()
     return None
 

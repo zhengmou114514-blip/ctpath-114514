@@ -1,0 +1,13 @@
+[
+  {
+    "transactionId": "tx-1778304883-stock-drug-metformin",
+    "itemId": "stock-drug-metformin",
+    "drugId": "drug-metformin",
+    "change": 1,
+    "direction": "inbound",
+    "note": "",
+    "operatorUsername": "周药师",
+    "operatorName": "周药师",
+    "createdAt": "2026-05-09T05:34:42.804752+00:00"
+  }
+]

@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useWorkspaceContext } from '../composables/workspaceContext'
 import type { PatientSummary } from '../services/types'
 
 const workspace = useWorkspaceContext()
+const route = useRoute()
+const router = useRouter()
 
 const selectedPatient = computed(() => workspace.selectedPatient)
 const patientOptions = computed<PatientSummary[]>(() => workspace.allPatients ?? [])
@@ -53,6 +56,16 @@ const needDoctorReview = computed(() => {
 })
 
 const hasPatient = computed(() => Boolean(selectedPatient.value))
+const activeTab = computed(() => {
+  const tab = typeof route.query.tab === 'string' ? route.query.tab : 'current'
+  return tab === 'evidence' || tab === 'advice' ? tab : 'current'
+})
+
+const tabItems = [
+  { key: 'current', label: '风险评估' },
+  { key: 'evidence', label: '证据摘要' },
+  { key: 'advice', label: '辅助建议' },
+]
 
 function supportLabel(value: string) {
   if (value === 'strong' || value === 'high') return '高'
@@ -95,12 +108,16 @@ function handleRunPrediction() {
 
 function handleOpenDetail() {
   if (!selectedPatient.value) return
-  void workspace.openPatient(selectedPatient.value.patientId, 'doctor')
+  void router.push({ name: 'patient-overview', params: { patientId: selectedPatient.value.patientId } })
 }
 
 function handleOpenFollowup() {
   if (!selectedPatient.value) return
-  void workspace.openFollowupModule(selectedPatient.value.patientId, 'tasks')
+  void router.push({ name: 'patient-followups', params: { patientId: selectedPatient.value.patientId } })
+}
+
+function switchTab(tab: string) {
+  void router.push({ name: 'doctor-risk', query: { tab } })
 }
 </script>
 
@@ -124,6 +141,19 @@ function handleOpenFollowup() {
         </button>
       </div>
     </header>
+
+    <aside v-if="workspace.health?.model_error" class="model-status-banner tone-warning">
+      <strong>模型降级运行</strong>
+      <span>{{ workspace.health.model_error }}</span>
+    </aside>
+    <aside v-else-if="workspace.health && !workspace.health.model_available" class="model-status-banner tone-danger">
+      <strong>模型不可用</strong>
+      <span>当前模型服务未就绪，预测结果可能为规则回退。</span>
+    </aside>
+    <aside v-if="workspace.health?.mode === 'demo'" class="model-status-banner tone-notice">
+      <strong>演示模式</strong>
+      <span>当前运行为演示数据，非真实临床数据。</span>
+    </aside>
 
     <section v-if="!hasPatient" class="clinical-card patient-picker-card">
       <div>
@@ -172,7 +202,20 @@ function handleOpenFollowup() {
         </dl>
       </section>
 
-      <section class="insight-layout">
+      <nav class="insight-tabs" aria-label="辅助诊疗功能切换">
+        <button
+          v-for="item in tabItems"
+          :key="item.key"
+          class="insight-tab"
+          :class="{ active: activeTab === item.key }"
+          type="button"
+          @click="switchTab(item.key)"
+        >
+          {{ item.label }}
+        </button>
+      </nav>
+
+      <section v-if="activeTab === 'current'" class="insight-layout">
         <main class="clinical-card prediction-card">
           <div class="section-header">
             <div>
@@ -214,8 +257,9 @@ function handleOpenFollowup() {
         </aside>
       </section>
 
-      <section class="insight-grid">
-        <article class="clinical-card">
+      <section v-else-if="activeTab === 'evidence'" class="insight-grid single-panel">
+        <article class="clinical-card evidence-card">
+          <p class="eyebrow">模型辅助证据</p>
           <h2>证据摘要</h2>
           <ul class="kv-list">
             <li><span>病程事件</span><strong>{{ evidence.eventCount }}</strong></li>
@@ -227,8 +271,11 @@ function handleOpenFollowup() {
             <p v-for="item in pathList" :key="item">{{ item }}</p>
           </div>
         </article>
+      </section>
 
-        <article class="clinical-card">
+      <section v-else class="insight-grid single-panel">
+        <article class="clinical-card advice-card">
+          <p class="eyebrow">医生诊疗参考</p>
           <h2>辅助建议</h2>
           <ol v-if="adviceList.length" class="advice-list">
             <li v-for="(item, index) in adviceList.slice(0, 5)" :key="`${index}-${item}`">{{ item }}</li>
@@ -252,25 +299,38 @@ function handleOpenFollowup() {
 
 .insight-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
+  min-height: 112px;
+}
+
+.insight-header h1 {
+  margin: 2px 0 4px;
+  font-size: 30px;
+  line-height: 1.15;
+}
+
+.insight-header p {
+  margin: 0;
+  color: #526772;
 }
 
 .header-actions {
   display: flex;
   gap: 8px;
-  flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
+  flex-wrap: wrap;
 }
 
 .patient-select {
-  min-width: 280px;
-  max-width: 420px;
+  width: min(460px, 48vw);
   min-height: 36px;
   border: 1px solid #bfd4df;
   border-radius: 4px;
   padding: 7px 9px;
+  background: #fff;
 }
 
 .patient-picker-card {
@@ -305,13 +365,14 @@ function handleOpenFollowup() {
 }
 
 .patient-summary-band {
-  grid-template-columns: minmax(0, 1fr) minmax(460px, 0.9fr);
+  grid-template-columns: minmax(260px, 0.8fr) minmax(420px, 1.2fr);
   align-items: center;
+  min-height: 126px;
 }
 
 .patient-summary-band h2 {
   margin: 2px 0 4px;
-  font-size: 30px;
+  font-size: 28px;
 }
 
 .patient-summary-band p {
@@ -328,6 +389,35 @@ function handleOpenFollowup() {
 
 .patient-summary-band dl {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+}
+
+.patient-summary-band dl div {
+  border-left: 1px solid #d5e6ef;
+  padding-left: 14px;
+}
+
+.insight-tabs {
+  display: flex;
+  gap: 6px;
+  border-bottom: 1px solid #cfdde5;
+}
+
+.insight-tab {
+  min-height: 36px;
+  border: 1px solid #cfdde5;
+  border-bottom: 0;
+  border-radius: 4px 4px 0 0;
+  background: #f7fbfd;
+  color: #275d70;
+  padding: 0 16px;
+  font-weight: 900;
+}
+
+.insight-tab.active {
+  background: #008bbf;
+  border-color: #008bbf;
+  color: #fff;
 }
 
 .patient-summary-band dt,
@@ -346,7 +436,7 @@ function handleOpenFollowup() {
 
 .insight-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
+  grid-template-columns: minmax(0, 1fr) 320px;
   gap: 12px;
 }
 
@@ -364,11 +454,11 @@ function handleOpenFollowup() {
 
 .risk-item {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   border: 1px solid #d5e6ef;
   border-radius: 4px;
   background: #fff;
-  padding: 12px;
+  padding: 10px 12px;
 }
 
 .risk-head {
@@ -379,7 +469,7 @@ function handleOpenFollowup() {
 
 .risk-head span {
   color: #0f6f99;
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 900;
 }
 
@@ -401,6 +491,15 @@ function handleOpenFollowup() {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+}
+
+.insight-grid.single-panel {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.evidence-card,
+.advice-card {
+  min-height: 340px;
 }
 
 .kv-list,
@@ -455,6 +554,33 @@ function handleOpenFollowup() {
   flex-wrap: wrap;
 }
 
+.model-status-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.model-status-banner.tone-warning {
+  background: #fff7ed;
+  border: 1px solid #f9d4b0;
+  color: #9a5b00;
+}
+
+.model-status-banner.tone-danger {
+  background: #fff5f5;
+  border: 1px solid #f3b8b8;
+  color: #b42318;
+}
+
+.model-status-banner.tone-notice {
+  background: #edf7fc;
+  border: 1px solid #b7d1de;
+  color: #275d70;
+}
+
 @media (max-width: 1100px) {
   .patient-pick-grid,
   .patient-summary-band,
@@ -462,6 +588,16 @@ function handleOpenFollowup() {
   .insight-layout,
   .insight-grid {
     grid-template-columns: 1fr;
+  }
+
+  .patient-summary-band dl div {
+    border-left: 0;
+    border-top: 1px solid #d5e6ef;
+    padding: 10px 0 0;
+  }
+
+  .patient-select {
+    width: 100%;
   }
 }
 </style>

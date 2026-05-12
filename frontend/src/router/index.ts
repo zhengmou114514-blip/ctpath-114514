@@ -3,13 +3,14 @@ import AppWorkspacePage from '../pages/AppWorkspacePage.vue'
 import LoginPage from '../pages/LoginPage.vue'
 import ModelDashboardPage from '../pages/ModelDashboardPage.vue'
 import ModelInsightPage from '../pages/ModelInsightPage.vue'
-import ModelOperationsPage from '../pages/ModelOperationsPage.vue'
 import RoleWorkspacePage from '../pages/RoleWorkspacePage.vue'
 import PatientArchivePrintPage from '../pages/PatientArchivePrintPage.vue'
 import GovernancePage from '../pages/GovernancePage.vue'
 import NurseFollowupsPage from '../pages/NurseFollowupsPage.vue'
 import PharmacyWarehousePage from '../pages/PharmacyWarehousePage.vue'
-import TrainingCenterPage from '../pages/TrainingCenterPage.vue'
+import DoctorWorkbenchRoutePage from '../pages/DoctorWorkbenchRoutePage.vue'
+import PatientArchiveRoutePage from '../pages/PatientArchiveRoutePage.vue'
+import AdminAuditRoutePage from '../pages/AdminAuditRoutePage.vue'
 import DrugCatalogPage from '../pages/medication/DrugCatalogPage.vue'
 import DrugPermissionManagementPage from '../pages/medication/permissions/DrugPermissionManagementPage.vue'
 import NoAccessPage from '../pages/NoAccessPage.vue'
@@ -58,8 +59,6 @@ const routeSectionMap: Record<string, AppSection> = {
   'admin-audit': 'system',
 }
 
-const EmptyRouteView = { setup: () => () => null }
-
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
@@ -72,13 +71,13 @@ const routes: RouteRecordRaw[] = [
       {
         path: '/doctor/workbench',
         name: 'doctor-workbench',
-        component: EmptyRouteView,
+        component: DoctorWorkbenchRoutePage,
         meta: { section: 'doctor', roles: ['doctor'], breadcrumb: ['慢病管理门诊', '医生站', '医生工作台'] },
       },
       {
         path: '/doctor/patients',
         name: 'doctor-patients',
-        component: EmptyRouteView,
+        component: PatientArchiveRoutePage,
         meta: { section: 'archive', roles: ['doctor'], breadcrumb: ['慢病管理门诊', '医生站', '患者档案'] },
       },
       {
@@ -224,16 +223,19 @@ const routes: RouteRecordRaw[] = [
       {
         path: '/admin/audit',
         name: 'admin-audit',
-        component: EmptyRouteView,
+        component: AdminAuditRoutePage,
         meta: { section: 'system', roles: ['admin'], breadcrumb: ['系统管理', '审计日志'] },
       },
       {
         path: 'patient-detail/:patientId?',
         name: 'patient-detail',
-        component: () => import('../pages/PatientDetailPage.vue'),
+        redirect: (to) => {
+          const patientId = typeof to.params.patientId === 'string' ? to.params.patientId : ''
+          return patientId ? { name: 'patient-overview', params: { patientId } } : { name: 'doctor-patients' }
+        },
       },
       {
-        path: 'nurse-followups',
+        path: '/nurse/followups',
         name: 'nurse-followups',
         component: NurseFollowupsPage,
         meta: { section: 'tasks', roles: ['nurse'], breadcrumb: ['慢病管理门诊', '护士站', '随访工作台'] },
@@ -241,54 +243,52 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'model-dashboard',
         name: 'model-dashboard',
-        component: ModelDashboardPage,
-        meta: { section: 'model-dashboard', roles: ['admin'], breadcrumb: ['模型与治理', '模型看板'] },
+        redirect: { name: 'admin-model-dashboard' },
       },
       {
         path: 'training-center',
         name: 'training-center',
-        component: TrainingCenterPage,
+        redirect: { name: 'admin-model-dashboard' },
       },
       {
         path: 'model-operations',
         name: 'model-operations',
-        component: ModelOperationsPage,
+        redirect: { name: 'admin-model-dashboard' },
       },
       {
         path: 'model-insight',
         name: 'model-insight',
-        component: ModelInsightPage,
-        meta: { section: 'insights', roles: ['doctor'], breadcrumb: ['慢病管理门诊', '医生站', '风险评估'] },
+        redirect: { name: 'doctor-risk' },
       },
       {
         path: 'governance',
         name: 'governance',
-        component: GovernancePage,
+        redirect: { name: 'admin-governance' },
       },
       {
         path: 'role-workspaces',
         name: 'role-workspaces',
-        component: RoleWorkspacePage,
+        redirect: { name: 'admin-permissions' },
       },
       {
         path: 'drug-management',
         name: 'drug-management',
-        component: DrugCatalogPage,
+        redirect: { name: 'pharmacy-drug-catalog' },
       },
       {
         path: 'drug-permission-management',
         name: 'drug-permission-management',
-        component: DrugPermissionManagementPage,
+        redirect: { name: 'admin-drug-permissions' },
       },
       {
         path: 'pharmacy',
         name: 'pharmacy',
-        component: PharmacyWarehousePage,
+        redirect: { name: 'pharmacy-medication-review' },
       },
       {
         path: 'coordination',
         name: 'coordination',
-        component: NurseFollowupsPage,
+        redirect: { name: 'nurse-followups-review' },
       },
     ],
   },

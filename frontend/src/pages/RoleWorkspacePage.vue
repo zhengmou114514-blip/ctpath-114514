@@ -1,20 +1,33 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { ElMessage } from 'element-plus'
 import { Lock, TrendCharts } from '@element-plus/icons-vue'
-import { getCoordinationBoard, getRoleWorkspace, getRoleWorkspaces } from '../services/api'
+import { useRoute, useRouter } from 'vue-router'
+import { getAuthzUsers, getCoordinationBoard, getRoleWorkspace, getRoleWorkspaces, updateAuthzUserRole } from '../services/api'
 import { buildModelBoardSnapshot } from '../services/modelBoardAdapter'
 import { useWorkspaceContext } from '../composables/workspaceContext'
-import type { CoordinationBoardResponse, CoordinationItem } from '../services/types'
+import type { CoordinationBoardResponse, CoordinationItem, UserRoleAssignmentRecord } from '../services/types'
 
 const workspace = useWorkspaceContext()
+const route = useRoute()
+const router = useRouter()
 
 const coordinationBoard = ref<CoordinationBoardResponse | null>(null)
 const loading = ref(false)
+const saving = ref(false)
+const userAssignments = ref<UserRoleAssignmentRecord[]>([])
+const selectedUsername = ref('')
+const roleDraft = ref<UserRoleAssignmentRecord['role']>('doctor')
 
 const roleWorkspace = computed(() => {
   const doctor = workspace.currentDoctor
   if (!doctor) return null
   return getRoleWorkspace(doctor.role)
+})
+const isAdmin = computed(() => workspace.currentDoctor?.role === 'admin')
+const currentView = computed<'users' | 'permissions'>(() => {
+  if (!isAdmin.value) return 'permissions'
+  return route.query.view === 'users' ? 'users' : 'permissions'
 })
 
 const roleWorkspaces = computed(() => getRoleWorkspaces())
@@ -41,6 +54,11 @@ const modelSnapshot = computed(() =>
 )
 
 const dataSourceLabel = computed(() => (workspace.health?.status === 'ok' ? '业务数据源正常' : '服务连接中'))
+const selectedUser = computed(() => userAssignments.value.find((item) => item.username === selectedUsername.value) ?? null)
+const selectedUserWorkspace = computed(() => {
+  if (!selectedUser.value) return null
+  return getRoleWorkspace(roleDraft.value)
+})
 
 const collaborationItems = computed<CoordinationItem[]>(() => coordinationBoard.value?.items.slice(0, 5) ?? [])
 
@@ -105,6 +123,37 @@ function openSection(section: Parameters<typeof workspace.selectSection>[0]) {
   workspace.selectSection(section)
 }
 
+function switchAdminView(view: 'users' | 'permissions') {
+  if (!isAdmin.value) return
+  void router.push({ name: 'admin-permissions', query: { view } })
+}
+
+function selectUser(user: UserRoleAssignmentRecord) {
+  selectedUsername.value = user.username
+  roleDraft.value = user.role
+}
+
+async function saveUserRole() {
+  if (!selectedUser.value) {
+    ElMessage.warning('请先选择一个账号')
+    return
+  }
+  saving.value = true
+  try {
+    const updated = await updateAuthzUserRole(selectedUser.value.username, { role: roleDraft.value })
+    userAssignments.value = userAssignments.value.map((item) =>
+      item.username === updated.username ? updated : item
+    )
+    selectedUsername.value = updated.username
+    roleDraft.value = updated.role
+    ElMessage.success('角色权限已更新')
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '角色权限更新失败')
+  } finally {
+    saving.value = false
+  }
+}
+
 async function refresh() {
   loading.value = true
   try {
@@ -119,6 +168,21 @@ async function refresh() {
     } else {
       coordinationBoard.value = null
     }
+    if (isAdmin.value) {
+      userAssignments.value = await getAuthzUsers()
+      const firstUser = userAssignments.value[0]
+      if (!selectedUsername.value && firstUser) {
+        selectUser(firstUser)
+      } else if (selectedUsername.value) {
+        const current = userAssignments.value.find((item) => item.username === selectedUsername.value)
+        if (current) {
+          roleDraft.value = current.role
+        }
+      }
+    } else {
+      userAssignments.value = []
+      selectedUsername.value = ''
+    }
   } finally {
     loading.value = false
   }
@@ -127,6 +191,13 @@ async function refresh() {
 onMounted(() => {
   void refresh()
 })
+
+watch(
+  () => selectedUser.value,
+  (user) => {
+    if (user) roleDraft.value = user.role
+  }
+)
 </script>
 
 <template>
@@ -166,7 +237,97 @@ onMounted(() => {
       </article>
     </section>
 
-    <section class="role-grid">
+    <nav v-if="isAdmin" class="subview-tabs" aria-label="管理员权限子功能">
+      <button class="subview-tab" :class="{ active: currentView === 'users' }" type="button" @click="switchAdminView('users')">
+        用户与角色
+      </button>
+      <button class="subview-tab" :class="{ active: currentView === 'permissions' }" type="button" @click="switchAdminView('permissions')">
+        权限配置
+      </button>
+    </nav>
+
+    <section v-if="isAdmin && currentView === 'users'" class="role-grid">
+      <article class="clinical-card role-overview-card">
+        <div class="section-header">
+          <div>
+            <h2>账号清单</h2>
+            <p>管理员可为现有账号分配岗位角色，权限边界会随角色自动生效。</p>
+          </div>
+        </div>
+
+        <div class="user-list">
+          <button
+            v-for="user in userAssignments"
+            :key="user.username"
+            class="user-list-item"
+            :class="{ active: selectedUsername === user.username }"
+            type="button"
+            @click="selectUser(user)"
+          >
+            <div>
+              <strong>{{ user.name }}</strong>
+              <span>{{ user.username }}</span>
+            </div>
+            <small>{{ roleLabels[user.role] ?? user.role }} / {{ user.department }}</small>
+          </button>
+        </div>
+      </article>
+
+      <article class="clinical-card role-profile-card">
+        <div class="section-header">
+          <div>
+            <h2>角色分配</h2>
+            <p>针对指定账号调整岗位，前端菜单和后端能力按角色同步收口。</p>
+          </div>
+        </div>
+
+        <div v-if="selectedUser" class="role-profile">
+          <div class="assignment-grid">
+            <label class="field">
+              <span>账号</span>
+              <input :value="selectedUser.username" disabled />
+            </label>
+            <label class="field">
+              <span>姓名</span>
+              <input :value="selectedUser.name" disabled />
+            </label>
+            <label class="field">
+              <span>科室</span>
+              <input :value="selectedUser.department" disabled />
+            </label>
+            <label class="field">
+              <span>岗位角色</span>
+              <select v-model="roleDraft">
+                <option value="doctor">医生</option>
+                <option value="nurse">护士</option>
+                <option value="pharmacist">药师</option>
+                <option value="archivist">档案员</option>
+                <option value="admin">管理员</option>
+              </select>
+            </label>
+          </div>
+
+          <div v-if="selectedUserWorkspace" class="assignment-preview">
+            <h3>角色权限预览</h3>
+            <p>{{ selectedUserWorkspace.description }}</p>
+            <div class="chip-row">
+              <span v-for="module in selectedUserWorkspace.primaryModules" :key="module.key" class="role-chip outline">
+                {{ module.label }}
+              </span>
+            </div>
+          </div>
+
+          <div class="action-row">
+            <button class="primary-button" type="button" :disabled="saving" @click="saveUserRole">保存角色</button>
+            <button class="secondary-button" type="button" :disabled="loading" @click="refresh">重新载入</button>
+          </div>
+        </div>
+
+        <div v-else class="empty-inline">当前没有可配置账号。</div>
+      </article>
+    </section>
+
+    <section v-if="!isAdmin || currentView === 'permissions'" class="role-grid">
       <article class="clinical-card role-profile-card">
         <div class="section-header">
           <div>
@@ -377,6 +538,29 @@ onMounted(() => {
 .role-workspace-page {
   display: grid;
   gap: 24px;
+}
+
+.subview-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.subview-tab {
+  border: 1px solid var(--ws-border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--ws-text-muted);
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.subview-tab.active {
+  border-color: rgba(15, 118, 110, 0.22);
+  background: rgba(15, 118, 110, 0.1);
+  color: var(--ws-title);
 }
 
 .role-grid {
@@ -600,6 +784,84 @@ onMounted(() => {
   gap: 10px;
 }
 
+.user-list {
+  display: grid;
+  gap: 10px;
+}
+
+.user-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  border: 1px solid var(--ws-border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.86);
+  padding: 12px 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.user-list-item.active {
+  border-color: rgba(15, 118, 110, 0.28);
+  background: rgba(15, 118, 110, 0.08);
+}
+
+.user-list-item strong {
+  display: block;
+  color: var(--ws-title);
+}
+
+.user-list-item span,
+.user-list-item small {
+  color: var(--ws-text-muted);
+}
+
+.assignment-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.field span {
+  color: var(--ws-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.field input,
+.field select {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--ws-border);
+  border-radius: 10px;
+  background: #fff;
+  padding: 0 12px;
+  color: var(--ws-title);
+  font-size: 14px;
+}
+
+.assignment-preview {
+  display: grid;
+  gap: 10px;
+}
+
+.assignment-preview h3,
+.assignment-preview p {
+  margin: 0;
+}
+
+.assignment-preview p {
+  color: var(--ws-text-muted);
+  line-height: 1.6;
+}
+
 .empty-inline {
   margin: 0;
   border: 1px dashed var(--ws-border-strong);
@@ -612,6 +874,10 @@ onMounted(() => {
 @media (max-width: 1180px) {
   .role-grid,
   .collaboration-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .assignment-grid {
     grid-template-columns: 1fr;
   }
 

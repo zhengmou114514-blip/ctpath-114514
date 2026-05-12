@@ -100,7 +100,7 @@ class PermissionRegistry:
             path="/api/me",
             method="GET",
             required_permissions=set(),
-            allowed_roles={Role.ADMIN, Role.DOCTOR, Role.NURSE, Role.ARCHIVIST},
+            allowed_roles={Role.ADMIN, Role.DOCTOR, Role.NURSE, Role.PHARMACIST, Role.ARCHIVIST},
             description="获取当前登录用户信息"
         ))
 
@@ -111,6 +111,22 @@ class PermissionRegistry:
             required_permissions=set(),
             allowed_roles={Role.ADMIN, Role.DOCTOR, Role.NURSE, Role.PHARMACIST, Role.ARCHIVIST},
             description="获取当前角色可用模块与API能力"
+        ))
+
+        self.register(APIPermission(
+            path="/api/authz/users",
+            method="GET",
+            required_permissions=set(),
+            allowed_roles={Role.ADMIN},
+            description="管理员查看账号与角色分配"
+        ))
+
+        self.register(APIPermission(
+            path="/api/authz/users/{username}/role",
+            method="PATCH",
+            required_permissions=set(),
+            allowed_roles={Role.ADMIN},
+            description="管理员更新指定账号角色"
         ))
 
         self.register(APIPermission(
@@ -267,6 +283,14 @@ class PermissionRegistry:
         ))
 
         self.register(APIPermission(
+            path="/api/patient/{id}/attachments/{attachment_id}",
+            method="DELETE",
+            required_permissions={Permission.PATIENT_UPDATE},
+            allowed_roles={Role.ADMIN, Role.DOCTOR, Role.NURSE, Role.ARCHIVIST},
+            description="删除患者附件"
+        ))
+
+        self.register(APIPermission(
             path="/api/patient/{id}/medications",
             method="GET",
             required_permissions={Permission.PATIENT_VIEW},
@@ -304,6 +328,30 @@ class PermissionRegistry:
             method="POST",
             required_permissions={Permission.PREDICTION_RUN},
             description="运行预测"
+        ))
+
+        self.register(APIPermission(
+            path="/api/patients/{id}/risk-assessments",
+            method="GET",
+            required_permissions={Permission.PREDICTION_VIEW},
+            allowed_roles={Role.ADMIN, Role.DOCTOR},
+            description="获取患者风险评估历史"
+        ))
+
+        self.register(APIPermission(
+            path="/api/patients/{id}/risk-assessments/latest",
+            method="GET",
+            required_permissions={Permission.PREDICTION_VIEW},
+            allowed_roles={Role.ADMIN, Role.DOCTOR},
+            description="获取患者最新风险评估"
+        ))
+
+        self.register(APIPermission(
+            path="/api/patients/{id}/risk-assessments/refresh",
+            method="POST",
+            required_permissions={Permission.PREDICTION_RUN},
+            allowed_roles={Role.DOCTOR},
+            description="刷新患者风险评估"
         ))
 
         # 建议API
@@ -608,39 +656,39 @@ PERMISSION_REGISTRY.register(APIPermission(
     path="/api/drugs",
     method="GET",
     required_permissions={Permission.DRUG_VIEW},
-    allowed_roles={Role.ADMIN, Role.DOCTOR, Role.ARCHIVIST},
-    description="??????",
+    allowed_roles={Role.ADMIN, Role.DOCTOR, Role.NURSE, Role.PHARMACIST, Role.ARCHIVIST},
+    description="药品目录列表",
 ))
 
 PERMISSION_REGISTRY.register(APIPermission(
     path="/api/drugs/{drug_id}",
     method="GET",
     required_permissions={Permission.DRUG_VIEW},
-    allowed_roles={Role.ADMIN, Role.DOCTOR, Role.ARCHIVIST},
-    description="??????",
+    allowed_roles={Role.ADMIN, Role.DOCTOR, Role.NURSE, Role.PHARMACIST, Role.ARCHIVIST},
+    description="药品目录详情",
 ))
 
 PERMISSION_REGISTRY.register(APIPermission(
     path="/api/drugs",
     method="POST",
     required_permissions={Permission.DRUG_CREATE},
-    allowed_roles={Role.ADMIN, Role.DOCTOR, Role.ARCHIVIST},
-    description="????",
+    allowed_roles={Role.ADMIN, Role.DOCTOR, Role.PHARMACIST, Role.ARCHIVIST},
+    description="创建药品目录",
 ))
 
 PERMISSION_REGISTRY.register(APIPermission(
     path="/api/drugs/{drug_id}",
     method="PUT",
     required_permissions={Permission.DRUG_UPDATE},
-    allowed_roles={Role.ADMIN, Role.DOCTOR, Role.ARCHIVIST},
-    description="????",
+    allowed_roles={Role.ADMIN, Role.DOCTOR, Role.PHARMACIST, Role.ARCHIVIST},
+    description="更新药品目录",
 ))
 
 PERMISSION_REGISTRY.register(APIPermission(
     path="/api/drug-permissions",
     method="GET",
     required_permissions={Permission.DRUG_PERMISSION_VIEW},
-    allowed_roles={Role.ADMIN, Role.DOCTOR, Role.ARCHIVIST},
+    allowed_roles={Role.ADMIN, Role.DOCTOR, Role.NURSE, Role.PHARMACIST, Role.ARCHIVIST},
     description="药品权限列表",
 ))
 
@@ -648,7 +696,7 @@ PERMISSION_REGISTRY.register(APIPermission(
     path="/api/drug-permissions/{role}",
     method="GET",
     required_permissions={Permission.DRUG_PERMISSION_VIEW},
-    allowed_roles={Role.ADMIN, Role.DOCTOR, Role.ARCHIVIST},
+    allowed_roles={Role.ADMIN, Role.DOCTOR, Role.NURSE, Role.PHARMACIST, Role.ARCHIVIST},
     description="药品权限详情",
 ))
 

@@ -79,7 +79,7 @@ class LLMAdviceService:
         self.enabled = _env_flag("CTPATH_LLM_ENABLED", default=False)
         self.timeout = _env_float("CTPATH_LLM_TIMEOUT", 40.0)
         self.cache_ttl = _env_int("CTPATH_LLM_CACHE_TTL", 300)
-        self.min_interval = _env_int("CTPATH_LLM_MIN_INTERVAL", 30)
+        self.min_interval = _env_int("CTPATH_LLM_MIN_INTERVAL", 300)
         self.max_cache_items = _env_int("CTPATH_LLM_CACHE_MAX_ITEMS", 256)
 
     def _reload_runtime_config(self) -> None:
@@ -191,6 +191,7 @@ class LLMAdviceService:
         predictions: List[PredictionItem],
         evidence: EvidenceSummary,
         path_explanation: List[str],
+        allow_remote: bool = True,
     ) -> AdviceResponse:
         self._reload_runtime_config()
         payload = self.build_request_payload(
@@ -205,7 +206,7 @@ class LLMAdviceService:
         if cached is not None:
             return self._clone_response(cached, note="复用缓存建议，未重复调用 DeepSeek。")
 
-        if self._should_call_remote():
+        if allow_remote and self._should_call_remote():
             limited = self._rate_limit_response(patient.patientId)
             if limited is not None:
                 return limited
@@ -224,13 +225,18 @@ class LLMAdviceService:
                     configured=bool(self.api_key),
                 )
 
+        if not allow_remote and self._should_call_remote():
+            note = "本次风险评估不自动调用 DeepSeek，已使用本地辅助建议；如需远程建议请在辅助建议入口手动生成。"
+        else:
+            note = "当前未启用外部模型调用。请设置 CTPATH_LLM_ENABLED=true 与 DEEPSEEK_API_KEY。"
+
         return self._placeholder_response(
             patient=patient,
             quadruples=quadruples,
             predictions=predictions,
             evidence=evidence,
             path_explanation=path_explanation,
-            note="当前未启用外部模型调用。请设置 CTPATH_LLM_ENABLED=true 与 DEEPSEEK_API_KEY。",
+            note=note,
             configured=bool(self.api_key),
         )
 

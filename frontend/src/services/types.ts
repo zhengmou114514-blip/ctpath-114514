@@ -264,6 +264,32 @@ export interface PredictResponse {
   similarCases: SimilarCase[]
 }
 
+export interface RiskAssessmentRecord {
+  resultId: string
+  patientId: string
+  mode: 'model' | 'similar-case'
+  strategy: 'direct-model' | 'proxy-model' | 'rules' | 'similar-case'
+  generatedAt: string
+  supportSummary: string
+  evidence: {
+    eventCount: number
+    timepointCount: number
+    relationCount: number
+    supportLevel: 'strong' | 'limited' | 'minimal'
+  }
+  topk: PredictionItem[]
+  advice: string[]
+  pathExplanation: string[]
+  similarCases: SimilarCase[]
+  source: string
+  isCurrent: boolean
+}
+
+export interface RiskAssessmentListResponse {
+  patientId: string
+  items: RiskAssessmentRecord[]
+}
+
 export interface AdviceGeneratePayload {
   patient: PatientUpsertPayload
   quadruples: PatientQuadruple[]
@@ -398,6 +424,18 @@ export interface AuthzCapabilityResponse {
   role: string
   allowedSections: string[]
   allowedApis: string[]
+}
+
+export interface UserRoleAssignmentRecord {
+  username: string
+  name: string
+  title: string
+  department: string
+  role: 'doctor' | 'nurse' | 'pharmacist' | 'archivist' | 'admin'
+}
+
+export interface UserRoleUpdatePayload {
+  role: 'doctor' | 'nurse' | 'pharmacist' | 'archivist' | 'admin'
 }
 
 export type BusinessWorkspaceRole = 'doctor' | 'nurse' | 'pharmacist' | 'archivist' | 'admin'
@@ -817,6 +855,7 @@ export type PatientAttachmentType =
   | 'referral_note'
   | 'exam_report'
   | 'informed_consent'
+  | 'other_chronic_material'
 
 export interface PatientAttachmentRecord {
   attachmentId: string
@@ -829,7 +868,7 @@ export interface PatientAttachmentRecord {
   previewUrl: string
   uploadedAt: string
   uploadedBy: string
-  source: 'local-file' | 'api'
+  source: 'local-file' | 'mock-local'
 }
 
 export type PharmacyInventoryStatus = 'active' | 'low' | 'out_of_stock' | 'expired' | 'inactive'

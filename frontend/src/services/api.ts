@@ -57,10 +57,14 @@ import type {
   PharmacyTransactionRecord,
   PredictResponse,
   RegisterPayload,
+  RiskAssessmentListResponse,
+  RiskAssessmentRecord,
   RoleWorkspaceDefinition,
   SystemMapResponse,
   SystemAuditResponse,
   TimelineEvent,
+  UserRoleAssignmentRecord,
+  UserRoleUpdatePayload,
 } from './types'
 
 const API_BASE = '/api'
@@ -410,6 +414,9 @@ export async function uploadPatientAttachment(patientId: string, payload: { type
   formData.append('file', payload.file)
   return request(`/patient/${patientId}/attachments`, { method: 'POST', body: formData })
 }
+export async function deletePatientAttachment(patientId: string, attachmentId: string): Promise<PatientAttachmentRecord> {
+  return request(`/patient/${patientId}/attachments/${attachmentId}`, { method: 'DELETE' })
+}
 export async function fetchPatientAttachmentBlob(patientId: string, attachmentId: string): Promise<{ blob: Blob; mimeType: string }> {
   const response = await requestClient.request({
     url: `/patient/${patientId}/attachments/${attachmentId}/file`,
@@ -429,6 +436,15 @@ export async function fetchPatientAttachmentBlob(patientId: string, attachmentId
   return { blob: response.data as Blob, mimeType }
 }
 export async function predictPatient(payload: { patientId: string; asOfTime?: string; topk: number }): Promise<PredictResponse> { return request('/predict', { method: 'POST', body: JSON.stringify(payload) }) }
+export async function getRiskAssessments(patientId: string): Promise<RiskAssessmentListResponse> {
+  return request(`/patients/${patientId}/risk-assessments`, { method: 'GET' })
+}
+export async function getLatestRiskAssessment(patientId: string): Promise<RiskAssessmentRecord> {
+  return request(`/patients/${patientId}/risk-assessments/latest`, { method: 'GET' })
+}
+export async function refreshRiskAssessment(patientId: string): Promise<RiskAssessmentRecord> {
+  return request(`/patients/${patientId}/risk-assessments/refresh`, { method: 'POST' })
+}
 export async function generateAdvice(payload: AdviceGeneratePayload): Promise<AdviceGenerateResponse> { return request('/advice/generate', { method: 'POST', body: JSON.stringify(payload) }) }
 export async function generateMedicationPlan(patientId: string, payload: MedicationPlanGeneratePayload): Promise<MedicationPlanResponse> { return request(`/patient/${patientId}/medication-plan/generate`, { method: 'POST', body: JSON.stringify(payload) }) }
 export async function getPatientMedications(patientId: string): Promise<PatientMedicationRecord[]> {
@@ -495,6 +511,10 @@ export async function updateDrugPermissionItem(role: string, payload: DrugPermis
 export async function healthCheck(): Promise<HealthResponse> { return request('/health', { method: 'GET' }) }
 export async function getMe(): Promise<MeResponse> { return request('/me', { method: 'GET' }) }
 export async function getAuthzCapabilities(): Promise<AuthzCapabilityResponse> { return request('/authz/capabilities', { method: 'GET' }) }
+export async function getAuthzUsers(): Promise<UserRoleAssignmentRecord[]> { return request('/authz/users', { method: 'GET' }) }
+export async function updateAuthzUserRole(username: string, payload: UserRoleUpdatePayload): Promise<UserRoleAssignmentRecord> {
+  return request(`/authz/users/${encodeURIComponent(username)}/role`, { method: 'PATCH', body: JSON.stringify(payload) })
+}
 export async function getSystemMap(): Promise<SystemMapResponse> { return request('/systems', { method: 'GET' }) }
 export async function getSystemAudit(limit = 50): Promise<SystemAuditResponse> { return request(`/audit/system?limit=${encodeURIComponent(String(limit))}`, { method: 'GET' }) }
 export async function getDatabaseBrowserTables(): Promise<DatabaseBrowserTablesResponse> { return request('/database-browser/tables', { method: 'GET' }) }

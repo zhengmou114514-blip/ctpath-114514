@@ -1,6 +1,6 @@
 from typing import List, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field
 
 
 TimelineType = Literal["visit", "diagnosis", "medication", "risk"]
@@ -186,6 +186,7 @@ PatientAttachmentType = Literal[
     "referral_note",
     "exam_report",
     "informed_consent",
+    "other_chronic_material",
 ]
 
 
@@ -490,7 +491,7 @@ class MedicationAdequacyAssessment(BaseModel):
 
 
 class PredictRequest(BaseModel):
-    patientId: str
+    patientId: str = Field(validation_alias=AliasChoices("patientId", "patient_id"))
     topk: int = Field(default=3, ge=1, le=10)
     asOfTime: Optional[str] = None
 
@@ -523,6 +524,27 @@ class PredictResponse(BaseModel):
     adviceMeta: AdviceMeta
     pathExplanation: List[str]
     similarCases: List[SimilarCase]
+
+
+class RiskAssessmentRecord(BaseModel):
+    resultId: str
+    patientId: str
+    mode: RecommendationMode
+    strategy: PredictionStrategy
+    generatedAt: str
+    supportSummary: str
+    evidence: EvidenceSummary
+    topk: List[PredictionItem]
+    advice: List[str]
+    pathExplanation: List[str] = Field(default_factory=list)
+    similarCases: List[SimilarCase] = Field(default_factory=list)
+    source: str = "model-service"
+    isCurrent: bool = False
+
+
+class RiskAssessmentListResponse(BaseModel):
+    patientId: str
+    items: List[RiskAssessmentRecord] = Field(default_factory=list)
 
 
 class TimelineResponse(BaseModel):
@@ -840,3 +862,15 @@ class AuthzCapabilityResponse(BaseModel):
     role: str
     allowedSections: List[str]
     allowedApis: List[str]
+
+
+class UserRoleAssignmentRecord(BaseModel):
+    username: str
+    name: str
+    title: str
+    department: str
+    role: DoctorRole
+
+
+class UserRoleUpdateRequest(BaseModel):
+    role: DoctorRole

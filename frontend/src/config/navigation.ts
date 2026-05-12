@@ -46,9 +46,9 @@ export const navigationGroups: NavigationItem[] = [
     icon: 'Operation',
     roles: ['doctor'],
     children: [
-      { title: '风险评估', routeName: 'patient-risk', query: { tab: 'current' }, section: 'insights', requirePatient: true, roles: ['doctor'] },
-      { title: '证据摘要', routeName: 'patient-risk', query: { tab: 'evidence' }, section: 'insights', requirePatient: true, roles: ['doctor'] },
-      { title: '辅助建议', routeName: 'patient-risk', query: { tab: 'advice' }, section: 'insights', requirePatient: true, roles: ['doctor'] },
+      { title: '风险评估', routeName: 'doctor-risk', query: { tab: 'current' }, section: 'insights', roles: ['doctor'] },
+      { title: '证据摘要', routeName: 'doctor-risk', query: { tab: 'evidence' }, section: 'insights', roles: ['doctor'] },
+      { title: '辅助建议', routeName: 'doctor-risk', query: { tab: 'advice' }, section: 'insights', roles: ['doctor'] },
     ],
   },
   {
@@ -73,8 +73,8 @@ export const navigationGroups: NavigationItem[] = [
       { title: '剂型规格', routeName: 'pharmacy-drug-catalog', query: { view: 'spec' }, section: 'drug-management', roles: ['pharmacist'] },
       { title: '药品状态', routeName: 'pharmacy-drug-status', section: 'drug-management', roles: ['pharmacist'] },
       { title: '处方药标识', routeName: 'pharmacy-drug-catalog', query: { view: 'prescription' }, section: 'drug-management', roles: ['pharmacist'] },
-      { title: '当前用药查看', routeName: 'pharmacy-medication-review', query: { view: 'current' }, section: 'pharmacy', roles: ['pharmacist'] },
-      { title: '用药复核', routeName: 'pharmacy-medication-review', query: { view: 'review' }, section: 'pharmacy', roles: ['pharmacist'] },
+      { title: '库存与批次', routeName: 'pharmacy-medication-review', query: { view: 'inventory' }, section: 'pharmacy', roles: ['pharmacist'] },
+      { title: '处方复核', routeName: 'pharmacy-medication-review', query: { view: 'review' }, section: 'pharmacy', roles: ['pharmacist'] },
     ],
   },
   {

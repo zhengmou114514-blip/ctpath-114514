@@ -10,10 +10,10 @@ router = APIRouter(tags=["governance"])
 
 
 @router.get("/api/maintenance/overview", response_model=MaintenanceOverviewResponse)
-def maintenance_overview(_: object = Depends(require_roles("doctor", "archivist"))) -> MaintenanceOverviewResponse:
+def maintenance_overview(_: object = Depends(require_roles("doctor", "archivist", "admin"))) -> MaintenanceOverviewResponse:
     return get_maintenance_overview()
 
 
 @router.get("/api/governance/modules", response_model=GovernanceModulesResponse)
-def governance_modules(_: object = Depends(require_roles("doctor", "archivist"))) -> GovernanceModulesResponse:
+def governance_modules(_: object = Depends(require_roles("doctor", "archivist", "admin"))) -> GovernanceModulesResponse:
     return get_governance_modules()

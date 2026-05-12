@@ -10,6 +10,7 @@ from ..auth.dependencies import require_roles
 from ..schemas import PatientAttachmentRecord, PatientAttachmentType
 from ..services.patient_attachment_service import (
     create_patient_attachment,
+    delete_patient_attachment,
     get_patient_attachment_file,
     list_patient_attachments,
 )
@@ -78,3 +79,24 @@ def download_patient_attachment_file(
         media_type=str(record.get("mimeType") or "application/octet-stream"),
         content_disposition_type="inline",
     )
+
+
+@router.delete("/api/patient/{patient_id}/attachments/{attachment_id}", response_model=PatientAttachmentRecord)
+def remove_patient_attachment(
+    patient_id: str,
+    attachment_id: str,
+    request: Request,
+    current_user: object = Depends(require_roles("doctor", "nurse", "archivist", "admin")),
+) -> PatientAttachmentRecord:
+    _require_patient(patient_id)
+    record = delete_patient_attachment(patient_id, attachment_id)
+    record_operation_audit(
+        operation="delete",
+        resource_type="patient_attachment",
+        resource_id=record.attachmentId,
+        request=request,
+        actor=current_user,
+        patient_id=patient_id,
+        extra_detail="type={0}; file_name={1}; file_size={2}".format(record.type, record.fileName, record.fileSize),
+    )
+    return record

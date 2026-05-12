@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 
+from ..auth.dependencies import get_current_doctor
 from ..middleware.jwt_auth import create_access_token
 from ..middleware.rate_limit import limiter
-from ..schemas import LoginRequest, LoginResponse, RegisterRequest
+from ..schemas import DoctorPublic, LoginRequest, LoginResponse, RegisterRequest
 from ..store import TOKENS, authenticate, register_doctor
 
 
@@ -30,3 +31,8 @@ def register(payload: RegisterRequest) -> LoginResponse:
     token = create_access_token(doctor.username, doctor.role)
     TOKENS[token] = doctor.username
     return LoginResponse(token=token, doctor=doctor)
+
+
+@router.get("/api/me", response_model=DoctorPublic)
+def get_me(current_doctor: DoctorPublic = Depends(get_current_doctor)) -> DoctorPublic:
+    return current_doctor

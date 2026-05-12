@@ -2,17 +2,21 @@ import { reactive } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import AppWorkspacePage from '../AppWorkspacePage.vue'
+import { pinia } from '../../stores/pinia'
+import { useAuthStore } from '../../stores/auth'
 
 const route = reactive<{
   name: string
   path: string
   fullPath: string
   query: Record<string, unknown>
+  meta: Record<string, unknown>
 }>({
   name: 'home',
   path: '/',
   fullPath: '/',
   query: {},
+  meta: {},
 })
 
 const routerPush = vi.fn()
@@ -22,13 +26,15 @@ const routerReplace = vi.fn(async (target: unknown) => {
     route.path = target
     route.fullPath = target
     route.query = {}
+    route.meta = {}
     return
   }
 
-  const next = target as { name?: string | symbol; query?: Record<string, unknown> }
+  const next = target as { name?: string | symbol; query?: Record<string, unknown>; meta?: Record<string, unknown> }
   route.name = typeof next.name === 'string' ? next.name : 'home'
   route.path = route.name === 'home' ? '/' : `/${route.name}`
   route.query = next.query ?? {}
+  route.meta = next.meta ?? {}
   route.fullPath = `${route.path}${route.query.module ? `?module=${route.query.module}` : ''}`
 })
 
@@ -92,9 +98,13 @@ function mountPage() {
 
 describe('AppWorkspacePage', () => {
   beforeEach(() => {
+    window.localStorage.clear()
+    useAuthStore(pinia).clearSession()
     route.name = 'home'
     route.path = '/'
     route.fullPath = '/'
+    route.query = {}
+    route.meta = {}
     routerPush.mockReset()
     routerReplace.mockClear()
 
@@ -176,6 +186,16 @@ describe('AppWorkspacePage', () => {
   })
 
   it('clears session state and redirects to /login on logout', async () => {
+    useAuthStore(pinia).setSession({
+      token: 'stale-token',
+      doctor: {
+        username: 'demo_clinic',
+        name: 'Demo Doctor',
+        role: 'doctor',
+        title: 'Attending Physician',
+        department: 'Chronic Care Clinic',
+      },
+    })
     const wrapper = mountPage()
 
     await wrapper.get('[data-testid="logout"]').trigger('click')
@@ -183,6 +203,8 @@ describe('AppWorkspacePage', () => {
 
     expect(workspaceMock.logout).toHaveBeenCalledTimes(1)
     expect(routerReplace).toHaveBeenCalledWith('/login')
+    expect(useAuthStore(pinia).isAuthenticated).toBe(false)
+    expect(window.localStorage.getItem('ctpath.auth.session')).toBeNull()
     expect(workspaceMock.currentDoctor).toBeNull()
     expect(workspaceMock.selectedPatient).toBeNull()
     expect(wrapper.find('.workspace-auth-handoff').exists()).toBe(false)
@@ -197,10 +219,11 @@ describe('AppWorkspacePage', () => {
     expect(workspaceMock.selectSection).toHaveBeenCalledWith('archive')
     expect(workspaceMock.section).toBe('archive')
     expect(workspaceMock.currentWorkspace).toBe('archive')
-    expect(routerReplace).toHaveBeenCalledWith({ name: 'home', query: { module: 'archive' } })
+    expect(routerReplace).toHaveBeenLastCalledWith({ name: 'doctor-patients' })
   })
 
   it('routes to the role workspace when selected', async () => {
+    workspaceMock.currentDoctor.role = 'admin'
     mountPage()
 
     workspaceMock.selectSection('role-workspaces')
@@ -209,6 +232,6 @@ describe('AppWorkspacePage', () => {
     expect(workspaceMock.selectSection).toHaveBeenCalledWith('role-workspaces')
     expect(workspaceMock.section).toBe('role-workspaces')
     expect(workspaceMock.currentWorkspace).toBe('role-workspaces')
-    expect(routerReplace).toHaveBeenCalledWith({ name: 'role-workspaces' })
+    expect(routerReplace).toHaveBeenCalledWith({ name: 'admin-permissions' })
   })
 })

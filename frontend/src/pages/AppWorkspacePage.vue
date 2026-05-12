@@ -4,13 +4,9 @@ import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router'
 import { useWorkspaceController } from '../composables/useWorkspaceController'
 import { provideWorkspaceContext } from '../composables/workspaceContext'
 import AppShell from '../layouts/AppShell.vue'
-import DoctorDashboardPage from './DoctorDashboardPage.vue'
-import EmrPage from './EmrPage.vue'
-import FollowupWorkbenchPage from './FollowupWorkbenchPage.vue'
-import RoleWorkspacePage from './RoleWorkspacePage.vue'
-import PatientArchivePage from './PatientArchivePage.vue'
-import SystemCenterPage from './SystemCenterPage.vue'
 import { allowedSectionsForRole } from '../config/workspaceMenu'
+import { useAuthStore } from '../stores/auth'
+import { pinia } from '../stores/pinia'
 import type { AppSection } from '../types/workspace'
 
 const workspace = useWorkspaceController()
@@ -18,6 +14,7 @@ provideWorkspaceContext(workspace)
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore(pinia)
 const redirectingToLogin = ref(false)
 
 const allowedSections = computed(() =>
@@ -132,7 +129,7 @@ function buildRouteForSection(nextSection: AppSection): RouteLocationRaw {
 const isSplitWorkspaceRoute = computed(() => {
   const routeName = typeof route.name === 'string' ? route.name : ''
   return (
-    (Boolean(route.meta.section) && routeName !== 'doctor-workbench' && routeName !== 'doctor-patients' && routeName !== 'admin-audit') ||
+    Boolean(route.meta.section) ||
     Object.prototype.hasOwnProperty.call(splitRouteSections, routeName) ||
     routeName === 'patient-detail' ||
     routeName === 'nurse-followups' ||
@@ -195,6 +192,13 @@ function syncWorkspaceFromRoute() {
           : 'tasks'
         : (route.meta.section as AppSection | undefined) ?? splitRouteSections[routeName] ?? 'doctor'
   const safeSection = allowedSections.value.includes(nextSection) ? nextSection : defaultSectionForCurrentRole()
+  if (routeName.startsWith('patient-')) {
+    if (workspace.section !== safeSection) {
+      workspace.section = safeSection
+    }
+    return
+  }
+
   if (workspace.section !== safeSection) {
     workspace.selectSection(safeSection)
   }
@@ -242,13 +246,6 @@ function handleSelectSection(nextSection: Parameters<typeof workspace.selectSect
   }
 }
 
-async function handleOpenPatientDetail(patientId: string) {
-  const loaded = await workspace.openPatient(patientId, 'doctor')
-  if (loaded) {
-    void router.push({ name: 'patient-overview', params: { patientId } })
-  }
-}
-
 function handleOpenArchive(payload: { patientId: string; focus?: 'overview' | 'events' }) {
   const focus = payload.focus === 'events' ? 'events' : 'overview'
   void workspace.openArchiveInNewTab(payload.patientId, focus)
@@ -256,29 +253,6 @@ function handleOpenArchive(payload: { patientId: string; focus?: 'overview' | 'e
 
 function handleOpenFollowup(payload: { patientId?: string; section?: 'tasks' | 'contacts' | 'flow' }) {
   void workspace.openFollowupModule(payload.patientId || workspace.selectedPatientId || undefined, payload.section ?? 'tasks')
-}
-
-function handlePrintArchive(patientId?: string) {
-  const targetPatientId = patientId || workspace.selectedPatientId || workspace.allPatients[0]?.patientId
-  if (!targetPatientId) {
-    return
-  }
-
-  void router.push({ name: 'patient-archive-print', params: { patientId: targetPatientId } })
-}
-
-function handleDoctorOpenArchive(payload: { patientId: string; focus?: 'overview' | 'events' }) {
-  void workspace.openArchiveInNewTab(payload.patientId, payload.focus ?? 'overview')
-}
-
-function handleDoctorOpenFollowup(payload: { patientId: string; section?: 'tasks' | 'contacts' | 'flow' }) {
-  void workspace.openFollowupModule(payload.patientId, payload.section ?? 'tasks')
-}
-
-async function handleDoctorOpenModel(patientId: string) {
-  await workspace.openPatient(patientId, 'doctor')
-  workspace.selectSection('insights')
-  void router.push({ name: 'patient-risk', params: { patientId } })
 }
 
 function handleBackToList() {
@@ -292,6 +266,7 @@ function handleBackToList() {
 async function handleLogout() {
   redirectingToLogin.value = true
   workspace.logout()
+  authStore.clearSession()
 
   try {
     await router.replace('/login')
@@ -361,107 +336,9 @@ watch(
       </section>
 
       <RouterView v-else-if="isSplitWorkspaceRoute" />
-
-      <DoctorDashboardPage
-        v-else-if="workspace.currentWorkspace === 'doctor'"
-        :all-patients="workspace.allPatients"
-        :patients="workspace.visiblePendingPatients"
-        :selected-patient="workspace.selectedPatient"
-        :loading-patients="workspace.loadingPatients"
-        :loading-patient="workspace.loadingPatient"
-        :loading-action="workspace.loadingWorkbenchAction"
-        :no-permission="workspace.doctorNoPermission"
-        :search-text="workspace.workspaceSearchText"
-        :risk-filter="workspace.workspaceRiskFilter"
-        :risk-options="workspace.riskOptions"
-        @update:search-text="workspace.workspaceSearchText = $event"
-        @update:risk-filter="workspace.workspaceRiskFilter = $event"
-        @open="workspace.openPatient($event, 'doctor')"
-        @open-detail="handleOpenPatientDetail"
-        @open-archive="handleDoctorOpenArchive"
-        @open-followup="handleDoctorOpenFollowup"
-        @open-model="handleDoctorOpenModel"
-        @workflow-action="workspace.updateDoctorWorkbenchStatus($event.patientId, $event.action)"
-      />
-
-      <PatientArchivePage
-        v-else-if="workspace.currentWorkspace === 'archive'"
-        :mode="workspace.archiveMode"
-        :all-patients="workspace.allPatients"
-        :patients="workspace.archivePagedPatients"
-        :loading-patients="workspace.loadingPatients"
-        :current-page="workspace.archivePage"
-        :total-pages="workspace.archiveTotalPages"
-        :patient-count="workspace.allPatients.length"
-        :patient-form="workspace.patientForm"
-        :selected-patient-id="workspace.selectedPatientId"
-        :event-form="workspace.eventForm"
-        :relation-options="workspace.relationOptions"
-        :saving-patient="workspace.savingPatient"
-        :saving-event="workspace.savingEvent"
-        :timeline-items="workspace.selectedPatient?.timeline ?? []"
-        :selected-patient="workspace.selectedPatient"
-        :focus-section="workspace.archiveFocusSection"
-        :importing-archive="workspace.importingArchive"
-        :import-result-text="workspace.importResultText"
-        :doctor-role="workspace.currentDoctor.role"
-        :no-permission="workspace.archiveNoPermission"
-        :model-unavailable="workspace.modelUnavailable"
-        @open="workspace.openPatient($event, 'archive')"
-        @create="workspace.openCreateModule"
-        @import="workspace.openImportModule"
-        @export="handlePrintArchive"
-        @prev-page="workspace.prevArchivePage"
-        @next-page="workspace.nextArchivePage"
-        @submit-archive="workspace.submitArchive"
-        @submit-event="workspace.submitEvent"
-        @submit-import="workspace.submitImport"
-        @prepare-new="workspace.openCreateModule"
-        @back="workspace.backToArchiveList"
-        @open-followup="handleOpenFollowup"
-      />
-
-      <EmrPage
-        v-else-if="workspace.currentWorkspace === 'emr'"
-        :all-patients="workspace.allPatients"
-        :selected-patient="workspace.selectedPatient"
-        :followup-items="workspace.followupItems"
-        :loading="workspace.loadingPatients || workspace.loadingPatient"
-        @open-patient="workspace.openPatient($event, 'doctor')"
-        @open-archive="handleOpenArchive"
-        @open-followup="handleOpenFollowup"
-      />
-
-      <FollowupWorkbenchPage
-        v-else-if="workspace.currentWorkspace === 'followup'"
-        :loading="workspace.loadingBoards"
-        :loading-task-action="workspace.loadingTaskStatus || workspace.loadingEncounterStatus"
-        :followup-items="workspace.followupItems"
-        :flow-board-items="workspace.flowBoardItems"
-        :selected-patient-id="workspace.followupFocusPatientId"
-        :saving-contact-log="workspace.savingContactLog"
-        :doctor-role="workspace.currentDoctor.role"
-        :no-permission="workspace.followupNoPermission"
-        :model-unavailable="workspace.modelUnavailable"
-        :selected-patient="workspace.selectedPatient"
-        @open-patient="workspace.openPatient($event, 'doctor')"
-        @open-archive="workspace.openArchiveInNewTab"
-        @complete-task="workspace.changeOutpatientTaskStatus($event.patientId, $event.taskId, workspace.taskStatusCompleted)"
-        @close-task="workspace.changeOutpatientTaskStatus($event.patientId, $event.taskId, workspace.taskStatusClosed)"
-        @submit-contact-log="workspace.submitContactLog"
-      />
-
-      <RoleWorkspacePage v-else-if="workspace.currentWorkspace === 'role-workspaces'" />
-
-      <SystemCenterPage
-        v-else-if="workspace.currentWorkspace === 'system'"
-        :doctor="workspace.currentDoctor"
-        :health="workspace.health"
-      />
-
       <section v-else class="empty-state-card">
-        <h3>模块正在整理中</h3>
-        <p>请返回医生工作台、患者档案或随访任务继续操作。</p>
+        <h3>正在进入工作区</h3>
+        <p>系统正在根据当前角色和导航位置切换到对应页面。</p>
       </section>
     </template>
   </AppShell>

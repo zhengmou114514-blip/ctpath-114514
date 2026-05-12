@@ -1,0 +1,81 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="model_insight_flow_425_revised" name="4.2.5模型洞察流程图-修订版">
+    <mxGraphModel dx="1045" dy="763" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1000" pageHeight="780" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="start" value="医生进入患者风险评估页面" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="405" y="35" width="190" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="load_patient" value="读取当前患者上下文&#xa;档案摘要 / 病程事件 / 当前用药 / 附件摘要" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="350" y="115" width="300" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="predict" value="调用预测服务&#xa;TKGR-GPRSCL 推理能力" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="400" y="220" width="200" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="success" value="预测是否成功" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="440" y="315" width="120" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="fallback" value="执行回退策略&#xa;展示预置摘要或降级提示" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="130" y="455" width="220" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="result" value="生成患者级辅助结果&#xa;Top-K 风险 / 证据摘要 / 建议来源" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="430" y="455" width="250" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="degraded" value="展示模型状态说明&#xa;available / degraded / unavailable" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="725" y="455" width="220" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="warn" value="提示辅助性质&#xa;结果仅供参考，不替代临床判断" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="395" y="575" width="250" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="next_action" value="页面展示下一步动作&#xa;进入详情 / 发起随访 / 查看当前用药" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="395" y="675" width="250" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="end" value="页面完成展示" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;strokeWidth=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="450" y="760" width="140" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" edge="1" parent="1" source="start" target="load_patient" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#000000;strokeWidth=1;endArrow=block;endFill=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" edge="1" parent="1" source="load_patient" target="predict" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#000000;strokeWidth=1;endArrow=block;endFill=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" edge="1" parent="1" source="predict" target="success" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#000000;strokeWidth=1;endArrow=block;endFill=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" edge="1" parent="1" source="success" target="fallback" value="否" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#000000;strokeWidth=1;endArrow=block;endFill=1;fontSize=12;labelBackgroundColor=#ffffff;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" edge="1" parent="1" source="success" target="result" value="是" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#000000;strokeWidth=1;endArrow=block;endFill=1;fontSize=12;labelBackgroundColor=#ffffff;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" edge="1" parent="1" source="fallback" target="warn" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#000000;strokeWidth=1;endArrow=block;endFill=1;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="240" y="602" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e7" edge="1" parent="1" source="result" target="warn" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#000000;strokeWidth=1;endArrow=block;endFill=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" edge="1" parent="1" source="result" target="degraded" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#000000;strokeWidth=1;endArrow=block;endFill=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" edge="1" parent="1" source="degraded" target="warn" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#000000;strokeWidth=1;endArrow=block;endFill=1;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="835" y="602" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e10" edge="1" parent="1" source="warn" target="next_action" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#000000;strokeWidth=1;endArrow=block;endFill=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" edge="1" parent="1" source="next_action" target="end" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#000000;strokeWidth=1;endArrow=block;endFill=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

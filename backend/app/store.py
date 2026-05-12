@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+from pathlib import Path
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
@@ -40,6 +41,7 @@ from .schemas import (
     PatientSummary,
     PatientUpsertRequest,
     RegisterRequest,
+    RiskAssessmentRecord,
     TimelineEvent,
 )
 from .services.suggestion_service import SuggestionService
@@ -51,11 +53,72 @@ except Exception:  # pragma: no cover
     text = None
 
 
-DB_URL = os.getenv("CTPATH_DB_URL", "")
-ALLOW_DEMO_FALLBACK = os.getenv("CTPATH_ALLOW_DEMO_FALLBACK", "1").lower() in {"1", "true", "yes"}
+def _load_env_file(path: Path) -> None:
+    if not path.exists():
+        return
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if key and key not in os.environ:
+            os.environ[key] = value
+
+
+for _env_path in (
+    Path(__file__).resolve().parents[2] / ".env",
+    Path(__file__).resolve().parents[1] / ".env",
+):
+    _load_env_file(_env_path)
+
+
+def _normalize_db_url(value: str) -> str:
+    db_url = (value or "").strip().strip('"').strip("'")
+    # 常见误写：mysql+pymysql://root: root @127.0.0.1:3306/ctpath
+    # PyMySQL 会把空格也当作密码的一部分，导致 1045。这里仅清理 URL 凭据段两侧空格。
+    if "://" in db_url and "@" in db_url:
+        scheme, rest = db_url.split("://", 1)
+        credentials, host = rest.split("@", 1)
+        if ":" in credentials:
+            username, password = credentials.split(":", 1)
+            credentials = "{0}:{1}".format(username.strip(), password.strip())
+        else:
+            credentials = credentials.strip()
+        db_url = "{0}://{1}@{2}".format(scheme, credentials, host.strip())
+    return db_url
+
+
+def _json_safe(value: Any) -> Any:
+    if hasattr(value, "model_dump"):
+        return value.model_dump()
+    if isinstance(value, dict):
+        return {key: _json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [_json_safe(item) for item in value]
+    return value
+
+
+def _json_dumps(value: Any) -> str:
+    return json.dumps(_json_safe(value), ensure_ascii=False)
+
+
+def _configured_db_url() -> str:
+    return _normalize_db_url(os.getenv("CTPATH_DB_URL", ""))
+
+
+def _allow_demo_fallback() -> bool:
+    return os.getenv("CTPATH_ALLOW_DEMO_FALLBACK", "1").lower() in {"1", "true", "yes"}
+
+
+DB_URL = _configured_db_url()
 TOKENS: Dict[str, str] = {}
 STORE = None
+STORE_DB_URL = ""
+STORE_CONNECT_ERROR: Optional[str] = None
 SUGGESTION_SERVICE = SuggestionService()
+DEMO_RISK_ASSESSMENTS: Dict[str, List[dict]] = {}
 
 RELATION_LABELS = {
     "has_disease": "主要疾病",
@@ -68,6 +131,8 @@ RELATION_LABELS = {
     "bp_sys_bin": "收缩压分层",
     "bmi_bin": "BMI 分层",
     "cholesterol_bin": "胆固醇分层",
+    "risk_assessment": "风险评估",
+    "risk_status_refresh": "风险评估状态",
 }
 
 
@@ -90,6 +155,8 @@ class MySQLStore:
             raise RuntimeError("sqlalchemy is not installed")
         self.engine = create_engine(db_url, pool_pre_ping=True, future=True)
         self._table_columns_cache: Dict[str, set[str]] = {}
+        with self.engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
 
     def _fetch_all(self, query: str, **params: Any) -> List[Dict[str, Any]]:
         with self.engine.connect() as conn:
@@ -308,6 +375,62 @@ class MySQLStore:
             title=row["title"],
             department=row["department"],
             role=row.get("role") or "doctor",
+        )
+
+    def list_doctors(self) -> List[DoctorPublic]:
+        if self._has_columns("doctor_users", "role"):
+            rows = self._fetch_all(
+                """
+                SELECT username, name, title, department, role
+                FROM doctor_users
+                ORDER BY department, role, name, username
+                """
+            )
+        else:
+            rows = self._fetch_all(
+                """
+                SELECT username, name, title, department
+                FROM doctor_users
+                ORDER BY department, name, username
+                """
+            )
+        return [
+            DoctorPublic(
+                username=row["username"],
+                name=row["name"],
+                title=row["title"],
+                department=row["department"],
+                role=row.get("role") or "doctor",
+            )
+            for row in rows
+        ]
+
+    def update_doctor_role(self, username: str, role: str) -> Optional[DoctorPublic]:
+        row = self._fetch_one(
+            """
+            SELECT username, name, title, department
+            FROM doctor_users
+            WHERE username = :username
+            """,
+            username=username,
+        )
+        if not row or not self._has_columns("doctor_users", "role"):
+            return None
+        self._execute(
+            """
+            UPDATE doctor_users
+            SET role = :role
+            WHERE username = :username
+            """,
+            username=username,
+            role=role,
+        )
+        return DoctorPublic(
+            username=row["username"],
+            name=row["name"],
+            title=row["title"],
+            department=row["department"],
+            role=role,
         )
 
     def list_patients(self) -> List[dict]:
@@ -636,10 +759,10 @@ class MySQLStore:
             return
 
         evidence = evidence or {}
-        topk_json = json.dumps(payload.get("topk") or [], ensure_ascii=False)
-        advice_json = json.dumps(payload.get("advice") or [], ensure_ascii=False)
-        path_explanation_json = json.dumps(payload.get("pathExplanation") or "", ensure_ascii=False)
-        similar_cases_json = json.dumps(payload.get("similarCases") or [], ensure_ascii=False)
+        topk_json = _json_dumps(payload.get("topk") or [])
+        advice_json = _json_dumps(payload.get("advice") or [])
+        path_explanation_json = _json_dumps(payload.get("pathExplanation") or "")
+        similar_cases_json = _json_dumps(payload.get("similarCases") or [])
         support_level = str(evidence.get("supportLevel") or "").strip().lower() or "unknown"
 
         self._execute(
@@ -696,6 +819,203 @@ class MySQLStore:
             path_explanation_json=path_explanation_json,
             similar_cases_json=similar_cases_json,
             source=source,
+        )
+
+    def list_prediction_results(self, patient_id: str) -> List[dict]:
+        if not self._supports_prediction_results():
+            return []
+        rows = self._fetch_all(
+            """
+            SELECT result_id AS resultId,
+                   patient_id AS patientId,
+                   mode,
+                   strategy,
+                   DATE_FORMAT(generated_at, '%Y-%m-%dT%H:%i:%s') AS generatedAt,
+                   support_summary AS supportSummary,
+                   event_count AS eventCount,
+                   timepoint_count AS timepointCount,
+                   relation_count AS relationCount,
+                   support_level AS supportLevel,
+                   topk_json AS topkJson,
+                   advice_json AS adviceJson,
+                   path_explanation_json AS pathExplanationJson,
+                   similar_cases_json AS similarCasesJson,
+                   source
+            FROM prediction_results
+            WHERE patient_id = :patient_id
+            ORDER BY generated_at DESC, result_id DESC
+            """,
+            patient_id=patient_id,
+        )
+
+        items: List[dict] = []
+        for index, row in enumerate(rows):
+            def parse_json_list(value: Any) -> List[Any]:
+                if isinstance(value, list):
+                    return value
+                if isinstance(value, tuple):
+                    return list(value)
+                try:
+                    parsed = json.loads(value or "[]")
+                    return parsed if isinstance(parsed, list) else []
+                except Exception:
+                    return []
+
+            try:
+                topk = parse_json_list(row.get("topkJson"))
+                advice = [str(item) for item in parse_json_list(row.get("adviceJson"))]
+                path_explanation = [str(item) for item in parse_json_list(row.get("pathExplanationJson"))]
+                similar_cases = parse_json_list(row.get("similarCasesJson"))
+            except Exception:
+                topk, advice, path_explanation, similar_cases = [], [], [], []
+            support_level = str(row.get("supportLevel") or "minimal")
+            if support_level not in {"strong", "limited", "minimal"}:
+                support_level = "minimal"
+            items.append(
+                {
+                    "resultId": row["resultId"],
+                    "patientId": row["patientId"],
+                    "mode": row["mode"],
+                    "strategy": row["strategy"],
+                    "generatedAt": row["generatedAt"],
+                    "supportSummary": row["supportSummary"],
+                    "evidence": {
+                        "eventCount": int(row.get("eventCount") or 0),
+                        "timepointCount": int(row.get("timepointCount") or 0),
+                        "relationCount": int(row.get("relationCount") or 0),
+                        "supportLevel": support_level,
+                    },
+                    "topk": topk,
+                    "advice": advice,
+                    "pathExplanation": path_explanation if isinstance(path_explanation, list) else [],
+                    "similarCases": similar_cases if isinstance(similar_cases, list) else [],
+                    "source": row.get("source") or "model-service",
+                    "isCurrent": index == 0,
+                }
+            )
+        return items
+
+    def supports_patient_attachments(self) -> bool:
+        return self._has_columns(
+            "patient_attachments",
+            "attachment_id",
+            "patient_id",
+            "attachment_type",
+            "type_label",
+            "file_name",
+            "mime_type",
+            "file_size",
+            "storage_file_name",
+            "preview_url",
+            "uploaded_at",
+            "uploaded_by",
+            "source",
+        )
+
+    def list_patient_attachments(self, patient_id: str) -> List[dict]:
+        if not self.supports_patient_attachments():
+            return []
+        return self._fetch_all(
+            """
+            SELECT attachment_id AS attachmentId,
+                   patient_id AS patientId,
+                   attachment_type AS type,
+                   type_label AS typeLabel,
+                   file_name AS fileName,
+                   mime_type AS mimeType,
+                   file_size AS fileSize,
+                   storage_file_name AS storageFileName,
+                   preview_url AS previewUrl,
+                   DATE_FORMAT(uploaded_at, '%Y-%m-%dT%H:%i:%s') AS uploadedAt,
+                   uploaded_by AS uploadedBy,
+                   source
+            FROM patient_attachments
+            WHERE patient_id = :patient_id
+            ORDER BY uploaded_at DESC, attachment_id DESC
+            """,
+            patient_id=patient_id,
+        )
+
+    def get_patient_attachment_record(self, patient_id: str, attachment_id: str) -> Optional[dict]:
+        if not self.supports_patient_attachments():
+            return None
+        return self._fetch_one(
+            """
+            SELECT attachment_id AS attachmentId,
+                   patient_id AS patientId,
+                   attachment_type AS type,
+                   type_label AS typeLabel,
+                   file_name AS fileName,
+                   mime_type AS mimeType,
+                   file_size AS fileSize,
+                   storage_file_name AS storageFileName,
+                   preview_url AS previewUrl,
+                   DATE_FORMAT(uploaded_at, '%Y-%m-%dT%H:%i:%s') AS uploadedAt,
+                   uploaded_by AS uploadedBy,
+                   source
+            FROM patient_attachments
+            WHERE patient_id = :patient_id
+              AND attachment_id = :attachment_id
+            """,
+            patient_id=patient_id,
+            attachment_id=attachment_id,
+        )
+
+    def save_patient_attachment_record(self, record: Dict[str, Any]) -> None:
+        if not self.supports_patient_attachments():
+            return
+        self._execute(
+            """
+            INSERT INTO patient_attachments (
+              attachment_id,
+              patient_id,
+              attachment_type,
+              type_label,
+              file_name,
+              mime_type,
+              file_size,
+              storage_file_name,
+              preview_url,
+              uploaded_by,
+              source
+            ) VALUES (
+              :attachment_id,
+              :patient_id,
+              :attachment_type,
+              :type_label,
+              :file_name,
+              :mime_type,
+              :file_size,
+              :storage_file_name,
+              :preview_url,
+              :uploaded_by,
+              :source
+            )
+            """,
+            attachment_id=record["attachmentId"],
+            patient_id=record["patientId"],
+            attachment_type=record["type"],
+            type_label=record["typeLabel"],
+            file_name=record["fileName"],
+            mime_type=record["mimeType"],
+            file_size=int(record["fileSize"]),
+            storage_file_name=record["storageFileName"],
+            preview_url=record.get("previewUrl") or "",
+            uploaded_by=record["uploadedBy"],
+            source=record.get("source") or "local-file",
+        )
+
+    def delete_patient_attachment_record(self, patient_id: str, attachment_id: str) -> None:
+        if not self.supports_patient_attachments():
+            return
+        self._execute(
+            """
+            DELETE FROM patient_attachments
+            WHERE patient_id = :patient_id
+              AND attachment_id = :attachment_id
+            """,
+            patient_id=patient_id,
+            attachment_id=attachment_id,
         )
 
     def list_recent_events(self, limit: int = 10) -> List[dict]:
@@ -940,16 +1260,28 @@ class MySQLStore:
 
 
 def _current_store() -> Optional[MySQLStore]:
-    global STORE
-    if STORE is not None:
+    global STORE, STORE_DB_URL, STORE_CONNECT_ERROR
+    db_url = _configured_db_url()
+    if STORE is not None and STORE_DB_URL == db_url:
         return STORE
-    if not DB_URL:
+    if STORE is not None and STORE_DB_URL != db_url:
+        STORE = None
+        STORE_CONNECT_ERROR = None
+    if not db_url:
+        STORE_CONNECT_ERROR = None
+        return None
+    if STORE_CONNECT_ERROR and STORE_DB_URL == db_url and _allow_demo_fallback():
         return None
     try:
-        STORE = MySQLStore(DB_URL)
+        STORE = MySQLStore(db_url)
+        STORE_DB_URL = db_url
+        STORE_CONNECT_ERROR = None
         return STORE
     except Exception as exc:
-        if ALLOW_DEMO_FALLBACK:
+        STORE = None
+        STORE_DB_URL = db_url
+        STORE_CONNECT_ERROR = str(exc)
+        if _allow_demo_fallback():
             return None
         raise RuntimeError("Failed to connect to the configured database") from exc
 
@@ -1286,6 +1618,20 @@ def get_doctor(username: str) -> Optional[DoctorPublic]:
     return demo_store.get_doctor(username)
 
 
+def list_doctors() -> List[DoctorPublic]:
+    store = _current_store()
+    if store:
+        return store.list_doctors()
+    return demo_store.list_doctors()
+
+
+def update_doctor_role(username: str, role: str) -> Optional[DoctorPublic]:
+    store = _current_store()
+    if store:
+        return store.update_doctor_role(username, role)
+    return demo_store.update_doctor_role(username, role)
+
+
 def issue_token(username: str) -> str:
     return _issue_token(username)
 
@@ -1468,6 +1814,110 @@ def get_patient(patient_id: str) -> Optional[PatientCase]:
             "lastOpenedAt": state["lastOpenedAt"],
         }
     )
+
+
+def _assessment_from_prediction_payload(payload: Dict[str, Any], *, result_id: Optional[str] = None, is_current: bool = False, source: str = "model-service") -> RiskAssessmentRecord:
+    evidence = payload.get("evidence") or {}
+    support_level = str(evidence.get("supportLevel") or "minimal")
+    if support_level not in {"strong", "limited", "minimal"}:
+        support_level = "minimal"
+    return RiskAssessmentRecord(
+        resultId=result_id or "pred-{0}".format(uuid4().hex[:16]),
+        patientId=str(payload.get("patientId") or ""),
+        mode=payload.get("mode") or "similar-case",
+        strategy=payload.get("strategy") or "similar-case",
+        generatedAt=str(payload.get("generatedAt") or _now_iso()).replace(" ", "T"),
+        supportSummary=str(payload.get("supportSummary") or ""),
+        evidence={
+            "eventCount": int(evidence.get("eventCount") or 0),
+            "timepointCount": int(evidence.get("timepointCount") or 0),
+            "relationCount": int(evidence.get("relationCount") or 0),
+            "supportLevel": support_level,
+        },
+        topk=payload.get("topk") or [],
+        advice=payload.get("advice") or [],
+        pathExplanation=payload.get("pathExplanation") or [],
+        similarCases=payload.get("similarCases") or [],
+        source=source,
+        isCurrent=is_current,
+    )
+
+
+def list_risk_assessments(patient_id: str) -> Optional[List[RiskAssessmentRecord]]:
+    patient = get_patient(patient_id)
+    if patient is None:
+        return None
+    store = _current_store()
+    if store:
+        return [RiskAssessmentRecord(**item) for item in store.list_prediction_results(patient_id)]
+
+    items = DEMO_RISK_ASSESSMENTS.get(patient_id, [])
+    if not items:
+        evidence = {
+            "eventCount": len(patient.timeline),
+            "timepointCount": len({item.date for item in patient.timeline}),
+            "relationCount": min(len(patient.timeline), 4),
+            "supportLevel": "strong" if patient.dataSupport == "high" else "limited",
+        }
+        payload = {
+            "patientId": patient.patientId,
+            "mode": patient.recommendationMode,
+            "strategy": "direct-model" if patient.recommendationMode == "model" else "similar-case",
+            "generatedAt": patient.latestAssessmentAt or _now_iso(),
+            "supportSummary": _prediction_support_summary("direct-model" if patient.recommendationMode == "model" else "similar-case", evidence),
+            "evidence": evidence,
+            "topk": [item.model_dump() for item in patient.predictions],
+            "advice": patient.careAdvice,
+            "pathExplanation": patient.pathExplanation,
+            "similarCases": [item.model_dump() for item in patient.similarCases],
+        }
+        return [_assessment_from_prediction_payload(payload, result_id="demo-current-{0}".format(patient_id), is_current=True, source="demo-store")]
+    return [RiskAssessmentRecord(**{**item, "isCurrent": index == 0}) for index, item in enumerate(items)]
+
+
+def latest_risk_assessment(patient_id: str) -> Optional[RiskAssessmentRecord]:
+    items = list_risk_assessments(patient_id)
+    if items is None:
+        return None
+    return items[0] if items else None
+
+
+def refresh_risk_assessment(patient_id: str, topk: int = 3, actor_name: Optional[str] = None) -> Optional[RiskAssessmentRecord]:
+    patient = get_patient(patient_id)
+    if patient is None:
+        return None
+    result = predict_for_patient(patient_id, topk)
+    if result is None:
+        return None
+
+    first = (result.get("topk") or [{}])[0]
+    risk_label = str(first.get("label") or patient.riskLevel)
+    note = "{0}；建议：{1}".format(
+        str(result.get("supportSummary") or ""),
+        "；".join(str(item) for item in (result.get("advice") or [])[:2]),
+    ).strip("；")
+
+    add_patient_event(
+        patient_id,
+        PatientEventCreateRequest(
+            eventTime=_now_event_time(),
+            relation="risk_assessment",
+            objectValue=risk_label,
+            note=note,
+            source="model-service",
+            actorName=actor_name,
+        ),
+    )
+
+    store = _current_store()
+    if store:
+        latest = latest_risk_assessment(patient_id)
+        return latest
+
+    record = _assessment_from_prediction_payload(result, is_current=True, source="demo-store").model_dump()
+    existing = DEMO_RISK_ASSESSMENTS.get(patient_id, [])
+    DEMO_RISK_ASSESSMENTS[patient_id] = [record, *existing]
+    return RiskAssessmentRecord(**record)
 
 
 def save_patient(payload: PatientUpsertRequest) -> Optional[PatientCase]:

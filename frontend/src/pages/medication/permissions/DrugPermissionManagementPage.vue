@@ -44,6 +44,28 @@ const configuredRoles = computed(() => records.value.length)
 const controlledRoles = computed(() => records.value.filter((item) => item.allow_controlled_drug).length)
 const reviewRoles = computed(() => records.value.filter((item) => item.allow_review).length)
 const executeRoles = computed(() => records.value.filter((item) => item.allow_execute).length)
+const selectedRoleRecord = computed(() => records.value.find((item) => item.role === form.role) ?? null)
+const selectedRoleSummary = computed(() => {
+  const row = selectedRoleRecord.value
+  if (!row) return []
+  return [
+    { label: '目录查看', value: yesNo(row.allow_view) },
+    { label: '开立权限', value: yesNo(row.allow_prescribe) },
+    { label: '审核权限', value: yesNo(row.allow_review) },
+    { label: '执行权限', value: yesNo(row.allow_execute) },
+    { label: '管制药', value: yesNo(row.allow_controlled_drug) },
+  ]
+})
+const recommendedScope = computed(() => {
+  const map: Record<DrugPermissionRole, string> = {
+    doctor: '面向临床诊疗场景，重点配置查看与开立权限。',
+    nurse: '面向执行与随访场景，重点配置查看与执行权限。',
+    pharmacist: '面向药师复核场景，重点配置审核与管制药权限。',
+    archivist: '面向档案协同场景，建议只开放查看权限。',
+    admin: '面向系统治理场景，可维护全量药品权限策略。',
+  }
+  return map[form.role]
+})
 
 function applyRecord(record: DrugPermissionRecord) {
   selectedRole.value = record.role
@@ -183,6 +205,33 @@ onMounted(() => {
       </article>
     </section>
 
+    <section class="permission-summary-grid">
+      <article class="clinical-card spotlight-card">
+        <div class="section-header">
+          <div>
+            <h2>权限配置说明</h2>
+            <p>药品权限用于约束不同角色能否查看、开立、审核、执行及处理管制药，不延伸到库存或收费授权。</p>
+          </div>
+        </div>
+        <div class="chip-row">
+          <span class="permission-badge">目录查看</span>
+          <span class="permission-badge">开立用药</span>
+          <span class="permission-badge">药师审核</span>
+          <span class="permission-badge">执行记录</span>
+          <span class="permission-badge warning">管制药</span>
+        </div>
+      </article>
+
+      <article class="clinical-card spotlight-card">
+        <div class="section-header">
+          <div>
+            <h2>当前角色建议</h2>
+            <p>{{ recommendedScope }}</p>
+          </div>
+        </div>
+      </article>
+    </section>
+
     <div v-if="errorMessage" class="inline-alert error">{{ errorMessage }}</div>
     <div v-else-if="successMessage" class="inline-alert success">{{ successMessage }}</div>
 
@@ -236,6 +285,13 @@ onMounted(() => {
           <div>
             <h2>角色权限编辑</h2>
             <p>普通前端只负责展示与发起修改，最终仍以后端 RBAC 与审计结果为准。</p>
+          </div>
+        </div>
+
+        <div v-if="selectedRoleSummary.length" class="editor-summary-grid">
+          <div v-for="item in selectedRoleSummary" :key="item.label" class="summary-tile">
+            <span>{{ item.label }}</span>
+            <strong>{{ item.value }}</strong>
           </div>
         </div>
 
@@ -301,11 +357,16 @@ onMounted(() => {
 
 <style scoped>
 .drug-permission-page,
+.permission-summary-grid,
 .permission-layout,
 .editor-grid,
 .permission-table {
   display: grid;
   gap: 22px;
+}
+
+.permission-summary-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .permission-layout {
@@ -314,7 +375,8 @@ onMounted(() => {
 }
 
 .permission-table-card,
-.permission-editor-card {
+.permission-editor-card,
+.spotlight-card {
   display: grid;
   gap: 18px;
 }
@@ -365,6 +427,30 @@ onMounted(() => {
   grid-template-columns: 1.3fr repeat(5, minmax(0, 0.8fr));
   gap: 12px;
   align-items: center;
+}
+
+.editor-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.summary-tile {
+  display: grid;
+  gap: 6px;
+  border-radius: 14px;
+  background: rgba(241, 244, 245, 0.92);
+  padding: 14px;
+}
+
+.summary-tile span {
+  color: #61737b;
+  font-size: 12px;
+}
+
+.summary-tile strong {
+  color: #0f6f99;
+  font-size: 20px;
 }
 
 .permission-head {
@@ -459,12 +545,14 @@ onMounted(() => {
 }
 
 @media (max-width: 1180px) {
+  .permission-summary-grid,
   .permission-layout {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 900px) {
+  .editor-summary-grid,
   .permission-head,
   .permission-row {
     grid-template-columns: 1fr;

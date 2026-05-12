@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { RouterLink } from 'vue-router'
 import { Search, UserFilled } from '@element-plus/icons-vue'
 import { roleSystemForRole, sectionLabel } from '../config/workspaceMenu'
 import type { DoctorUser, HealthResponse } from '../services/types'
@@ -51,18 +52,34 @@ const breadcrumb = computed(() => {
   }
   return [props.doctor.department || '慢病管理门诊', roleLabelMap[props.doctor.role], sectionLabel(props.section)]
 })
+
+const homeRoute = computed(() => {
+  if (props.doctor.role === 'doctor') return { name: 'doctor-workbench' }
+  if (props.doctor.role === 'nurse') return { name: 'nurse-followups' }
+  if (props.doctor.role === 'pharmacist') return { name: 'pharmacy-drug-catalog' }
+  if (props.doctor.role === 'admin') return { name: 'admin-governance' }
+  return { name: 'home' }
+})
+
 </script>
 
 <template>
   <header class="stitch-topbar">
     <div class="topbar-system">
-      <strong>{{ currentSystem.title }}</strong>
-      <span v-for="item in breadcrumb" :key="item">{{ item }}</span>
+      <RouterLink class="topbar-link topbar-title" :to="homeRoute">{{ currentSystem.title }}</RouterLink>
+      <template v-for="(item, index) in breadcrumb" :key="`${item}-${index}`">
+        <span v-if="index === breadcrumb.length - 1" class="topbar-link topbar-current">
+          {{ item }}
+        </span>
+        <RouterLink v-else class="topbar-link" :to="homeRoute">
+          {{ item }}
+        </RouterLink>
+      </template>
     </div>
 
     <div class="topbar-search">
       <el-icon><Search /></el-icon>
-      <input :placeholder="placeholderMap[section]" readonly type="text" />
+      <input :placeholder="placeholderMap[section]" type="text" />
     </div>
 
     <div class="topbar-actions">
@@ -77,17 +94,20 @@ const breadcrumb = computed(() => {
 
 <style scoped>
 .stitch-topbar {
-  position: static;
+  position: sticky;
+  top: 0;
   z-index: 30;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  min-height: 54px;
-  padding: 8px 14px;
-  border-bottom: 1px solid rgba(191, 200, 200, 0.7);
-  background: #f7fafb;
-  box-shadow: 0 2px 10px rgba(24, 28, 30, 0.05);
+  min-height: var(--ws-topbar-height);
+  margin: 0 -24px;
+  padding: 10px 24px;
+  border-bottom: 1px solid var(--ws-outline);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 4px 20px rgba(23, 32, 51, 0.05);
+  backdrop-filter: blur(14px);
 }
 
 .topbar-system {
@@ -95,21 +115,31 @@ const breadcrumb = computed(() => {
   min-width: 0;
   align-items: center;
   gap: 10px;
-  color: #3f4848;
+  color: #475569;
   white-space: nowrap;
 }
 
-.topbar-system strong {
-  color: #003434;
+.topbar-title {
+  color: #172033;
   font-size: 15px;
 }
 
-.topbar-system span {
+.topbar-link {
   border-left: 1px solid #d5dde0;
   padding-left: 10px;
-  color: #526772;
+  color: #64748b;
   font-size: 12px;
   font-weight: 700;
+  text-decoration: none;
+}
+
+.topbar-link:first-child {
+  border-left: 0;
+  padding-left: 0;
+}
+
+.topbar-link:hover {
+  color: #1d4ed8;
 }
 
 .topbar-search {
@@ -117,8 +147,8 @@ const breadcrumb = computed(() => {
   width: min(390px, 100%);
   align-items: center;
   gap: 8px;
-  border: 1px solid #d5dde0;
-  border-radius: 999px;
+  border: 1px solid var(--ws-outline);
+  border-radius: 10px;
   background: #fff;
   padding: 0 10px;
 }
@@ -128,8 +158,7 @@ const breadcrumb = computed(() => {
   border: 0;
   background: transparent;
   box-shadow: none;
-  color: #181c1d;
-  cursor: default;
+  color: #172033;
   font-size: 12px;
   padding: 6px 0;
 }
@@ -139,7 +168,7 @@ const breadcrumb = computed(() => {
 }
 
 .topbar-search :deep(svg) {
-  color: #6f797a;
+  color: #94a3b8;
 }
 
 .topbar-actions {
@@ -151,10 +180,10 @@ const breadcrumb = computed(() => {
 }
 
 .topbar-pill {
-  border: 1px solid #d5dde0;
+  border: 1px solid var(--ws-outline);
   border-radius: 999px;
-  background: #fff;
-  color: #3f4849;
+  background: #f8fafc;
+  color: #475569;
   font-size: 11px;
   font-weight: 700;
   padding: 4px 8px;
@@ -166,7 +195,7 @@ const breadcrumb = computed(() => {
   align-items: center;
   gap: 6px;
   border-radius: 999px;
-  background: #005c61;
+  background: #1d4ed8;
   color: #fff;
   font-size: 12px;
   font-weight: 700;
@@ -176,6 +205,7 @@ const breadcrumb = computed(() => {
 @media (max-width: 900px) {
   .stitch-topbar {
     display: grid;
+    margin: 0;
     padding: 10px;
   }
 

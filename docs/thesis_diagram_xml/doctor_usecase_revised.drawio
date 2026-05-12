@@ -1,0 +1,79 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="医生角色用例图-修订版" id="doctor_usecase_revised">
+    <mxGraphModel dx="971" dy="673" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="720" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="actor_doctor" value="医生" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fillColor=#ffffff;strokeColor=#000000;fontSize=15;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="300" width="60" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_workbench" value="进入医生工作台" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#333333;strokeWidth=1.3;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="310" y="120" width="170" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_patient_detail" value="查看患者详情" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#333333;strokeWidth=1.3;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="340" y="220" width="170" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_model" value="模型辅助分析" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#333333;strokeWidth=1.3;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="320" y="380" width="170" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_pending" value="待处理患者列表" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#555555;strokeWidth=1.1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="600" y="100" width="165" height="53" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_summary" value="当前患者摘要" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#555555;strokeWidth=1.1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="590" y="165" width="170" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_timeline" value="病程时间线" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#555555;strokeWidth=1.1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="610" y="235" width="165" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_medicine" value="当前用药查看" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#555555;strokeWidth=1.1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="610" y="295" width="165" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_attachment" value="附件预览" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#555555;strokeWidth=1.1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="610" y="355" width="165" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_prediction" value="模型预测结果" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#555555;strokeWidth=1.1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="610" y="430" width="165" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_risk" value="风险提示" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#555555;strokeWidth=1.1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="610" y="490" width="165" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="uc_advice" value="建议摘要" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#555555;strokeWidth=1.1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="610" y="550" width="165" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="e_actor_workbench" edge="1" parent="1" source="actor_doctor" target="uc_workbench" style="endArrow=none;html=1;strokeColor=#000000;strokeWidth=1.2;rounded=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_actor_patient" edge="1" parent="1" source="actor_doctor" target="uc_patient_detail" style="endArrow=none;html=1;strokeColor=#000000;strokeWidth=1.2;rounded=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_actor_model" edge="1" parent="1" source="actor_doctor" target="uc_model" style="endArrow=none;html=1;strokeColor=#000000;strokeWidth=1.2;rounded=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_workbench_pending" edge="1" parent="1" source="uc_workbench" target="uc_pending" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_workbench_summary" edge="1" parent="1" source="uc_workbench" target="uc_summary" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_detail_timeline" edge="1" parent="1" source="uc_patient_detail" target="uc_timeline" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_detail_medicine" edge="1" parent="1" source="uc_patient_detail" target="uc_medicine" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_detail_attachment" edge="1" parent="1" source="uc_patient_detail" target="uc_attachment" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_model_prediction" edge="1" parent="1" source="uc_model" target="uc_prediction" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_model_risk" edge="1" parent="1" source="uc_model" target="uc_risk" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_model_advice" edge="1" parent="1" source="uc_model" target="uc_advice" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
