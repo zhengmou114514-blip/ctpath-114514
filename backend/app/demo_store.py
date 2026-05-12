@@ -377,6 +377,46 @@ def _actor_display_name(username: Optional[str], name: Optional[str]) -> Optiona
     return None
 
 
+def _add_audit_log(record: Dict[str, object], action: str, username: Optional[str], name: Optional[str], detail: str) -> None:
+    audit_logs = list(record.get("auditLogs", []))
+    audit_logs.insert(
+        0,
+        {
+            "logId": "alog-{0}".format(uuid4().hex[:12]),
+            "action": action,
+            "operatorUsername": username,
+            "operatorName": name,
+            "detail": detail,
+            "createdAt": datetime.now(timezone.utc).isoformat(),
+        },
+    )
+    record["auditLogs"] = audit_logs
+
+
+def _latest_followup_dict(patient: PatientCase) -> Optional[dict]:
+    candidates = [item for item in patient.outpatientTasks if item.category == "followup"]
+    if not candidates:
+        return None
+    candidates.sort(key=lambda item: (item.updatedAt or "", item.dueDate, item.taskId), reverse=True)
+    task = candidates[0]
+    return {
+        "taskId": task.taskId,
+        "patientId": patient.patientId,
+        "patientName": patient.name,
+        "primaryDisease": patient.primaryDisease,
+        "riskLevel": patient.riskLevel,
+        "dataSupport": patient.dataSupport,
+        "dueDate": task.dueDate,
+        "owner": task.owner,
+        "priority": task.priority,
+        "taskType": "随访任务",
+        "status": task.status,
+        "source": "outpatient-task",
+        "lastActionBy": task.updatedBy,
+        "lastActionAt": task.updatedAt,
+    }
+
+
 def _build_outpatient_tasks(patient_id: str) -> List[OutpatientTask]:
     return [
         OutpatientTask(
@@ -545,7 +585,8 @@ def _build_path_explanation(record: Dict[str, object]) -> List[str]:
 def _build_case(record: Dict[str, object]) -> PatientCase:
     recommendation_mode = "similar-case" if record["dataSupport"] == "low" else "model"
     profile = patient_profile_defaults(record)
-    return PatientCase(
+    contact_logs = _build_contact_logs(record)
+    patient_case = PatientCase(
         patientId=str(record["patientId"]),
         name=str(record["name"]),
         age=int(record["age"]),
@@ -579,12 +620,14 @@ def _build_case(record: Dict[str, object]) -> PatientCase:
         pathExplanation=_build_path_explanation(record),
         followUps=_build_followups(record),
         outpatientTasks=_build_outpatient_tasks(str(record["patientId"])),
-        contactLogs=_build_contact_logs(record),
+        contactLogs=contact_logs,
+        recent_contact_logs=contact_logs[:3],
         auditLogs=_build_audit_logs(record),
         recommendationMode=recommendation_mode,
         careAdvice=_build_advice(record),
         similarCases=_build_similar_cases(record),
     )
+    return patient_case.model_copy(update={"latest_followup": _latest_followup_dict(patient_case)})
 
 
 def authenticate(username: str, password: str) -> Optional[DoctorPublic]:
@@ -808,6 +851,13 @@ def add_contact_log(patient_id: str, payload: ContactLogCreateRequest) -> Option
         },
     )
     record["contactLogs"] = contact_logs
+    _add_audit_log(
+        record,
+        "contact_log_created",
+        payload.actorUsername,
+        payload.actorName,
+        "Contact log created: {0}".format(payload.contactResult),
+    )
     return _build_case(record)
 
 
@@ -848,6 +898,13 @@ def add_outpatient_task(patient_id: str, payload: OutpatientTaskCreateRequest) -
         ],
     }
     OUTPATIENT_TASKS.setdefault(patient_id, []).insert(0, task_row)
+    _add_audit_log(
+        record,
+        "followup_task_created" if payload.category == "followup" else "outpatient_task_created",
+        payload.actorUsername,
+        payload.actorName,
+        "Task created: {0}".format(payload.title),
+    )
     return _build_case(record)
 
 
@@ -872,18 +929,25 @@ def update_outpatient_task_status(
                     0,
                     {
                         "logId": "log-{0}".format(uuid4().hex[:12]),
-                        "action": "completed" if payload.status == "已完成" else "closed",
+                        "action": "status_updated",
                         "actorUsername": payload.actorUsername,
                         "actorName": payload.actorName,
                         "createdAt": item["updatedAt"],
-                        "note": "状态更新为 {0}".format(payload.status),
+                        "note": payload.note or "状态更新为 {0}".format(payload.status),
                     },
                 )
             updated = True
+            _add_audit_log(
+                record,
+                "followup_task_status_updated" if item.get("category") == "followup" else "outpatient_task_status_updated",
+                payload.actorUsername,
+                payload.actorName,
+                "Task {0} status updated to {1}".format(task_id, payload.status),
+            )
             break
     if not updated:
         return None
-    if all(item["status"] in {"已完成", "已关闭"} for item in task_rows):
+    if all(item["status"] in {"已完成", "已关闭", "completed", "closed"} for item in task_rows):
         if ENCOUNTER_STATUS.get(patient_id) in {"in_progress", "pending_review"}:
             ENCOUNTER_STATUS[patient_id] = "completed"
     return _build_case(record)

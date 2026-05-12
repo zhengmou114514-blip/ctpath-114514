@@ -188,6 +188,13 @@ class PermissionRegistry:
         ))
 
         self.register(APIPermission(
+            path="/api/patients/{id}",
+            method="GET",
+            required_permissions={Permission.PATIENT_VIEW},
+            description="获取患者详情（plural route）"
+        ))
+
+        self.register(APIPermission(
             path="/api/patient/{id}",
             method="PUT",
             required_permissions={Permission.PATIENT_UPDATE},
@@ -228,6 +235,13 @@ class PermissionRegistry:
             method="POST",
             required_permissions={Permission.FOLLOWUP_CREATE},
             description="新增患者联系记录"
+        ))
+
+        self.register(APIPermission(
+            path="/api/patient/{id}/contact-logs",
+            method="POST",
+            required_permissions={Permission.FOLLOWUP_CREATE},
+            description="新增患者联系记录（plural route）"
         ))
 
         self.register(APIPermission(
@@ -368,6 +382,22 @@ class PermissionRegistry:
             method="GET",
             required_permissions={Permission.FOLLOWUP_VIEW},
             description="获取随访任务列表"
+        ))
+
+        self.register(APIPermission(
+            path="/api/worklists/followups",
+            method="POST",
+            required_permissions={Permission.FOLLOWUP_CREATE},
+            allowed_roles={Role.ADMIN, Role.DOCTOR},
+            description="医生创建随访任务"
+        ))
+
+        self.register(APIPermission(
+            path="/api/worklists/followups/{task_id}",
+            method="PATCH",
+            required_permissions={Permission.FOLLOWUP_UPDATE},
+            allowed_roles={Role.ADMIN, Role.NURSE},
+            description="护士更新随访任务状态"
         ))
 
         self.register(APIPermission(

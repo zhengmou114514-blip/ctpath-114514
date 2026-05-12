@@ -1,4 +1,4 @@
-from typing import List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import AliasChoices, BaseModel, Field
 
@@ -12,7 +12,8 @@ SupportLevel = Literal["strong", "limited", "minimal"]
 AdviceSource = Literal["placeholder", "deepseek", "fallback"]
 EncounterStatus = Literal["waiting", "in_progress", "pending_review", "completed"]
 OutpatientTaskCategory = Literal["exam", "recheck", "followup"]
-OutpatientTaskStatus = Literal["待执行", "已完成", "已关闭"]
+FollowupClosureStatus = Literal["pending", "contacting", "not_reached", "need_review", "completed", "closed"]
+OutpatientTaskStatus = Literal["待执行", "已完成", "已关闭", "pending", "contacting", "not_reached", "need_review", "completed", "closed"]
 ContactType = Literal["phone", "family", "wechat", "outpatient"]
 ContactTarget = Literal["patient", "emergency_contact"]
 ContactResult = Literal["reached", "missed", "scheduled", "urgent"]
@@ -173,6 +174,8 @@ class PatientCase(PatientSummary):
     followUps: List[FollowUpTask]
     outpatientTasks: List[OutpatientTask] = Field(default_factory=list)
     contactLogs: List[ContactLog] = Field(default_factory=list)
+    latest_followup: Optional[Dict[str, Any]] = None
+    recent_contact_logs: List[ContactLog] = Field(default_factory=list)
     auditLogs: List[PatientAuditLog] = Field(default_factory=list)
     recommendationMode: RecommendationMode
     careAdvice: List[str]
@@ -636,7 +639,28 @@ class OutpatientTaskCreateRequest(BaseModel):
 
 
 class OutpatientTaskStatusUpdateRequest(BaseModel):
-    status: Literal["已完成", "已关闭"]
+    status: OutpatientTaskStatus
+    note: str = ""
+    actorUsername: Optional[str] = None
+    actorName: Optional[str] = None
+
+
+class FollowupTaskCreateRequest(BaseModel):
+    patientId: str = Field(min_length=1)
+    title: str = Field(min_length=1)
+    owner: str = "随访护士"
+    dueDate: str = Field(min_length=1)
+    priority: PriorityLevel = "medium"
+    note: str = ""
+    status: FollowupClosureStatus = "pending"
+    source: str = "doctor-followup"
+    actorUsername: Optional[str] = None
+    actorName: Optional[str] = None
+
+
+class FollowupTaskUpdateRequest(BaseModel):
+    status: FollowupClosureStatus
+    note: str = ""
     actorUsername: Optional[str] = None
     actorName: Optional[str] = None
 

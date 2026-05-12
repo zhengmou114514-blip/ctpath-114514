@@ -364,9 +364,11 @@ Get-Content .\app\mysql_seed_demo.sql | mysql -u root -p ctpath
 
 Do not commit reference archives such as `openhis-main.zip`.
 
-The project once encountered a push failure because `openhis-main.zip` exceeded GitHub's 100MB file limit.
+The project once encountered a push failure because `openhis-main.zip` exceeded GitHub's 100MB file limit. This issue has been resolved: the file was removed from Git history and the cleaned `main` branch was pushed successfully.
 
-If push fails with a large-file error, check:
+`.gitignore` now ignores `openhis-main.zip`. Keep future reference archives outside the main repository, for example in a local `_references/` directory or external storage.
+
+If a similar large-file error appears again, check:
 
 ```bash
 git status --short
@@ -374,7 +376,7 @@ git ls-files openhis-main.zip
 git log --all -- openhis-main.zip
 ```
 
-If the file exists in history, clean it before pushing.
+If a large file exists in history, clean it before pushing.
 
 ### Business Closure Status
 

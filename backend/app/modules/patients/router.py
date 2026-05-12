@@ -55,6 +55,14 @@ def get_patient_case(patient_id: str, _: object = Depends(require_doctor)) -> Pa
     return patient
 
 
+@router.get("/api/patients/{patient_id}", response_model=PatientCase)
+def get_patient_case_plural(patient_id: str, _: object = Depends(require_doctor)) -> PatientCase:
+    patient = PATIENT_APPLICATION_SERVICE.get_patient_case(patient_id)
+    if patient is None:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    return patient
+
+
 @router.post("/api/patient", response_model=PatientCase)
 def create_patient(
     payload: PatientUpsertRequest,
@@ -97,6 +105,25 @@ def create_contact_log(
     _: object = Depends(require_roles("doctor", "nurse")),
 ) -> PatientCase:
     patient = PATIENT_APPLICATION_SERVICE.create_contact_log(patient_id, payload)
+    if patient is None:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    return patient
+
+
+@router.post("/api/patient/{patient_id}/contact-logs", response_model=PatientCase)
+def create_contact_log_plural(
+    patient_id: str,
+    payload: ContactLogCreateRequest,
+    doctor: object = Depends(require_roles("doctor", "nurse")),
+) -> PatientCase:
+    actor = doctor
+    request_payload = payload.model_copy(
+        update={
+            "actorUsername": payload.actorUsername or getattr(actor, "username", None),
+            "actorName": payload.actorName or getattr(actor, "name", None),
+        }
+    )
+    patient = PATIENT_APPLICATION_SERVICE.create_contact_log(patient_id, request_payload)
     if patient is None:
         raise HTTPException(status_code=404, detail="Patient not found")
     return patient

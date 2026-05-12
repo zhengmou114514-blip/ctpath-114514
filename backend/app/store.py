@@ -21,8 +21,11 @@ from .schemas import (
     ExperimentMetric,
     FlowBoardResponse,
     FlowBoardRow,
+    FollowupClosureStatus,
     FollowupTaskRow,
     FollowupWorklistResponse,
+    FollowupTaskCreateRequest,
+    FollowupTaskUpdateRequest,
     MaintenanceCountItem,
     MaintenanceEventRow,
     MaintenanceIdentityAlertRow,
@@ -1164,6 +1167,14 @@ class MySQLStore:
             actor_name=payload.actorName,
             note=payload.note,
         )
+        if self._supports_patient_audit_logs():
+            self.add_patient_audit_log(
+                patient_id,
+                action="followup_task_created" if payload.category == "followup" else "outpatient_task_created",
+                operator_username=payload.actorUsername,
+                operator_name=payload.actorName,
+                detail="Task created: {0}".format(payload.title),
+            )
         return task_id
 
     def update_outpatient_task_status(
@@ -1197,11 +1208,19 @@ class MySQLStore:
             log_id="log-{0}".format(uuid4().hex[:12]),
             task_id=task_id,
             patient_id=patient_id,
-            action="completed" if payload.status == "已完成" else "closed",
+            action="status_updated",
             actor_username=payload.actorUsername,
             actor_name=payload.actorName,
-            note="状态更新为 {0}".format(payload.status),
+            note=payload.note or "状态更新为 {0}".format(payload.status),
         )
+        if self._supports_patient_audit_logs():
+            self.add_patient_audit_log(
+                patient_id,
+                action="followup_task_status_updated",
+                operator_username=payload.actorUsername,
+                operator_name=payload.actorName,
+                detail="Task {0} status updated to {1}".format(task_id, payload.status),
+            )
 
     def list_contact_logs(self, patient_id: str) -> List[dict]:
         if not self._has_columns(
@@ -1256,6 +1275,14 @@ class MySQLStore:
             note=payload.note,
             next_contact_date=payload.nextContactDate,
         )
+        if self._supports_patient_audit_logs():
+            self.add_patient_audit_log(
+                patient_id,
+                action="contact_log_created",
+                operator_username=payload.actorUsername,
+                operator_name=payload.actorName,
+                detail="Contact log created: {0}".format(payload.contactResult),
+            )
         return log_id
 
 
@@ -1337,7 +1364,7 @@ def _encounter_status_label(status: str) -> str:
 
 
 def _encounter_next_action(status: str, outpatient_tasks: List[OutpatientTask], fallback: str) -> str:
-    pending_tasks = [item for item in outpatient_tasks if item.status not in {"已完成", "已关闭"}]
+    pending_tasks = [item for item in outpatient_tasks if item.status not in {"已完成", "已关闭", "completed", "closed"}]
     if pending_tasks:
         first = pending_tasks[0]
         return "{0}：{1}".format("检查申请" if first.category == "exam" else "复查计划", first.title)
@@ -1353,17 +1380,19 @@ def _encounter_next_action(status: str, outpatient_tasks: List[OutpatientTask], 
 def _build_outpatient_tasks(rows: List[Dict[str, Any]]) -> List[OutpatientTask]:
     def normalize_category(value: Any) -> str:
         text = str(value or "").strip()
-        if text in {"exam", "recheck"}:
+        if text in {"exam", "recheck", "followup"}:
             return text
         return "recheck"
 
     def normalize_status(value: Any) -> str:
         text = str(value or "").strip()
-        if text in {"已完成", "completed"}:
-            return "已完成"
-        if text in {"已关闭", "closed"}:
-            return "已关闭"
-        return "待执行"
+        if text in {"pending", "contacting", "not_reached", "need_review", "completed", "closed"}:
+            return text
+        if text == "已完成":
+            return "completed"
+        if text == "已关闭":
+            return "closed"
+        return "pending"
 
     return [
         OutpatientTask(
@@ -1409,6 +1438,30 @@ def _build_contact_logs(rows: List[Dict[str, Any]]) -> List[ContactLog]:
         )
         for item in rows
     ]
+
+
+def _latest_followup_dict(patient: PatientCase) -> Optional[dict]:
+    candidates = [item for item in patient.outpatientTasks if item.category == "followup"]
+    if not candidates:
+        return None
+    candidates.sort(key=lambda item: (item.updatedAt or "", item.dueDate, item.taskId), reverse=True)
+    task = candidates[0]
+    return {
+        "taskId": task.taskId,
+        "patientId": patient.patientId,
+        "patientName": patient.name,
+        "primaryDisease": patient.primaryDisease,
+        "riskLevel": patient.riskLevel,
+        "dataSupport": patient.dataSupport,
+        "dueDate": task.dueDate,
+        "owner": task.owner,
+        "priority": task.priority,
+        "taskType": "随访任务",
+        "status": task.status,
+        "source": "outpatient-task",
+        "lastActionBy": task.updatedBy,
+        "lastActionAt": task.updatedAt,
+    }
 
 
 def _build_timeline(events: List[Dict[str, Any]]) -> List[TimelineEvent]:
@@ -1573,7 +1626,7 @@ def _patient_case_from_db(store: MySQLStore, patient_id: str) -> Optional[Patien
     outpatient_tasks = _build_outpatient_tasks(store.list_outpatient_tasks(patient_id))
     contact_logs = _build_contact_logs(store.list_contact_logs(patient_id))
     audit_logs = [PatientAuditLog(**item) for item in store.list_patient_audit_logs(patient_id)]
-    return PatientCase(
+    patient_case = PatientCase(
         **patient,
         encounterStatus=encounter_status,
         stats=_build_stats(events),
@@ -1583,11 +1636,14 @@ def _patient_case_from_db(store: MySQLStore, patient_id: str) -> Optional[Patien
         followUps=_build_followups(patient),
         outpatientTasks=outpatient_tasks,
         contactLogs=contact_logs,
+        latest_followup=None,
+        recent_contact_logs=contact_logs[:3],
         auditLogs=audit_logs,
         recommendationMode=recommendation_mode,
         careAdvice=_build_default_advice(patient),
         similarCases=_build_similar_cases(patient),
     )
+    return patient_case.model_copy(update={"latest_followup": _latest_followup_dict(patient_case)})
 
 
 def authenticate(username: str, password: str) -> Optional[DoctorPublic]:
@@ -1981,7 +2037,7 @@ def update_outpatient_task_status(
         patient = _patient_case_from_db(store, patient_id)
         if patient is None:
             return None
-        pending = [item for item in patient.outpatientTasks if item.status not in {"已完成", "已关闭"}]
+        pending = [item for item in patient.outpatientTasks if item.status not in {"已完成", "已关闭", "completed", "closed"}]
         if not pending and patient.encounterStatus in {"in_progress", "pending_review"}:
             store.set_encounter_status(patient_id, "completed")
             patient = _patient_case_from_db(store, patient_id)

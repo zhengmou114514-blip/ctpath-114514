@@ -79,24 +79,22 @@ Current status:
 - Needs implementation or verification.
 - Do not claim this is complete until tested.
 
-## Git Blocking Issue
+## Git Large File Issue
 
-The latest push failed because `openhis-main.zip` exceeded the GitHub 100MB file limit.
+Status: resolved.
 
-`.gitignore` now includes:
+The previous push failed because `openhis-main.zip` exceeded the GitHub 100MB file limit. The file has now been removed from Git history, and the cleaned `main` branch has been pushed successfully.
+
+Verified after cleanup:
+
+- `git log --all -- openhis-main.zip` has no output
+- `git ls-files openhis-main.zip` has no output
+- `git push --force-with-lease origin main` succeeded
+
+`.gitignore` includes:
 
 ```gitignore
 openhis-main.zip
 ```
 
-This only prevents future additions. It does not remove the file from Git history.
-
-Required verification:
-
-```bash
-git status --short
-git ls-files openhis-main.zip
-git log --all -- openhis-main.zip
-```
-
-If the file appears in history, clean it before pushing.
+Do not commit `openhis-main.zip` or other large reference archives again. Future reference materials should stay outside the main repository, for example in a local `_references/` directory or external storage.
