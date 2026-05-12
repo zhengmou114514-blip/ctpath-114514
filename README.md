@@ -358,3 +358,35 @@ Get-Content .\app\mysql_seed_demo.sql | mysql -u root -p ctpath
 - 不要重新新增 Simple / Center / Legacy / Backup 类重复页面。
 - 不要把模型训练、CSV 导入、库存、收费、住院或完整处方流塞回医生工作台。
 - 如果只做界面调整，不应修改 `app/*`、接口字段名、模型接口语义或数据库结构。
+## Current Development Notes
+
+### Git Large File Warning
+
+Do not commit reference archives such as `openhis-main.zip`.
+
+The project once encountered a push failure because `openhis-main.zip` exceeded GitHub's 100MB file limit.
+
+If push fails with a large-file error, check:
+
+```bash
+git status --short
+git ls-files openhis-main.zip
+git log --all -- openhis-main.zip
+```
+
+If the file exists in history, clean it before pushing.
+
+### Business Closure Status
+
+The project should focus on two minimum business closures:
+
+- doctor-to-nurse follow-up closure
+- doctor-to-pharmacy medication review closure
+
+Do not mark these closures as complete until backend tests and frontend behavior are verified.
+
+### Project Boundary
+
+This project is a chronic disease auxiliary diagnosis business system.
+
+Do not extend it into a full HIS, billing system, inpatient system, insurance settlement system, or pharmacy inventory system.
