@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useWorkspaceContext } from '../composables/workspaceContext'
+import { getGovernanceRecords, updateGovernanceRecordStatus } from '../services/api'
+import type { GovernanceRecord, GovernanceRecordStatus } from '../services/types'
 
 const workspace = useWorkspaceContext()
 const route = useRoute()
@@ -10,6 +12,10 @@ type GovernanceView = 'overview' | 'data-quality' | 'issues' | 'incomplete-archi
 
 const maintenance = computed(() => workspace.maintenanceOverview)
 const loading = computed(() => workspace.loadingMaintenance || workspace.loadingGovernance)
+const governanceRecords = ref<GovernanceRecord[]>([])
+const governanceSummary = ref<Record<string, number>>({})
+const loadingRecords = ref(false)
+const handlingRecordId = ref('')
 const currentView = computed<GovernanceView>(() => {
   if (route.name === 'admin-governance-issues') return 'issues'
   const view = typeof route.query.view === 'string' ? route.query.view : 'overview'
@@ -90,6 +96,32 @@ const governanceFocusCards = computed(() => {
 
 function handleRefresh() {
   void workspace.refreshGovernanceWorkspace()
+  void loadGovernanceRecords()
+}
+
+async function loadGovernanceRecords() {
+  loadingRecords.value = true
+  try {
+    const payload = await getGovernanceRecords()
+    governanceRecords.value = payload.items
+    governanceSummary.value = payload.summary
+  } finally {
+    loadingRecords.value = false
+  }
+}
+
+async function handleGovernanceRecord(record: GovernanceRecord, status: GovernanceRecordStatus) {
+  handlingRecordId.value = record.recordId
+  try {
+    await updateGovernanceRecordStatus(record.recordId, {
+      status,
+      handlingNote: status === 'resolved' ? '管理员已处理。' : status === 'ignored' ? '管理员已忽略。' : '需要补充资料。',
+    })
+    await loadGovernanceRecords()
+    await workspace.refreshGovernanceWorkspace()
+  } finally {
+    handlingRecordId.value = ''
+  }
 }
 
 function switchView(view: GovernanceView) {
@@ -105,6 +137,7 @@ onMounted(() => {
   if (!workspace.maintenanceOverview) {
     void workspace.refreshGovernanceWorkspace()
   }
+  void loadGovernanceRecords()
 })
 </script>
 
@@ -239,6 +272,32 @@ onMounted(() => {
             </li>
           </ul>
           <p v-else class="empty-inline">当前没有治理动作记录。</p>
+        </article>
+
+        <article class="clinical-card">
+          <div class="section-header">
+            <div>
+              <h2>治理处理闭环</h2>
+              <p>处理异常时间线、冲突记录或待补全档案，处理后状态和审计日志同步更新。</p>
+            </div>
+          </div>
+          <div class="quality-grid">
+            <article><span>待处理</span><strong>{{ governanceSummary.pending ?? 0 }}</strong></article>
+            <article><span>已处理</span><strong>{{ governanceSummary.resolved ?? 0 }}</strong></article>
+          </div>
+          <ul v-if="governanceRecords.length" class="record-list actionable-list">
+            <li v-for="item in governanceRecords" :key="item.recordId">
+              <strong>{{ item.title }}</strong>
+              <p>{{ item.patientName || item.patientId || '公共治理记录' }} / {{ item.detail }}</p>
+              <p>状态：{{ item.status }} / 处理说明：{{ item.handlingNote || '-' }}</p>
+              <div class="record-actions">
+                <button type="button" :disabled="item.status !== 'pending' || handlingRecordId === item.recordId" @click="handleGovernanceRecord(item, 'resolved')">标记已处理</button>
+                <button type="button" :disabled="item.status !== 'pending' || handlingRecordId === item.recordId" @click="handleGovernanceRecord(item, 'needs_supplement')">需补充</button>
+                <button type="button" :disabled="item.status !== 'pending' || handlingRecordId === item.recordId" @click="handleGovernanceRecord(item, 'ignored')">忽略</button>
+              </div>
+            </li>
+          </ul>
+          <p v-else class="empty-inline">{{ loadingRecords ? '正在加载治理记录...' : '当前没有治理记录。' }}</p>
         </article>
       </section>
 
@@ -466,6 +525,27 @@ onMounted(() => {
 .record-list p {
   margin: 0;
   line-height: 1.5;
+}
+
+.record-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.record-actions button {
+  min-height: 30px;
+  border: 1px solid var(--ws-border);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--ws-title);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.record-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .empty-inline {

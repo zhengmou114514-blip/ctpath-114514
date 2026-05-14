@@ -683,6 +683,38 @@ class PermissionRegistry:
 PERMISSION_REGISTRY = PermissionRegistry()
 
 PERMISSION_REGISTRY.register(APIPermission(
+    path="/api/patient-medication-reviews",
+    method="GET",
+    required_permissions={Permission.PHARMACY_VIEW},
+    allowed_roles={Role.ADMIN, Role.PHARMACIST},
+    description="Lightweight patient medication review queue",
+))
+
+PERMISSION_REGISTRY.register(APIPermission(
+    path="/api/patient-medication-reviews/{patient_id}/{medication_id}",
+    method="PATCH",
+    required_permissions={Permission.PHARMACY_UPDATE},
+    allowed_roles={Role.ADMIN, Role.PHARMACIST},
+    description="Lightweight patient medication review decision",
+))
+
+PERMISSION_REGISTRY.register(APIPermission(
+    path="/api/governance/records",
+    method="GET",
+    required_permissions={Permission.SYSTEM_MONITOR},
+    allowed_roles={Role.ADMIN, Role.ARCHIVIST},
+    description="Governance records",
+))
+
+PERMISSION_REGISTRY.register(APIPermission(
+    path="/api/governance/records/{record_id}",
+    method="PATCH",
+    required_permissions={Permission.SYSTEM_MONITOR},
+    allowed_roles={Role.ADMIN},
+    description="Update governance record status",
+))
+
+PERMISSION_REGISTRY.register(APIPermission(
     path="/api/drugs",
     method="GET",
     required_permissions={Permission.DRUG_VIEW},

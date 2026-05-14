@@ -9,9 +9,9 @@ from ..schemas import (
     DoctorWorkbenchStatusResponse,
     FlowBoardResponse,
     FollowupTaskCreateRequest,
-    FollowupWorklistResponse,
     FollowupTaskRow,
     FollowupTaskUpdateRequest,
+    FollowupWorklistResponse,
     OutpatientTaskCreateRequest,
     OutpatientTaskStatusUpdateRequest,
 )
@@ -63,9 +63,7 @@ def _followup_row_from_patient(patient_id: str, task_id: str) -> Optional[Follow
 def _find_task_patient_id(task_id: str) -> Optional[str]:
     for patient in list_patients():
         patient_case = get_patient(patient["patientId"])
-        if not patient_case:
-            continue
-        if any(task.taskId == task_id for task in patient_case.outpatientTasks):
+        if patient_case and any(task.taskId == task_id for task in patient_case.outpatientTasks):
             return patient_case.patientId
     return None
 
@@ -75,22 +73,31 @@ def create_followup_worklist_task(
     payload: FollowupTaskCreateRequest,
     doctor: DoctorPublic = Depends(require_roles("doctor")),
 ) -> FollowupTaskRow:
-    request_payload = OutpatientTaskCreateRequest(
-        category="followup",
-        title=payload.title,
-        owner=payload.owner,
-        dueDate=payload.dueDate,
-        priority=payload.priority,
-        note=payload.note,
-        status=payload.status,
-        source=payload.source,
-        actorUsername=payload.actorUsername or doctor.username,
-        actorName=payload.actorName or doctor.name,
+    updated = create_outpatient_task(
+        payload.patientId,
+        OutpatientTaskCreateRequest(
+            category="followup",
+            title=payload.title,
+            owner=payload.owner,
+            dueDate=payload.dueDate,
+            priority=payload.priority,
+            note=payload.note,
+            status=payload.status,
+            source=payload.source,
+            actorUsername=payload.actorUsername or doctor.username,
+            actorName=payload.actorName or doctor.name,
+        ),
     )
-    updated = create_outpatient_task(payload.patientId, request_payload)
     if updated is None:
         raise HTTPException(status_code=404, detail="Patient not found")
-    created = next((task for task in updated.outpatientTasks if task.category == "followup" and task.title == payload.title), None)
+    created = next(
+        (
+            task
+            for task in updated.outpatientTasks
+            if task.category == "followup" and task.title == payload.title
+        ),
+        None,
+    )
     if created is None:
         raise HTTPException(status_code=500, detail="Follow-up task was not created")
     row = _followup_row_from_patient(updated.patientId, created.taskId)

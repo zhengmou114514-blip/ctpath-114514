@@ -1,10 +1,140 @@
 from __future__ import annotations
 
-from typing import List
+import json
+import os
+from datetime import datetime, timezone
+from pathlib import Path
+from threading import Lock
+from typing import Any, List
 
 from ..model_service import MODEL_SERVICE
-from ..schemas import GovernanceModuleItem, GovernanceModulesResponse
+from ..schemas import (
+    GovernanceModuleItem,
+    GovernanceModulesResponse,
+    GovernanceRecord,
+    GovernanceRecordsResponse,
+    GovernanceRecordStatusUpdateRequest,
+)
 from ..store import DB_URL, get_maintenance_overview, get_model_metrics
+
+_LOCK = Lock()
+
+
+def _storage_root() -> Path:
+    root = Path(
+        os.getenv(
+            "CTPATH_GOVERNANCE_DIR",
+            Path(__file__).resolve().parents[1] / "runtime" / "governance",
+        )
+    )
+    root.mkdir(parents=True, exist_ok=True)
+    return root
+
+
+def _records_path() -> Path:
+    return _storage_root() / "governance_records.json"
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _default_records() -> list[dict[str, Any]]:
+    now = _now_iso()
+    return [
+        {
+            "recordId": "gov-timeline-001",
+            "category": "timeline_anomaly",
+            "title": "异常时间线待核对",
+            "patientId": "PID1007",
+            "patientName": "郑丽华",
+            "status": "pending",
+            "priority": "high",
+            "detail": "患者病程事件存在同日重复记录，需管理员核对。",
+            "handlingNote": "",
+            "updatedBy": "",
+            "updatedAt": now,
+        },
+        {
+            "recordId": "gov-archive-001",
+            "category": "archive_missing",
+            "title": "档案字段待补全",
+            "patientId": "PID1008",
+            "patientName": "王建国",
+            "status": "pending",
+            "priority": "medium",
+            "detail": "患者主索引缺少 MRN 或知情同意状态。",
+            "handlingNote": "",
+            "updatedBy": "",
+            "updatedAt": now,
+        },
+    ]
+
+
+def _load_records() -> list[dict[str, Any]]:
+    path = _records_path()
+    if not path.exists():
+        records = _default_records()
+        _save_records(records)
+        return records
+    try:
+        with path.open("r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+        if isinstance(payload, list):
+            records = [item for item in payload if isinstance(item, dict)]
+            if records:
+                return records
+    except Exception:
+        pass
+    records = _default_records()
+    _save_records(records)
+    return records
+
+
+def _save_records(records: list[dict[str, Any]]) -> None:
+    path = _records_path()
+    tmp_path = path.with_suffix(".tmp")
+    with tmp_path.open("w", encoding="utf-8") as handle:
+        json.dump(records, handle, ensure_ascii=False, indent=2)
+    tmp_path.replace(path)
+
+
+def _to_public_record(record: dict[str, Any]) -> GovernanceRecord:
+    return GovernanceRecord.model_validate(record)
+
+
+def list_governance_records() -> GovernanceRecordsResponse:
+    records = [_to_public_record(record) for record in _load_records()]
+    summary = {
+        "total": len(records),
+        "pending": sum(1 for item in records if item.status == "pending"),
+        "needs_supplement": sum(1 for item in records if item.status == "needs_supplement"),
+        "resolved": sum(1 for item in records if item.status == "resolved"),
+        "ignored": sum(1 for item in records if item.status == "ignored"),
+    }
+    return GovernanceRecordsResponse(mode="mysql" if DB_URL else "demo", summary=summary, items=records)
+
+
+def update_governance_record_status(
+    record_id: str,
+    payload: GovernanceRecordStatusUpdateRequest,
+    *,
+    updated_by: str,
+) -> GovernanceRecord | None:
+    with _LOCK:
+        records = _load_records()
+        for index, record in enumerate(records):
+            if str(record.get("recordId") or "") != record_id:
+                continue
+            updated = dict(record)
+            updated["status"] = payload.status
+            updated["handlingNote"] = payload.handlingNote.strip()
+            updated["updatedBy"] = updated_by
+            updated["updatedAt"] = _now_iso()
+            records[index] = updated
+            _save_records(records)
+            return _to_public_record(updated)
+    return None
 
 
 def get_governance_modules() -> GovernanceModulesResponse:

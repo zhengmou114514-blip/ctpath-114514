@@ -5,6 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite --configLoader native -c vite.config.mjs",
+    "dev:doctor": "vite --configLoader native -c vite.config.mjs --host 0.0.0.0 --port 5173 --strictPort",
+    "dev:nurse": "vite --configLoader native -c vite.config.mjs --host 0.0.0.0 --port 5174 --strictPort",
+    "dev:pharmacy": "vite --configLoader native -c vite.config.mjs --host 0.0.0.0 --port 5175 --strictPort",
+    "dev:admin": "vite --configLoader native -c vite.config.mjs --host 0.0.0.0 --port 5176 --strictPort",
     "build": "vue-tsc -b && vite build --configLoader native -c vite.config.mjs",
     "preview": "vite preview --configLoader native -c vite.config.mjs",
     "dev:model": "set CTPATH_APP_TARGET=model && vite --configLoader native -c vite.config.mjs",

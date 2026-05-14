@@ -12,9 +12,19 @@ function updateRegisterField(field: keyof typeof workspace.registerForm, value: 
   ;(workspace.registerForm as Record<string, string>)[field] = value
 }
 
+function defaultRouteForRole(role?: string) {
+  if (role === 'doctor') return '/doctor/workbench'
+  if (role === 'nurse') return '/nurse/followups'
+  if (role === 'pharmacist') return '/pharmacy/medications/review'
+  if (role === 'admin') return '/admin/model-dashboard'
+  if (role === 'archivist') return '/doctor/patients'
+  return '/'
+}
+
 function redirectAfterLogin() {
-  const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/'
-  void router.replace(redirect || '/')
+  const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : ''
+  const fallback = defaultRouteForRole(workspace.currentDoctor?.role)
+  void router.replace(redirect || fallback)
 }
 
 async function submitLogin() {

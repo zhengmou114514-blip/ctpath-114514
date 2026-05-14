@@ -7,7 +7,7 @@ import RoleWorkspacePage from '../pages/RoleWorkspacePage.vue'
 import PatientArchivePrintPage from '../pages/PatientArchivePrintPage.vue'
 import GovernancePage from '../pages/GovernancePage.vue'
 import NurseFollowupsPage from '../pages/NurseFollowupsPage.vue'
-import PharmacyWarehousePage from '../pages/PharmacyWarehousePage.vue'
+import PharmacistMedicationReviewPage from '../pages/PharmacistMedicationReviewPage.vue'
 import DoctorWorkbenchRoutePage from '../pages/DoctorWorkbenchRoutePage.vue'
 import PatientArchiveRoutePage from '../pages/PatientArchiveRoutePage.vue'
 import AdminAuditRoutePage from '../pages/AdminAuditRoutePage.vue'
@@ -29,7 +29,6 @@ const routeSectionMap: Record<string, AppSection> = {
   'role-workspaces': 'role-workspaces',
   'drug-management': 'drug-management',
   'drug-permission-management': 'drug-permission-management',
-  pharmacy: 'pharmacy',
   coordination: 'coordination',
   'patient-detail': 'doctor',
   'doctor-workbench': 'doctor',
@@ -50,7 +49,7 @@ const routeSectionMap: Record<string, AppSection> = {
   'nurse-followups-stats': 'tasks',
   'pharmacy-drug-catalog': 'drug-management',
   'pharmacy-drug-status': 'drug-management',
-  'pharmacy-medication-review': 'pharmacy',
+  'pharmacy-medication-review': 'drug-management',
   'admin-permissions': 'role-workspaces',
   'admin-drug-permissions': 'drug-permission-management',
   'admin-model-dashboard': 'model-dashboard',
@@ -187,8 +186,8 @@ const routes: RouteRecordRaw[] = [
       {
         path: '/pharmacy/medications/review',
         name: 'pharmacy-medication-review',
-        component: PharmacyWarehousePage,
-        meta: { section: 'pharmacy', roles: ['pharmacist'], breadcrumb: ['药事管理', '用药复核'] },
+        component: PharmacistMedicationReviewPage,
+        meta: { section: 'drug-management', roles: ['pharmacist'], breadcrumb: ['药事管理', '药师用药复核'] },
       },
       {
         path: '/admin/permissions',

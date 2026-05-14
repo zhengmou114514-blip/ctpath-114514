@@ -9,7 +9,11 @@ from typing import Any, Iterable
 
 from fastapi import HTTPException
 
-from ..schemas import PatientMedicationRecord, PatientMedicationUpsertRequest
+from ..schemas import (
+    PatientMedicationRecord,
+    PatientMedicationReviewDecisionRequest,
+    PatientMedicationUpsertRequest,
+)
 from ..store import get_patient
 from .drug_catalog_service import get_drug_catalog_item, list_drug_catalog
 
@@ -106,6 +110,9 @@ def _default_seed_records(patient_id: str) -> list[dict[str, Any]]:
             "status": "active",
             "prescribed_by": prescriber,
             "review_status": "approved",
+            "reviewed_by": "system",
+            "reviewed_at": now,
+            "review_note": "Seed medication is treated as already reviewed.",
             "note": "Seeded current medication from the patient's main chronic disease.",
             "created_at": now,
             "updated_at": now,
@@ -151,6 +158,10 @@ def _normalize_record(record: dict[str, Any]) -> dict[str, Any]:
     normalized["status"] = str(normalized.get("status") or "active").strip()
     normalized["prescribed_by"] = str(normalized.get("prescribed_by") or "").strip()
     normalized["review_status"] = str(normalized.get("review_status") or "pending").strip()
+    normalized["reviewed_by"] = str(normalized.get("reviewed_by") or "").strip()
+    reviewed_at = normalized.get("reviewed_at")
+    normalized["reviewed_at"] = str(reviewed_at).strip() if reviewed_at else None
+    normalized["review_note"] = str(normalized.get("review_note") or "").strip()
     normalized["note"] = str(normalized.get("note") or "").strip()
     normalized["created_at"] = str(normalized.get("created_at") or "").strip()
     normalized["updated_at"] = str(normalized.get("updated_at") or "").strip()
@@ -261,6 +272,9 @@ def create_patient_medication(
             "status": payload.status,
             "prescribed_by": prescribed_by.strip() or "current-user",
             "review_status": payload.review_status,
+            "reviewed_by": "",
+            "reviewed_at": None,
+            "review_note": "",
             "note": payload.note.strip(),
             "created_at": now,
             "updated_at": now,
@@ -305,6 +319,9 @@ def update_patient_medication(
             "status": payload.status,
             "prescribed_by": prescribed_by.strip() or current.get("prescribed_by") or "current-user",
             "review_status": payload.review_status,
+            "reviewed_by": current.get("reviewed_by") or "",
+            "reviewed_at": current.get("reviewed_at") or None,
+            "review_note": current.get("review_note") or "",
             "note": payload.note.strip(),
             "created_at": current.get("created_at") or _now_iso(),
             "updated_at": _now_iso(),
@@ -312,3 +329,42 @@ def update_patient_medication(
         records[index] = updated
         _save_records(records)
         return _to_public_record(updated)
+
+
+def list_patient_medication_reviews(status: str | None = None) -> list[PatientMedicationRecord]:
+    normalized_status = (status or "").strip()
+    records = [_to_public_record(record) for record in _load_records()]
+    if normalized_status:
+        records = [record for record in records if record.review_status == normalized_status]
+    return sorted(records, key=lambda item: (item.updated_at, item.patient_id, item.medication_id), reverse=True)
+
+
+def review_patient_medication(
+    patient_id: str,
+    medication_id: str,
+    payload: PatientMedicationReviewDecisionRequest,
+    *,
+    reviewed_by: str,
+) -> PatientMedicationRecord:
+    _ensure_valid_patient(patient_id)
+
+    with _LOCK:
+        records = _seed_if_needed(_load_records(), patient_id)
+        index = _find_index(records, patient_id, medication_id)
+        if index < 0:
+            raise HTTPException(status_code=404, detail="Patient medication not found")
+
+        current = _normalize_record(records[index])
+        now = _now_iso()
+        current.update(
+            {
+                "review_status": payload.review_status,
+                "reviewed_by": reviewed_by.strip() or "pharmacist",
+                "reviewed_at": now,
+                "review_note": payload.review_note.strip(),
+                "updated_at": now,
+            }
+        )
+        records[index] = current
+        _save_records(records)
+        return _to_public_record(current)

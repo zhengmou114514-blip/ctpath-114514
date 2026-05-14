@@ -35,8 +35,7 @@ export const ROLE_WORKSPACE_MENUS: Record<DoctorUser['role'], WorkspaceMenuItem[
     { section: 'coordination', label: '医生复核', description: '查看需要医生确认的随访事项。' },
   ],
   pharmacist: [
-    { section: 'drug-management', label: '药品目录', description: '查看药品目录、剂型规格、处方药和管制药标识。' },
-    { section: 'pharmacy', label: '药事复核', description: '查看库存批次、处方审核队列和药房复核记录。' },
+    { section: 'drug-management', label: '药师用药复核', description: '查看待复核用药并完成批准或驳回，不进入库存或出入库流程。' },
   ],
   archivist: [
     { section: 'archive', label: '患者档案', description: '查看患者身份、病程、附件和电子档案。' },
@@ -87,7 +86,7 @@ export const ROLE_MENU_GROUPS: Record<DoctorUser['role'], Array<{ title: string;
     { title: '随访管理', sections: ['tasks', 'flow', 'contacts', 'coordination'] },
   ],
   pharmacist: [
-    { title: '药事管理', sections: ['drug-management', 'pharmacy'] },
+    { title: '药事管理', sections: ['drug-management'] },
   ],
   archivist: [
     { title: '档案查看', sections: ['archive'] },
@@ -114,10 +113,10 @@ export const OPENHIS_SYSTEM_GROUPS: WorkspaceSystemGroup[] = [
   },
   {
     key: 'pharmacy',
-    title: '药房药库系统',
-    subtitle: '药品目录 / 药品权限 / 药房审核',
+    title: '药品管理系统',
+    subtitle: '药品目录 / 药品权限 / 轻量用药审核',
     openhisPort: '8004',
-    sections: ['pharmacy', 'drug-management', 'drug-permission-management'],
+    sections: ['drug-management', 'drug-permission-management'],
   },
   {
     key: 'emr',

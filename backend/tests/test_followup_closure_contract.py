@@ -66,7 +66,7 @@ def test_doctor_nurse_followup_closure_contract() -> None:
 
         contact_time = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
         contact_response = client.post(
-            "/api/patient/{0}/contact-logs".format(patient_id),
+            "/api/patient/{0}/contact-log".format(patient_id),
             headers=nurse_headers,
             json={
                 "contactTime": contact_time,
@@ -79,7 +79,7 @@ def test_doctor_nurse_followup_closure_contract() -> None:
         )
         assert contact_response.status_code == 200, contact_response.text
 
-        detail_response = client.get("/api/patients/{0}".format(patient_id), headers=doctor_headers)
+        detail_response = client.get("/api/patient/{0}".format(patient_id), headers=doctor_headers)
         assert detail_response.status_code == 200, detail_response.text
         patient_detail = detail_response.json()
 

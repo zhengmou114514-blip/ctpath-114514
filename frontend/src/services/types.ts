@@ -350,6 +350,9 @@ export interface PatientMedicationRecord {
   status: PatientMedicationStatus
   prescribed_by: string
   review_status: PatientMedicationReviewStatus
+  reviewed_by?: string
+  reviewed_at?: string | null
+  review_note?: string
   note: string
   created_at: string
   updated_at: string
@@ -368,6 +371,13 @@ export interface PatientMedicationUpsertRequest {
   status: PatientMedicationStatus
   review_status: PatientMedicationReviewStatus
   note: string
+}
+
+export interface PatientMedicationReviewDecisionRequest {
+  review_status: PatientMedicationReviewStatus
+  review_note?: string
+  actorUsername?: string | null
+  actorName?: string | null
 }
 
 export interface CurrentMedicationItem {
@@ -624,7 +634,7 @@ export interface EncounterStatusPayload {
 }
 
 export interface OutpatientTaskCreatePayload {
-  category: 'exam' | 'recheck'
+  category: 'exam' | 'recheck' | 'followup'
   title: string
   owner: string
   dueDate: string
@@ -638,6 +648,7 @@ export interface OutpatientTaskCreatePayload {
 
 export interface OutpatientTaskStatusUpdatePayload {
   status: string
+  note?: string
   actorUsername?: string
   actorName?: string
 }
@@ -731,6 +742,33 @@ export interface GovernanceModuleItem {
 export interface GovernanceModulesResponse {
   mode: string
   items: GovernanceModuleItem[]
+}
+
+export type GovernanceRecordStatus = 'pending' | 'needs_supplement' | 'resolved' | 'ignored'
+
+export interface GovernanceRecord {
+  recordId: string
+  category: 'timeline_anomaly' | 'archive_missing' | 'conflict'
+  title: string
+  patientId: string
+  patientName: string
+  status: GovernanceRecordStatus
+  priority: 'high' | 'medium' | 'low'
+  detail: string
+  handlingNote: string
+  updatedBy: string
+  updatedAt: string
+}
+
+export interface GovernanceRecordsResponse {
+  mode: string
+  summary: Record<string, number>
+  items: GovernanceRecord[]
+}
+
+export interface GovernanceRecordStatusUpdateRequest {
+  status: GovernanceRecordStatus
+  handlingNote?: string
 }
 
 export interface FollowupTaskRow {

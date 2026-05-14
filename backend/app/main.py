@@ -13,7 +13,6 @@ from .api.coordination import router as coordination_router
 from .api.database_browser import router as database_browser_router
 from .api.drug_permissions import router as drug_permissions_router
 from .api.drugs import router as drugs_router
-from .api.pharmacy import router as pharmacy_router
 from .api.governance import router as governance_router
 from .api.patient_medications import router as patient_medications_router
 from .api.patients import router as patients_router
@@ -91,7 +90,6 @@ app.include_router(drug_permissions_router)
 app.include_router(drugs_router)
 app.include_router(patient_medications_router)
 app.include_router(patients_router)
-app.include_router(pharmacy_router)
 app.include_router(predictions_router)
 app.include_router(systems_router)
 app.include_router(worklists_router)

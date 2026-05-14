@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import {
@@ -38,6 +38,7 @@ const showContactDialog = ref(false)
 const showStatusDialog = ref(false)
 const route = useRoute()
 const router = useRouter()
+let refreshTimer: number | undefined
 
 const currentUser = computed(() => restoreAuthSession()?.doctor ?? null)
 const today = new Date().toISOString().slice(0, 10)
@@ -60,7 +61,7 @@ const contactForm = reactive({
 })
 
 const statusForm = reactive({
-  status: '已完成',
+  status: 'completed',
   note: '',
 })
 
@@ -294,7 +295,7 @@ function openContactDialog(task = selectedTask.value) {
   showContactDialog.value = true
 }
 
-function openStatusDialog(task = selectedTask.value, nextStatus = '已完成') {
+function openStatusDialog(task = selectedTask.value, nextStatus = 'completed') {
   if (!task) return
   selectTask(task)
   statusForm.status = nextStatus
@@ -312,13 +313,13 @@ async function submitCreateTask() {
   try {
     const patient = patients.value.find((item) => item.patientId === taskForm.patientId)
     const updated = await createPatientOutpatientTask(taskForm.patientId, {
-      category: 'recheck',
+      category: 'followup',
       title: taskForm.taskType,
       owner: taskForm.owner,
       dueDate: taskForm.dueDate,
       priority: patient?.riskLevel?.toLowerCase().includes('high') ? 'high' : 'medium',
       note: taskForm.note || '慢病患者随访任务',
-      status: '待执行',
+      status: 'pending',
       source: 'nurse-workstation',
       actorUsername: currentUser.value?.username,
       actorName: currentUser.value?.name,
@@ -378,6 +379,7 @@ async function submitStatusUpdate() {
       }
       await updatePatientOutpatientTaskStatus(task.patientId, task.taskId, {
         status: statusForm.status,
+        note: statusForm.note,
         actorUsername: currentUser.value?.username,
         actorName: currentUser.value?.name,
       })
@@ -394,6 +396,15 @@ async function submitStatusUpdate() {
 
 onMounted(() => {
   void reload()
+  refreshTimer = window.setInterval(() => {
+    void reload()
+  }, 5000)
+})
+
+onBeforeUnmount(() => {
+  if (refreshTimer) {
+    window.clearInterval(refreshTimer)
+  }
 })
 
 watch(
@@ -513,7 +524,7 @@ watch(
               <td>
                 <div class="row-actions">
                   <button class="text-action" type="button" @click.stop="openContactDialog(item)">联系记录</button>
-                  <button class="text-action" type="button" @click.stop="openStatusDialog(item, '已完成')">更新状态</button>
+                  <button class="text-action" type="button" @click.stop="openStatusDialog(item, 'completed')">更新状态</button>
                   <button class="text-action" type="button" @click.stop="openStatusDialog(item!, 'pending_review')">医生复核</button>
                 </div>
               </td>
@@ -692,9 +703,12 @@ watch(
         <label class="field">
           <span>状态</span>
           <select v-model="statusForm.status">
-            <option value="待执行">待执行</option>
-            <option value="已完成">已完成</option>
-            <option value="已关闭">已关闭</option>
+            <option value="pending">待执行</option>
+            <option value="contacting">联系中</option>
+            <option value="not_reached">未接通</option>
+            <option value="need_review">需医生复核</option>
+            <option value="completed">已完成</option>
+            <option value="closed">已关闭</option>
             <option value="pending_review">待医生复核</option>
           </select>
         </label>

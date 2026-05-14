@@ -70,11 +70,10 @@ export const navigationGroups: NavigationItem[] = [
     roles: ['pharmacist'],
     children: [
       { title: '药品目录', routeName: 'pharmacy-drug-catalog', query: { view: 'catalog' }, section: 'drug-management', roles: ['pharmacist'] },
+      { title: '药师用药复核', routeName: 'pharmacy-medication-review', section: 'drug-management', roles: ['pharmacist'] },
       { title: '剂型规格', routeName: 'pharmacy-drug-catalog', query: { view: 'spec' }, section: 'drug-management', roles: ['pharmacist'] },
       { title: '药品状态', routeName: 'pharmacy-drug-status', section: 'drug-management', roles: ['pharmacist'] },
       { title: '处方药标识', routeName: 'pharmacy-drug-catalog', query: { view: 'prescription' }, section: 'drug-management', roles: ['pharmacist'] },
-      { title: '库存与批次', routeName: 'pharmacy-medication-review', query: { view: 'inventory' }, section: 'pharmacy', roles: ['pharmacist'] },
-      { title: '处方复核', routeName: 'pharmacy-medication-review', query: { view: 'review' }, section: 'pharmacy', roles: ['pharmacist'] },
     ],
   },
   {

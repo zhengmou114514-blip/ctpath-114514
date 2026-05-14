@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { addPatientContactLog, updatePatientOutpatientTaskStatus, createPatientOutpatientTask } from '../../services/api'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { addPatientContactLog, updatePatientOutpatientTaskStatus, createPatientOutpatientTask, getPatientCase } from '../../services/api'
 import type { OutpatientTask } from '../../services/types'
 import { useWorkspaceContext } from '../../composables/workspaceContext'
 
@@ -14,6 +14,7 @@ const showNewTaskDialog = ref(false)
 const message = ref('')
 const error = ref('')
 const saving = ref(false)
+let refreshTimer: number | undefined
 
 const focusTask = ref<OutpatientTask | null>(null)
 const contactForm = ref({
@@ -25,7 +26,7 @@ const contactForm = ref({
 })
 const statusForm = ref({ status: 'completed', note: '' })
 const newTaskForm = ref({
-  category: 'recheck' as 'exam' | 'recheck',
+  category: 'followup' as 'exam' | 'recheck' | 'followup',
   title: '',
   owner: '',
   dueDate: '',
@@ -45,7 +46,7 @@ function openStatusDialog(task: OutpatientTask) {
 }
 
 function openNewTaskDialog() {
-  newTaskForm.value = { category: 'recheck', title: '', owner: '', dueDate: '', priority: 'medium', note: '' }
+  newTaskForm.value = { category: 'followup', title: '', owner: '', dueDate: '', priority: 'medium', note: '' }
   showNewTaskDialog.value = true
 }
 
@@ -95,7 +96,7 @@ async function submitStatusUpdate() {
     const updated = await updatePatientOutpatientTaskStatus(
       patient.value.patientId,
       focusTask.value.taskId,
-      { status: statusForm.value.status }
+      { status: statusForm.value.status, note: statusForm.value.note }
     )
     workspace.selectedPatient = updated
     showStatusDialog.value = false
@@ -129,6 +130,27 @@ async function submitNewTask() {
     saving.value = false
   }
 }
+
+async function refreshPatientFollowups() {
+  if (!patient.value) return
+  try {
+    workspace.selectedPatient = await getPatientCase(patient.value.patientId)
+  } catch {
+    // Keep the current view stable during transient refresh failures.
+  }
+}
+
+onMounted(() => {
+  refreshTimer = window.setInterval(() => {
+    void refreshPatientFollowups()
+  }, 5000)
+})
+
+onBeforeUnmount(() => {
+  if (refreshTimer) {
+    window.clearInterval(refreshTimer)
+  }
+})
 </script>
 
 <template>
@@ -220,10 +242,12 @@ async function submitNewTask() {
         <h2>更新任务状态</h2>
         <p>任务：{{ focusTask.title }}</p>
         <label>新状态 <select v-model="statusForm.status">
+          <option value="pending">待执行</option>
+          <option value="contacting">联系中</option>
+          <option value="not_reached">未接通</option>
+          <option value="need_review">需医生复核</option>
           <option value="completed">已完成</option>
           <option value="closed">已关闭</option>
-          <option value="in_progress">进行中</option>
-          <option value="pending_review">待复核</option>
         </select></label>
         <label>备注 <textarea v-model="statusForm.note" rows="2"></textarea></label>
         <div class="dialog-actions">
@@ -237,6 +261,7 @@ async function submitNewTask() {
       <form class="dialog-card" @submit.prevent="submitNewTask">
         <h2>新建随访任务</h2>
         <label>类别 <select v-model="newTaskForm.category">
+          <option value="followup">随访</option>
           <option value="recheck">复诊</option>
           <option value="exam">检查</option>
         </select></label>

@@ -18,6 +18,9 @@ import type {
   EncounterStatusPayload,
   FlowBoardResponse,
   GovernanceModulesResponse,
+  GovernanceRecord,
+  GovernanceRecordsResponse,
+  GovernanceRecordStatusUpdateRequest,
   FollowupWorklistResponse,
   HealthResponse,
   MaintenanceOverview,
@@ -43,6 +46,7 @@ import type {
   PatientCase,
   PatientEventPayload,
   PatientMedicationRecord,
+  PatientMedicationReviewDecisionRequest,
   PatientMedicationUpsertRequest,
   PatientQuadruple,
   PatientSummary,
@@ -459,6 +463,13 @@ export async function createPatientMedication(patientId: string, payload: Patien
 export async function updatePatientMedication(patientId: string, medicationId: string, payload: PatientMedicationUpsertRequest): Promise<PatientMedicationRecord> {
   return request(`/patient/${patientId}/medications/${medicationId}`, { method: 'PUT', body: JSON.stringify(payload) })
 }
+export async function getPatientMedicationReviews(status?: string): Promise<PatientMedicationRecord[]> {
+  const suffix = status ? `?status=${encodeURIComponent(status)}` : ''
+  return request(`/patient-medication-reviews${suffix}`, { method: 'GET' })
+}
+export async function reviewPatientMedication(patientId: string, medicationId: string, payload: PatientMedicationReviewDecisionRequest): Promise<PatientMedicationRecord> {
+  return request(`/patient-medication-reviews/${patientId}/${medicationId}`, { method: 'PATCH', body: JSON.stringify(payload) })
+}
 export async function getBusinessClosureSummary(patientId: string, modelAdvice: string[] = []): Promise<BusinessClosureSummary> {
   const [attachments, medications, assessment, permissions, drugs] = await Promise.all([
     getPatientAttachments(patientId),
@@ -524,12 +535,18 @@ export async function getDatabaseBrowserTable(tableName: string, limit = 50): Pr
 export async function getModelMetrics(): Promise<ModelMetricsResponse> { return request('/model/metrics', { method: 'GET' }) }
 export async function getMaintenanceOverview(): Promise<MaintenanceOverview> { return request('/maintenance/overview', { method: 'GET' }) }
 export async function getGovernanceModules(): Promise<GovernanceModulesResponse> { return request('/governance/modules', { method: 'GET' }) }
+export async function getGovernanceRecords(): Promise<GovernanceRecordsResponse> { return request('/governance/records', { method: 'GET' }) }
+export async function updateGovernanceRecordStatus(recordId: string, payload: GovernanceRecordStatusUpdateRequest): Promise<GovernanceRecord> {
+  return request(`/governance/records/${encodeURIComponent(recordId)}`, { method: 'PATCH', body: JSON.stringify(payload) })
+}
 export async function getFollowupWorklist(): Promise<FollowupWorklistResponse> { return request('/worklists/followups', { method: 'GET' }) }
 export async function getFlowBoard(): Promise<FlowBoardResponse> { return request('/worklists/flow-board', { method: 'GET' }) }
 export async function updateDoctorWorkbenchPatientStatus(patientId: string, payload: DoctorWorkbenchStatusPayload): Promise<DoctorWorkbenchStatusResponse> {
   return request(`/worklists/patients/${patientId}/status`, { method: 'PATCH', body: JSON.stringify(payload) })
 }
+/** @deprecated Full pharmacy warehouse/inventory is outside the current thesis boundary. */
 export async function getPharmacyDashboard(): Promise<PharmacyDashboardResponse> { return request('/pharmacy/dashboard', { method: 'GET' }) }
+/** @deprecated Full pharmacy warehouse/inventory is outside the current thesis boundary. */
 export async function getPharmacyInventory(params: { keyword?: string; warehouse?: string; status?: PharmacyInventoryStatus; lowStockOnly?: boolean } = {}): Promise<PharmacyInventoryRecord[]> {
   const query = new URLSearchParams()
   if (params.keyword) query.set('keyword', params.keyword)
@@ -539,10 +556,15 @@ export async function getPharmacyInventory(params: { keyword?: string; warehouse
   const path = query.toString() ? `/pharmacy/inventory?${query.toString()}` : '/pharmacy/inventory'
   return request(path, { method: 'GET' })
 }
+/** @deprecated Full pharmacy warehouse/inventory is outside the current thesis boundary. */
 export async function getPharmacyInventoryItem(itemId: string): Promise<PharmacyInventoryRecord> { return request(`/pharmacy/inventory/${itemId}`, { method: 'GET' }) }
+/** @deprecated Full pharmacy warehouse/inventory is outside the current thesis boundary. */
 export async function createPharmacyInventoryItem(payload: PharmacyInventoryUpsertRequest): Promise<PharmacyInventoryRecord> { return request('/pharmacy/inventory', { method: 'POST', body: JSON.stringify(payload) }) }
+/** @deprecated Full pharmacy warehouse/inventory is outside the current thesis boundary. */
 export async function updatePharmacyInventoryItem(itemId: string, payload: PharmacyInventoryUpsertRequest): Promise<PharmacyInventoryRecord> { return request(`/pharmacy/inventory/${itemId}`, { method: 'PUT', body: JSON.stringify(payload) }) }
+/** @deprecated Full pharmacy warehouse/inventory is outside the current thesis boundary. */
 export async function adjustPharmacyInventoryItem(itemId: string, payload: PharmacyStockAdjustRequest): Promise<PharmacyInventoryRecord> { return request(`/pharmacy/inventory/${itemId}/adjust`, { method: 'PATCH', body: JSON.stringify(payload) }) }
+/** @deprecated Full pharmacy warehouse/inventory is outside the current thesis boundary. */
 export async function getPharmacyTransactions(limit = 50): Promise<PharmacyTransactionRecord[]> { return request(`/pharmacy/transactions?limit=${encodeURIComponent(String(limit))}`, { method: 'GET' }) }
 export async function getPharmacyReviewQueue(status?: string): Promise<PharmacyReviewOrder[]> {
   const query = new URLSearchParams()

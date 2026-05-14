@@ -456,6 +456,9 @@ class PatientMedicationRecord(BaseModel):
     status: PatientMedicationStatus
     prescribed_by: str
     review_status: PatientMedicationReviewStatus
+    reviewed_by: str = ""
+    reviewed_at: Optional[str] = None
+    review_note: str = ""
     note: str = ""
     created_at: str
     updated_at: str
@@ -474,6 +477,13 @@ class PatientMedicationUpsertRequest(BaseModel):
     status: PatientMedicationStatus = "active"
     review_status: PatientMedicationReviewStatus = "pending"
     note: str = ""
+
+
+class PatientMedicationReviewDecisionRequest(BaseModel):
+    review_status: PatientMedicationReviewStatus
+    review_note: str = ""
+    actorUsername: Optional[str] = None
+    actorName: Optional[str] = None
 
 
 class MedicationAssessmentRequest(BaseModel):
@@ -793,6 +803,37 @@ class GovernanceModuleItem(BaseModel):
 class GovernanceModulesResponse(BaseModel):
     mode: str
     items: List[GovernanceModuleItem]
+
+
+GovernanceRecordStatus = Literal["pending", "needs_supplement", "resolved", "ignored"]
+GovernanceRecordCategory = Literal["timeline_anomaly", "archive_missing", "conflict"]
+
+
+class GovernanceRecord(BaseModel):
+    recordId: str
+    category: GovernanceRecordCategory
+    title: str
+    patientId: str = ""
+    patientName: str = ""
+    status: GovernanceRecordStatus = "pending"
+    priority: PriorityLevel = "medium"
+    detail: str = ""
+    handlingNote: str = ""
+    updatedBy: str = ""
+    updatedAt: str = ""
+
+
+class GovernanceRecordsResponse(BaseModel):
+    mode: str
+    summary: Dict[str, int]
+    items: List[GovernanceRecord]
+
+
+class GovernanceRecordStatusUpdateRequest(BaseModel):
+    status: GovernanceRecordStatus
+    handlingNote: str = ""
+    actorUsername: Optional[str] = None
+    actorName: Optional[str] = None
 
 
 class FollowupTaskRow(BaseModel):

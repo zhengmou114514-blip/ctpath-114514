@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { getPatientMedications, getPatientMedicationAssessment } from '../../services/api'
 import type { PatientMedicationRecord, MedicationAdequacyAssessment } from '../../services/types'
@@ -14,6 +14,7 @@ const assessment = ref<MedicationAdequacyAssessment | null>(null)
 const loading = ref(false)
 const loadingAssessment = ref(false)
 const error = ref('')
+let refreshTimer: number | undefined
 
 const activeMedications = computed(() => medications.value.filter((m) => m.status === 'active'))
 const inactiveMedications = computed(() => medications.value.filter((m) => m.status !== 'active'))
@@ -72,6 +73,18 @@ watch(
   },
   { immediate: true }
 )
+
+onMounted(() => {
+  refreshTimer = window.setInterval(() => {
+    void loadMedications()
+  }, 5000)
+})
+
+onBeforeUnmount(() => {
+  if (refreshTimer) {
+    window.clearInterval(refreshTimer)
+  }
+})
 </script>
 
 <template>
