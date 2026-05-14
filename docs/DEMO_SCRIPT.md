@@ -164,21 +164,45 @@ Governance center supports a minimal status handling closure for governance reco
 
 Different ports are different browser origins, so `localStorage` is isolated per role entry during the demo.
 
+## Verified Demo Status
+
+The current demo closures have been verified in two layers:
+
+1. Focused pytest contract tests.
+2. Four-port Chrome browser-context validation.
+
+Verified browser-context result:
+
+- Doctor entry `http://localhost:5173` stores the doctor session.
+- Nurse entry `http://localhost:5174` stores the nurse session.
+- Pharmacist entry `http://localhost:5175` stores the pharmacist session.
+- Admin entry `http://localhost:5176` stores the admin session.
+- The four entries share the same backend and data store.
+
+Verified closure flows:
+
+- doctor creates follow-up task -> nurse handles contact -> doctor sees latest follow-up/contact result
+- doctor creates pending medication -> pharmacist approves -> doctor sees `approved`
+- admin disables pharmacist review permission -> pharmacist review is rejected -> admin restores permission
+- admin handles governance record -> status changes -> audit records the action
+
+Keep the demo narrative inside these verified boundaries. Do not describe pharmacy inventory, procurement, billing, inpatient, insurance settlement, full prescription workflow, or model training center as part of the system.
+
 ## Validation Commands
 
 Backend:
 
 ```bash
-pytest
+python -m pytest backend/tests/test_followup_closure_contract.py -q
+python -m pytest backend/tests/test_medication_review_closure.py -q
+python -m pytest backend/tests/test_admin_permission_closure.py -q
+python -m pytest backend/tests/test_governance_audit_closure.py -q
 ```
 
-Focused closure checks:
+If `pytest` is missing in the local conda environment, install only pytest first. Do not install the full backend requirements just for these checks.
 
 ```bash
-python backend/tests/test_followup_closure_contract.py
-python backend/tests/test_medication_review_closure.py
-python backend/tests/test_admin_permission_closure.py
-python backend/tests/test_governance_audit_closure.py
+conda install -n ctpath pytest -y
 ```
 
 Frontend:

@@ -4,10 +4,14 @@
 
 The system should not only display pages independently. It should form real business closures between roles.
 
-The minimum closures are:
+The verified demo closures are:
 
 1. Follow-up closure between doctor and nurse.
 2. Medication review closure between doctor and pharmacy staff.
+3. Admin permission configuration closure.
+4. Admin governance handling and audit closure.
+
+All closures remain inside one chronic disease auxiliary diagnosis system with one backend, one data store, and role-based workbenches.
 
 ## Closure 1: Follow-up Closure
 
@@ -37,8 +41,8 @@ Required endpoints:
 
 - `POST /api/worklists/followups`
 - `PATCH /api/worklists/followups/{task_id}`
-- `POST /api/patient/{patient_id}/contact-logs`
-- `GET /api/patients/{patient_id}`
+- `POST /api/patient/{patient_id}/contact-log`
+- `GET /api/patient/{patient_id}`
 
 Required data update:
 
@@ -71,6 +75,15 @@ Nurse side:
 
 Do not use inconsistent status names such as `done`, `finished`, and `success`.
 
+### Verification Status
+
+Status: completed and verified for the demo scope.
+
+Verified by:
+
+- `python -m pytest backend/tests/test_followup_closure_contract.py -q`
+- four-port browser-context validation using doctor and nurse entries
+
 ## Closure 2: Medication Review Closure
 
 ### Business Flow
@@ -95,8 +108,10 @@ Patient timeline or audit log records the review action
 
 Required endpoints:
 
-- `GET /api/pharmacy/medication-reviews?status=pending`
-- `PATCH /api/pharmacy/medication-reviews/{medication_id}`
+- `GET /api/pharmacy/review-queue?status=pending`
+- `PATCH /api/pharmacy/review-queue/{patient_id}/{medication_id}`
+- `GET /api/patient-medication-reviews?status=pending`
+- `PATCH /api/patient-medication-reviews/{patient_id}/{medication_id}`
 - `GET /api/patient/{patient_id}/medications`
 
 Required fields:
@@ -135,6 +150,114 @@ Recommended polling interval:
 
 - 5 seconds
 
+### Verification Status
+
+Status: completed and verified for the demo scope.
+
+Verified by:
+
+- `python -m pytest backend/tests/test_medication_review_closure.py -q`
+- four-port browser-context validation using doctor and pharmacist entries
+
+## Closure 3: Admin Permission Configuration Closure
+
+### Business Flow
+
+```text
+Admin changes role medication permission
+        ↓
+Target role refreshes or re-enters the page
+        ↓
+Menu/button behavior and backend authorization reflect the new permission
+        ↓
+Unauthorized operation is rejected
+        ↓
+System audit log records the permission change
+```
+
+### Required Backend Capabilities
+
+Required endpoints:
+
+- `GET /api/drug-permissions/{role}`
+- `PUT /api/drug-permissions/{role}`
+- protected medication review endpoint authorization
+- `GET /api/audit/system`
+
+Required audit fields:
+
+- operator
+- target role
+- changed permission
+- operation time
+- request path or trace id
+
+### Verification Status
+
+Status: completed and verified for the demo scope.
+
+Verified by:
+
+- `python -m pytest backend/tests/test_admin_permission_closure.py -q`
+- four-port browser-context validation using admin and pharmacist entries
+
+## Closure 4: Governance Handling And Audit Closure
+
+### Business Flow
+
+```text
+Admin opens governance center
+        ↓
+Admin handles one governance record
+        ↓
+Record status changes
+        ↓
+Governance summary changes
+        ↓
+System audit log records the action
+```
+
+### Required Backend Capabilities
+
+Required endpoints:
+
+- `GET /api/governance/records`
+- `PATCH /api/governance/records/{record_id}`
+- `GET /api/audit/system`
+
+Supported status values:
+
+- `pending`
+- `needs_supplement`
+- `resolved`
+- `ignored`
+
+### Verification Status
+
+Status: completed and verified for the demo scope.
+
+Verified by:
+
+- `python -m pytest backend/tests/test_governance_audit_closure.py -q`
+- four-port browser-context validation using the admin entry
+
+## Boundaries
+
+Do not extend these closures into a full HIS workflow.
+
+Out of scope:
+
+- billing
+- inpatient management
+- insurance settlement
+- pharmacy inventory
+- procurement
+- inbound/outbound warehouse flows
+- complete prescription workflow
+- model training center in the clinical workflow
+
+Model dashboard remains a runtime monitoring view. It is not a model training closure.
+
 ## Tests Required
 
 ### Follow-up Closure Test
@@ -157,3 +280,21 @@ A test should verify:
 - pharmacy staff approves or rejects
 - doctor sees updated review status
 - audit/patient event record exists
+
+### Admin Permission Closure Test
+
+A test should verify:
+
+- admin changes pharmacist medication review permission
+- pharmacist review is rejected when permission is disabled
+- pharmacist review succeeds again after permission is restored
+- system audit log contains the permission change
+
+### Governance Audit Closure Test
+
+A test should verify:
+
+- admin queries governance records
+- admin updates one governance record status
+- summary changes after the update
+- system audit log contains the governance action
